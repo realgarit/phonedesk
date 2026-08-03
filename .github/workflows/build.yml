@@ -61,7 +61,7 @@ jobs:
 
     steps:
     - name: Checkout release commit
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         # Draft GitHub releases do not create their tag until publication.
         ref: ${{ needs.release-please.outputs.release_sha }}
@@ -138,12 +138,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         ref: ${{ needs.release-please.outputs.release_sha }}
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: '10.0.x'
     
@@ -220,7 +220,7 @@ jobs:
         zip -r ../../dist/phonedesk-linux-x64.zip .
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: phonedesk-${{ matrix.runtime }}
         path: ./dist/*
@@ -237,7 +237,7 @@ jobs:
     steps:
     - name: Download all artifacts
       # Build jobs upload finished assets (zips / setup exe), so a flat merge is enough.
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: phonedesk-*
         path: ./artifacts
@@ -285,7 +285,7 @@ jobs:
     if: needs.release-please.outputs.release_created == 'true'
     steps:
     - name: Checkout tap
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: realgarit/homebrew-tap
         token: ${{ secrets.PAT_TOKEN }}
@@ -371,14 +371,14 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         # For PR events, use the head SHA (not the merge ref) to avoid race
         # where the merge ref is deleted before the runner picks up the job.
         ref: ${{ inputs.validate_ref || github.event.pull_request.head.sha || github.ref }}
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: '10.0.x'
 

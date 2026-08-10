@@ -61,7 +61,7 @@ jobs:
 
     steps:
     - name: Checkout release commit
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         # Draft GitHub releases do not create their tag until publication.
         ref: ${{ needs.release-please.outputs.release_sha }}
@@ -80,29 +80,13 @@ jobs:
         fi
 
         VERSION="${RELEASE_TAG#v}"
-        VERSION_FILE="$(tr -d '[:space:]' < version.txt)"
-        if [[ "$VERSION_FILE" != "$VERSION" ]]; then
-          echo "::error::version.txt contains '$VERSION_FILE', expected '$VERSION'."
+        bash scripts/validate-version-sync.sh "$VERSION"
+
+        MANIFEST_VERSION="$(jq -r '."."' .release-please-manifest.json)"
+        if [[ "$MANIFEST_VERSION" != "$VERSION" ]]; then
+          echo "::error::.release-please-manifest.json contains '$MANIFEST_VERSION', expected '$VERSION'."
           exit 1
         fi
-
-        for PROPERTY in Version AssemblyVersion FileVersion; do
-          PROJECT_VERSION="$(sed -n "s:.*<$PROPERTY>\\([^<]*\\)</$PROPERTY>.*:\\1:p" phonedesk.csproj | head -1)"
-          if [[ "$PROPERTY" == "Version" ]]; then
-            # Version must match exactly (SemVer, 3 parts)
-            if [[ "$PROJECT_VERSION" != "$VERSION" ]]; then
-              echo "::error::$PROPERTY is '$PROJECT_VERSION', expected '$VERSION'."
-              exit 1
-            fi
-          else
-            # AssemblyVersion/FileVersion need 4 parts on Windows; accept either 3.21.3 or 3.21.3.0
-            EXPECTED4="${VERSION}.0"
-            if [[ "$PROJECT_VERSION" != "$VERSION" && "$PROJECT_VERSION" != "$EXPECTED4" ]]; then
-              echo "::error::$PROPERTY is '$PROJECT_VERSION', expected '$VERSION' or '$EXPECTED4'."
-              exit 1
-            fi
-          fi
-        done
 
         if [[ "$(git rev-parse HEAD)" != "$RELEASE_SHA" ]]; then
           echo "::error::Checked out commit does not match Release Please SHA '$RELEASE_SHA'."
@@ -138,12 +122,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         ref: ${{ needs.release-please.outputs.release_sha }}
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
       with:
         dotnet-version: '10.0.x'
     
@@ -220,7 +204,7 @@ jobs:
         zip -r ../../dist/phonedesk-linux-x64.zip .
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: phonedesk-${{ matrix.runtime }}
         path: ./dist/*
@@ -237,7 +221,7 @@ jobs:
     steps:
     - name: Download all artifacts
       # Build jobs upload finished assets (zips / setup exe), so a flat merge is enough.
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: phonedesk-*
         path: ./artifacts
@@ -285,7 +269,7 @@ jobs:
     if: needs.release-please.outputs.release_created == 'true'
     steps:
     - name: Checkout tap
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         repository: realgarit/homebrew-tap
         token: ${{ secrets.PAT_TOKEN }}
@@ -371,14 +355,18 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         # For PR events, use the head SHA (not the merge ref) to avoid race
         # where the merge ref is deleted before the runner picks up the job.
         ref: ${{ inputs.validate_ref || github.event.pull_request.head.sha || github.ref }}
 
+    - name: Validate version source alignment
+      shell: bash
+      run: bash scripts/validate-version-sync.sh
+
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
       with:
         dotnet-version: '10.0.x'
 

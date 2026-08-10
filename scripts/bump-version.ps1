@@ -75,9 +75,13 @@ $constantsContent = $constantsContent -replace 'public const string Version = "V
 Set-Content -Path $constantsPath -Value $constantsContent -NoNewline
 Write-Host "✓ Updated ConstantsService.cs" -ForegroundColor Green
 
+# Update version.txt (release-please's simple package version source)
+$versionFilePath = Join-Path $repoRoot "version.txt"
+Set-Content -Path $versionFilePath -Value $displayVersion -NoNewline
+Write-Host "✓ Updated version.txt" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "Version bumped from $currentVersion to $newVersion" -ForegroundColor Green
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Review your changes" -ForegroundColor White
 Write-Host "  2. Commit and push manually" -ForegroundColor White
-

@@ -14,7 +14,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: publish-store-package-${{ github.event.release.tag_name || inputs.tag }}
+  # Every release updates the same gh-pages branch, so serialize by branch rather
+  # than by tag. This prevents two different releases from racing on the push.
+  group: publish-store-package-gh-pages
   cancel-in-progress: false
 
 jobs:
@@ -117,7 +119,18 @@ jobs:
             exit 1
           fi
           git commit -m "chore: host ${TAG} installer for Microsoft Store package URL"
-          git push origin HEAD:gh-pages
+          for attempt in 1 2 3; do
+            if git push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "Push raced with another gh-pages update; rebasing and retrying ($attempt/3)."
+              git fetch origin gh-pages
+              git rebase origin/gh-pages
+            fi
+          done
+          echo "::error::Could not push the Store package to gh-pages after 3 attempts."
+          exit 1
         fi
 
     - name: Verify public Store package URL

@@ -81,35 +81,12 @@ jobs:
 
         VERSION="${RELEASE_TAG#v}"
         bash scripts/validate-version-sync.sh "$VERSION"
-        VERSION_FILE="$(tr -d '[:space:]' < version.txt)"
-        if [[ "$VERSION_FILE" != "$VERSION" ]]; then
-          echo "::error::version.txt contains '$VERSION_FILE', expected '$VERSION'."
-          exit 1
-        fi
 
         MANIFEST_VERSION="$(jq -r '."."' .release-please-manifest.json)"
         if [[ "$MANIFEST_VERSION" != "$VERSION" ]]; then
           echo "::error::.release-please-manifest.json contains '$MANIFEST_VERSION', expected '$VERSION'."
           exit 1
         fi
-
-        for PROPERTY in Version AssemblyVersion FileVersion; do
-          PROJECT_VERSION="$(sed -n "s:.*<$PROPERTY>\\([^<]*\\)</$PROPERTY>.*:\\1:p" phonedesk.csproj | head -1)"
-          if [[ "$PROPERTY" == "Version" ]]; then
-            # Version must match exactly (SemVer, 3 parts)
-            if [[ "$PROJECT_VERSION" != "$VERSION" ]]; then
-              echo "::error::$PROPERTY is '$PROJECT_VERSION', expected '$VERSION'."
-              exit 1
-            fi
-          else
-            # AssemblyVersion/FileVersion need 4 parts on Windows; accept either 3.21.3 or 3.21.3.0
-            EXPECTED4="${VERSION}.0"
-            if [[ "$PROJECT_VERSION" != "$VERSION" && "$PROJECT_VERSION" != "$EXPECTED4" ]]; then
-              echo "::error::$PROPERTY is '$PROJECT_VERSION', expected '$VERSION' or '$EXPECTED4'."
-              exit 1
-            fi
-          fi
-        done
 
         if [[ "$(git rev-parse HEAD)" != "$RELEASE_SHA" ]]; then
           echo "::error::Checked out commit does not match Release Please SHA '$RELEASE_SHA'."

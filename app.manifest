@@ -2,7 +2,7 @@
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!-- x-release-please-version -->
   <assemblyIdentity 
-    version="3.24.1.0"
+    version="3.24.2.0"
     name="PhoneDesk"
     processorArchitecture="*"
     type="win32"/>

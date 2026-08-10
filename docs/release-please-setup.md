@@ -56,11 +56,16 @@ sources. Both `scripts/bump-version.sh` and `scripts/bump-version.ps1` update
 application sources while a release is waiting to be proposed, but
 `validate-release` requires it to match the release tag.
 
+The configured `simple` release type manages `version.txt` in the release PR. The
+additional `extra-files` entries update the project, manifest, and display-version
+sources listed above; the version-sync guard checks all of them before packaging.
+
 ## Key files
 
 | File | Purpose |
 |------|---------|
 | `.github/workflows/build.yml` | CI/CD pipeline: release-please, validation, build, publish, Homebrew |
+| `.github/workflows/publish-store-package.yml` | Published-release workflow for the direct Microsoft Store installer URL on `gh-pages` |
 | `.github/workflows/module-compatibility.yml` | Weekly module pin check and releaseable dependency PR |
 | `release-please-config.json` | Release-please config: release type, anchor, extra files, draft mode |
 | `.release-please-manifest.json` | Release-please-managed package version |
@@ -77,6 +82,10 @@ application sources while a release is waiting to be proposed, but
    builds and tests the PR across Windows, macOS Intel, macOS ARM, and Linux.
 3. **When the release PR is merged**: release-please creates the Git tag and draft
    GitHub release, then `build` → `upload-release-assets` → `bump-homebrew-cask` runs.
+4. **When the GitHub release is published**: `publish-store-package.yml` copies the
+   Windows installer to `gh-pages/store/<version>/` and verifies the public URL. The
+   workflow can also be dispatched manually with an existing tag to recover a failed
+   Pages publication.
 
 ## Troubleshooting
 

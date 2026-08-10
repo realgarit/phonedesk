@@ -61,7 +61,7 @@ jobs:
 
     steps:
     - name: Checkout release commit
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         # Draft GitHub releases do not create their tag until publication.
         ref: ${{ needs.release-please.outputs.release_sha }}
@@ -145,12 +145,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         ref: ${{ needs.release-please.outputs.release_sha }}
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
       with:
         dotnet-version: '10.0.x'
     
@@ -227,7 +227,7 @@ jobs:
         zip -r ../../dist/phonedesk-linux-x64.zip .
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: phonedesk-${{ matrix.runtime }}
         path: ./dist/*
@@ -244,7 +244,7 @@ jobs:
     steps:
     - name: Download all artifacts
       # Build jobs upload finished assets (zips / setup exe), so a flat merge is enough.
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: phonedesk-*
         path: ./artifacts
@@ -292,7 +292,7 @@ jobs:
     if: needs.release-please.outputs.release_created == 'true'
     steps:
     - name: Checkout tap
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         repository: realgarit/homebrew-tap
         token: ${{ secrets.PAT_TOKEN }}
@@ -378,7 +378,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         # For PR events, use the head SHA (not the merge ref) to avoid race
         # where the merge ref is deleted before the runner picks up the job.
@@ -389,7 +389,7 @@ jobs:
       run: bash scripts/validate-version-sync.sh
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
       with:
         dotnet-version: '10.0.x'
 

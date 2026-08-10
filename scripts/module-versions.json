@@ -6,23 +6,23 @@
     },
     {
       "name": "Microsoft.Graph.Authentication",
-      "version": "2.38.1"
+      "version": "2.39.0"
     },
     {
       "name": "Microsoft.Graph.Users",
-      "version": "2.38.1"
+      "version": "2.39.0"
     },
     {
       "name": "Microsoft.Graph.Users.Actions",
-      "version": "2.38.1"
+      "version": "2.39.0"
     },
     {
       "name": "Microsoft.Graph.Groups",
-      "version": "2.38.1"
+      "version": "2.39.0"
     },
     {
       "name": "Microsoft.Graph.Identity.DirectoryManagement",
-      "version": "2.38.1"
+      "version": "2.39.0"
     }
   ],
   "powerShellSdkVersion": "7.6.0"

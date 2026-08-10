@@ -2,83 +2,103 @@
 
 This project uses [release-please](https://github.com/googleapis/release-please) (via the
 `googleapis/release-please-action` GitHub Action) to automate versioning and release
-management. Every push to `main` triggers RP to evaluate conventional commit messages
-since the last release and propose a release PR.
+management. Every push to `main` triggers release-please to evaluate Conventional Commit
+messages since the last release and propose a release PR.
 
-## Version pinning (fixed at v4)
+## Version pinning
 
-RP is pinned to **v4** of `googleapis/release-please-action` via an explicit commit SHA:
+The workflow pins `googleapis/release-please-action` to the v5.0.0 commit SHA:
 
-```
-uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
-```
-
-We deliberately do **not** use a floating tag (`v4`) or a version range (`>=4`). This
-prevents Dependabot or GitHub's own action resolver from silently upgrading the action to
-v5, which would trigger phantom major-version bumps (e.g. 3.x → 4.0.0) because v5 uses a
-different release-please CLI that re-evaluates the entire commit history.
-
-## Preventing phantom major-version bumps
-
-The primary protection against phantom bumps (e.g. 3.x → 4.0.0) is **pinning the
-action to a v4 commit SHA** (see above). RP v5 re-evaluates the entire commit history
-and may propose a major bump based on old breaking-change commits.
-
-Beyond that, RP is **self-managing**: it tracks `last-release-sha` internally and
-updates it automatically when a release is published. No manual SHA management is
-needed under normal operation.
-
-Do NOT add `release-as` or `last-release-sha` to `release-please-config.json` unless
-you need a one-time override (e.g. bootstrapping a new release track). These manually
-lock the version and prevent RP from evaluating new commits correctly.
-
-## Four-digit version fields for Windows
-
-The .NET project uses these MSBuild properties in `phonedesk.csproj`:
-
-```xml
-<Version>3.21.3</Version>            <!-- SemVer — must match RP tag exactly -->
-<AssemblyVersion>3.21.3.0</AssemblyVersion>   <!-- 4-part for Windows compatibility -->
-<FileVersion>3.21.3.0</FileVersion>           <!-- 4-part for Windows compatibility -->
+```yaml
+uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
 ```
 
-- **`<Version>`** is 3-part SemVer and must match the release-please tag (e.g. `v3.21.3`).
-- **`<AssemblyVersion>` / `<FileVersion>`** use 4-part versions (e.g. `3.21.3.0`) because
-  Windows requires four digits. The CI validation in `build.yml` accepts either `X.Y.Z` or
-  `X.Y.Z.0` for these properties (see the `validate-release` job).
+The explicit SHA prevents an action-tag update from changing release behavior
+unexpectedly. The root-level `last-release-sha` in `release-please-config.json` anchors
+release-please after the v3.21.5 release commit so old breaking-change footers cannot
+recreate the retired phantom v4.0.0 release.
+
+## Commit types and one-time recovery
+
+Release-please treats user-facing Conventional Commits such as `fix`, `feat`, and
+`deps` as releaseable. Routine `chore` commits are not releaseable. The scheduled module
+compatibility workflow therefore generates:
+
+```
+fix(deps): bump bundled PowerShell module versions
+```
+
+For a one-time recovery, a commit body may contain the exact footer:
+
+```
+Release-As: 3.24.2
+```
+
+Use that footer only to recover a known pending release. Do not add a persistent
+`release-as` override to `release-please-config.json`; it would lock normal version
+calculation.
+
+## Application version sources
+
+The application-facing sources must agree on the same three-part version:
+
+- `version.txt`
+- `phonedesk.csproj` `<Version>`
+- `app.manifest`'s four-part `assemblyIdentity` version
+- `src/PhoneDesk.Domain/ConstantsService.cs`
+
+`phonedesk.csproj` keeps four-part `<AssemblyVersion>` and `<FileVersion>` values for
+Windows compatibility. Run `bash scripts/validate-version-sync.sh` to check these
+sources. Both `scripts/bump-version.sh` and `scripts/bump-version.ps1` update
+`version.txt` along with the other application sources.
+
+`.release-please-manifest.json` is release-please-managed state. It may trail the
+application sources while a release is waiting to be proposed, but
+`validate-release` requires it to match the release tag.
 
 ## Key files
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/build.yml` | CI/CD pipeline: RP, validation, build, publish, Homebrew |
-| `release-please-config.json` | RP config: release-type, extra-files, draft mode |
-| `.release-please-manifest.json` | Current package version (auto-managed by RP) |
-| `version.txt` | Human-readable version (must match RP version) |
+| `.github/workflows/build.yml` | CI/CD pipeline: release-please, validation, build, publish, Homebrew |
+| `.github/workflows/module-compatibility.yml` | Weekly module pin check and releaseable dependency PR |
+| `release-please-config.json` | Release-please config: release type, anchor, extra files, draft mode |
+| `.release-please-manifest.json` | Release-please-managed package version |
+| `version.txt` | Application version source |
+| `scripts/validate-version-sync.sh` | Cross-platform application version-source guard |
 | `phonedesk.csproj` | Project `<Version>`, `<AssemblyVersion>`, `<FileVersion>` |
 
 ## What happens on a push to `main`
 
-1. **`release-please` job**: RP evaluates commits since `last-release-sha`, creates or
-   updates a release PR (branch: `release-please--branches--main`).
-2. **PR validation**: The `pr-validate` job builds + tests the PR across all runtimes
-   (Windows, macOS Intel, macOS ARM, Linux).
-3. **When the release PR is merged**: RP creates a Git tag and a draft GitHub release,
-   then the full `build` → `upload-release-assets` → `bump-homebrew-cask` pipeline runs.
+1. **`release-please` job**: release-please evaluates commits after
+   `last-release-sha` and creates or updates a release PR
+   (branch: `release-please--branches--main`).
+2. **PR validation**: the `pr-validate` job checks version-source alignment, then
+   builds and tests the PR across Windows, macOS Intel, macOS ARM, and Linux.
+3. **When the release PR is merged**: release-please creates the Git tag and draft
+   GitHub release, then `build` → `upload-release-assets` → `bump-homebrew-cask` runs.
 
 ## Troubleshooting
 
-### RP keeps creating duplicate or phantom release PRs
-- Verify `release-please-config.json` has `"last-release-sha"` pointing to the
-  **exact commit** of the most recent release tag (under the `packages."."` key).
-- Verify the action is pinned to a **v4 commit SHA**, not a floating `v4` tag.
-- Delete stale RP branches (`release-please--branches--main-*`) and re-run.
+### Release-please does not create a release PR
 
-### Validate-release fails with "Version is not a stable semantic version"
-- Ensure the release tag matches `vX.Y.Z` format (no pre-release suffixes, no fourth
-  digit).
-- Check that `<Version>` in `phonedesk.csproj` matches the tag exactly (3 parts).
+- Check that the merged change uses a releaseable type such as `fix`, `feat`, or
+  `fix(deps)`, rather than an ordinary `chore`.
+- For a known pending version, use a one-time `Release-As: X.Y.Z` footer.
+- Verify `release-please-config.json` has the root-level `last-release-sha` pointing to
+  the intended release anchor.
+- Delete stale release-please branches (`release-please--branches--main-*`) only after
+  inspecting their PR and branch state.
+
+### Validate-release fails with a version mismatch
+
+- Ensure the release tag matches `vX.Y.Z` format with no pre-release suffix or fourth
+  digit.
+- Run `bash scripts/validate-version-sync.sh X.Y.Z` locally.
+- Check that `.release-please-manifest.json` contains the same three-part version as the
+  release tag.
 
 ### Windows builds fail on version mismatch
-- `<AssemblyVersion>` and `<FileVersion>` must be 4-part (e.g. `3.21.3.0`). Windows
-  does not accept 3-part assembly versions.
+
+- `<AssemblyVersion>` and `<FileVersion>` must be four-part values such as `3.21.3.0`.
+- `<Version>` remains three-part and must match the release tag exactly.

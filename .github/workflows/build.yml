@@ -80,9 +80,16 @@ jobs:
         fi
 
         VERSION="${RELEASE_TAG#v}"
+        bash scripts/validate-version-sync.sh "$VERSION"
         VERSION_FILE="$(tr -d '[:space:]' < version.txt)"
         if [[ "$VERSION_FILE" != "$VERSION" ]]; then
           echo "::error::version.txt contains '$VERSION_FILE', expected '$VERSION'."
+          exit 1
+        fi
+
+        MANIFEST_VERSION="$(jq -r '."."' .release-please-manifest.json)"
+        if [[ "$MANIFEST_VERSION" != "$VERSION" ]]; then
+          echo "::error::.release-please-manifest.json contains '$MANIFEST_VERSION', expected '$VERSION'."
           exit 1
         fi
 
@@ -376,6 +383,10 @@ jobs:
         # For PR events, use the head SHA (not the merge ref) to avoid race
         # where the merge ref is deleted before the runner picks up the job.
         ref: ${{ inputs.validate_ref || github.event.pull_request.head.sha || github.ref }}
+
+    - name: Validate version source alignment
+      shell: bash
+      run: bash scripts/validate-version-sync.sh
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v6

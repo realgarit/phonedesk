@@ -108,6 +108,11 @@ sed -i.bak "s/public const string Version = \"Version [0-9.]*\";/public const st
 rm -f "$CONSTANTS_PATH.bak"
 echo -e "\033[32m✓ Updated ConstantsService.cs\033[0m"
 
+# Update version.txt (release-please's simple package version source)
+VERSION_FILE="$REPO_ROOT/version.txt"
+printf '%s\n' "$NEW_VERSION_SHORT" > "$VERSION_FILE"
+echo -e "\033[32m✓ Updated version.txt\033[0m"
+
 echo ""
 echo -e "\033[32mVersion bumped from $CURRENT_VERSION to $NEW_VERSION\033[0m"
 echo -e "\033[33mNext steps:\033[0m"

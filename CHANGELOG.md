@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.24.2](https://github.com/realgarit/phonedesk/compare/v3.24.0...v3.24.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* **ci:** consolidate release version validation ([c62a7ec](https://github.com/realgarit/phonedesk/commit/c62a7ecac29c59b01ce3102a3ed976d18737dd81))
+* **ci:** pin workflow action revisions ([356e4c1](https://github.com/realgarit/phonedesk/commit/356e4c19a6e8502e90da6462e530cc4f5ca5a046))
+* **release:** recover pending 3.24.2 release ([7295d37](https://github.com/realgarit/phonedesk/commit/7295d375207e8c30fef5be659f5317418cf21dc4))
+* repair release flow and recover v3.24.2 ([03f5bfc](https://github.com/realgarit/phonedesk/commit/03f5bfc7e20ee310677f2157f194a6e5f5ab218a))
+
 ## [3.24.0](https://github.com/realgarit/phonedesk/compare/v3.23.1...v3.24.0) (2026-07-21)
 
 

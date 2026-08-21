@@ -24,6 +24,14 @@ Also updated:
 
 No frozen infrastructure/auth/script-builder files were modified. No production files outside the allowed Task 5 scope were modified.
 
+## Round 1 review correction — 2026-08-22
+
+The review fix is limited to the test-only screenshot harness and this report:
+
+- `PhoneDesk.Tests/ScreenshotGenerator.cs` now closes `IsSettingsOpen` before every non-settings scenario. The two settings scenarios retain the drawer-open behavior needed to capture the settings states.
+- Task 5 scenario language is derived from the `-de` suffix. German scenarios now inject the reviewed semantic test-state text for Call Queues, Auto Attendants, Holidays, and Bulk Operations; English scenarios retain their original English values. Tenant/API/sample values are unchanged.
+- The fix does not alter any production localization file, view, enum, frozen file, or runtime message.
+
 ## Test-first evidence
 
 ### RED
@@ -131,9 +139,10 @@ Rendered files:
 
 Visual inspection result:
 
-- English and German states were inspected manually.
+- All ten fresh English and German states from the Round 1 rerun were opened and inspected manually.
+- The settings drawer is absent from every Task 5 image; only the requested Holidays dialog is open in its two dialog captures.
 - No localization-specific clipping, overlap, or truncation was found in the Task 5 target surfaces.
-- No stale English literals were found within the localized target states.
+- German status/error text is no longer fixed English: the Call Queues and Auto Attendants banners use the reviewed German resource-account messages, the Holidays banner uses the reviewed German holiday-series message, and the Bulk Operations banner visibly reads `Analysefehler: Erforderliche CSV-Spalten fehlen.`. Its execution-log test value is `FEHLER: Erforderliche CSV-Spalten fehlen.` and is assigned in the harness while the CSV-Daten tab remains the captured surface.
 - Technical values, identifiers, and sample tenant data remained unchanged.
 
 ## Test evidence
@@ -154,6 +163,10 @@ dotnet test PhoneDesk.slnx --no-restore
 
 Result: passed, `Passed: 577, Failed: 0`.
 
+### Round 1 review verification — 2026-08-22
+
+The post-review harness rerun regenerated all ten Task 5 PNGs and passed `ScreenshotGenerator` with `Passed: 1, Failed: 0`. The fresh full solution rerun above passed `577/577` with zero failures.
+
 ## Files changed
 
 - `PhoneDesk.Tests/LocalizationCoverageTests.cs`
@@ -169,4 +182,9 @@ Result: passed, `Passed: 577, Failed: 0`.
 
 ## Outcome
 
-Task 5 is complete within the requested scope.
+Task 5 is complete within the requested scope, and the Round 1 screenshot-review corrections are verified in the test-only harness.
+
+Round 1 fix files:
+
+- `PhoneDesk.Tests/ScreenshotGenerator.cs`
+- `.superpowers/sdd/2026-08-21-i18n-german-plan/task-5-report.md`

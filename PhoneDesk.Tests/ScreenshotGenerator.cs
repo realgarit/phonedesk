@@ -293,6 +293,9 @@ namespace PhoneDesk.Tests
                 return;
             }
 
+            mainWindowViewModel.IsSettingsOpen = false;
+            var isGerman = scenario.EndsWith("-de", StringComparison.Ordinal);
+
             if ((string.Equals(scenario, "failed", StringComparison.Ordinal)
                     || string.Equals(scenario, "failed-de", StringComparison.Ordinal))
                 && mainWindowViewModel.CurrentViewModel is WizardViewModel wizard)
@@ -326,7 +329,9 @@ namespace PhoneDesk.Tests
                     callQueues.ShowCreateCallQueueDialog = false;
                     callQueues.ShowAssociateDialog = false;
                     callQueues.ShowUpdateUsageLocationDialog = false;
-                    callQueues.StatusMessage = "Found 2 resource accounts starting with 'racq-'";
+                    callQueues.StatusMessage = isGerman
+                        ? "2 Ressourcenkonten mit dem Präfix „racq-“ gefunden"
+                        : "Found 2 resource accounts starting with 'racq-'";
                     callQueues.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "racq-zurich@contoso.com", "Identity-RACQ-001", "CH"));
                     callQueues.ResourceAccounts.Add(new ResourceAccount("Service Bern", "racq-bern@contoso.com", "Identity-RACQ-002", "CH"));
                     callQueues.CallQueues.Add(new CallQueue("cq-Contoso Reception", "Identity-CQ-001", "Longest Idle", 30));
@@ -346,7 +351,9 @@ namespace PhoneDesk.Tests
                     autoAttendants.ShowCreateAfterHoursCallFlowDialog = false;
                     autoAttendants.ShowCreateAfterHoursScheduleDialog = false;
                     autoAttendants.ShowCreateCallHandlingAssociationDialog = false;
-                    autoAttendants.StatusMessage = "Found 2 resource accounts starting with 'raaa-'";
+                    autoAttendants.StatusMessage = isGerman
+                        ? "2 Ressourcenkonten mit dem Präfix „raaa-“ gefunden"
+                        : "Found 2 resource accounts starting with 'raaa-'";
                     autoAttendants.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "raaa-zurich@contoso.com", "Identity-RAAA-001", "CH"));
                     autoAttendants.ResourceAccounts.Add(new ResourceAccount("Support Basel", "raaa-basel@contoso.com", "Identity-RAAA-002", "CH"));
                     autoAttendants.SearchResourceAccountsText = "Basel";
@@ -358,7 +365,9 @@ namespace PhoneDesk.Tests
                     holidays.ShowAttachHolidayDialog = true;
                     holidays.HolidayName = "hd-contoso-nationalday";
                     holidays.AutoAttendantName = "aa-Contoso Reception";
-                    holidays.StatusMessage = "Holiday series 'hd-contoso-nationalday' created successfully.";
+                    holidays.StatusMessage = isGerman
+                        ? "Feiertagsserie „hd-contoso-nationalday“ erfolgreich erstellt."
+                        : "Holiday series 'hd-contoso-nationalday' created successfully.";
                     break;
 
                 case BulkOperationsViewModel bulkOperations when scenario.StartsWith("task5-bulk-error", StringComparison.Ordinal):
@@ -370,8 +379,12 @@ namespace PhoneDesk.Tests
                     bulkOperations.ParsedEntries.Clear();
                     bulkOperations.CsvContent = "Customer,CustomerGroupName\ncontoso";
                     bulkOperations.ScriptPreview = string.Empty;
-                    bulkOperations.ExecutionLog = "ERROR: Missing required CSV columns.";
-                    bulkOperations.StatusMessage = "Parse error: Missing required CSV columns.";
+                    bulkOperations.ExecutionLog = isGerman
+                        ? "FEHLER: Erforderliche CSV-Spalten fehlen."
+                        : "ERROR: Missing required CSV columns.";
+                    bulkOperations.StatusMessage = isGerman
+                        ? "Analysefehler: Erforderliche CSV-Spalten fehlen."
+                        : "Parse error: Missing required CSV columns.";
                     break;
             }
         }

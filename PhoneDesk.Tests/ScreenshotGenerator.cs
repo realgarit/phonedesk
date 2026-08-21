@@ -75,15 +75,25 @@ namespace PhoneDesk.Tests
             new("Variables", true, "variables-de.png", "ready-de"),
             new("Dashboard", true, "dashboard-de.png", "ready-de"),
             new("M365Groups", true, "m365-groups.png"),
+            new("M365Groups", true, "task5-m365-groups-empty-en.png", "task5-m365-empty-en"),
+            new("M365Groups", true, "task5-m365-groups-empty-de.png", "task5-m365-empty-de"),
             new("CallQueues", true, "call-queues.png"),
+            new("CallQueues", true, "task5-call-queues-populated-en.png", "task5-callqueues-populated-en"),
+            new("CallQueues", true, "task5-call-queues-populated-de.png", "task5-callqueues-populated-de"),
             new("AutoAttendants", true, "auto-attendants.png"),
+            new("AutoAttendants", true, "task5-auto-attendants-filter-en.png", "task5-autoattendants-filter-en"),
+            new("AutoAttendants", true, "task5-auto-attendants-filter-de.png", "task5-autoattendants-filter-de"),
             new("Holidays", true, "holidays.png"),
+            new("Holidays", true, "task5-holidays-dialog-en.png", "task5-holidays-dialog-en"),
+            new("Holidays", true, "task5-holidays-dialog-de.png", "task5-holidays-dialog-de"),
             new("Wizard", true, "setup-wizard.png"),
             new("Wizard", true, "setup-wizard-ready.png", "ready"),
             new("Wizard", true, "setup-wizard-ready-de.png", "ready-de"),
             new("Wizard", true, "setup-wizard-failed.png", "failed"),
             new("Wizard", true, "setup-wizard-failed-de.png", "failed-de"),
             new("BulkOperations", true, "bulk-operations.png"),
+            new("BulkOperations", true, "task5-bulk-operations-error-en.png", "task5-bulk-error-en"),
+            new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
             new("Documentation", true, "documentation.png"),
             new("Documentation", true, "documentation-de.png", "ready-de"),
             new("History", true, "history-de.png", "ready-de"),
@@ -150,7 +160,7 @@ namespace PhoneDesk.Tests
                 // which service-only navigation would not do for the already-current page.
                 SelectNav(navList, shot.Page);
                 PumpRender();
-                ApplyPostNavigationScenario(vm, shot.Scenario);
+                ApplyPostNavigationScenario(window, vm, shot.Scenario);
 
                 if (!CaptureShot(window, shot, outDir, out var stats))
                 {
@@ -274,7 +284,7 @@ namespace PhoneDesk.Tests
             session.ResetSession();
         }
 
-        private static void ApplyPostNavigationScenario(MainWindowViewModel mainWindowViewModel, string scenario)
+        private static void ApplyPostNavigationScenario(MainWindow window, MainWindowViewModel mainWindowViewModel, string scenario)
         {
             if (string.Equals(scenario, "settings-en", StringComparison.Ordinal)
                 || string.Equals(scenario, "settings-de", StringComparison.Ordinal))
@@ -283,18 +293,87 @@ namespace PhoneDesk.Tests
                 return;
             }
 
-            if (!string.Equals(scenario, "failed", StringComparison.Ordinal)
-                && !string.Equals(scenario, "failed-de", StringComparison.Ordinal)
-                || mainWindowViewModel.CurrentViewModel is not WizardViewModel wizard)
+            if ((string.Equals(scenario, "failed", StringComparison.Ordinal)
+                    || string.Equals(scenario, "failed-de", StringComparison.Ordinal))
+                && mainWindowViewModel.CurrentViewModel is WizardViewModel wizard)
             {
+                wizard.Steps[1].IsFailed = true;
+                wizard.Steps[1].Result = "Microsoft 365 group could not be created. Retry the step or skip it after checking the output.";
+                wizard.CurrentStep = 1;
+                wizard.StepFailed = true;
+                wizard.StepResult = wizard.Steps[1].Result;
                 return;
             }
 
-            wizard.Steps[1].IsFailed = true;
-            wizard.Steps[1].Result = "Microsoft 365 group could not be created. Retry the step or skip it after checking the output.";
-            wizard.CurrentStep = 1;
-            wizard.StepFailed = true;
-            wizard.StepResult = wizard.Steps[1].Result;
+            switch (mainWindowViewModel.CurrentViewModel)
+            {
+                case M365GroupsViewModel m365 when scenario.StartsWith("task5-m365-empty", StringComparison.Ordinal):
+                    m365.Groups.Clear();
+                    m365.SearchText = string.Empty;
+                    m365.GroupStatus = string.Empty;
+                    m365.GroupId = string.Empty;
+                    m365.IsGroupChecked = false;
+                    m365.ShowConfirmation = false;
+                    m365.ShowCreateGroupDialog = false;
+                    break;
+
+                case CallQueuesViewModel callQueues when scenario.StartsWith("task5-callqueues-populated", StringComparison.Ordinal):
+                    callQueues.ResourceAccounts.Clear();
+                    callQueues.CallQueues.Clear();
+                    callQueues.SearchResourceAccountsText = string.Empty;
+                    callQueues.SearchCallQueuesText = string.Empty;
+                    callQueues.ShowCreateResourceAccountDialog = false;
+                    callQueues.ShowCreateCallQueueDialog = false;
+                    callQueues.ShowAssociateDialog = false;
+                    callQueues.ShowUpdateUsageLocationDialog = false;
+                    callQueues.StatusMessage = "Found 2 resource accounts starting with 'racq-'";
+                    callQueues.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "racq-zurich@contoso.com", "Identity-RACQ-001", "CH"));
+                    callQueues.ResourceAccounts.Add(new ResourceAccount("Service Bern", "racq-bern@contoso.com", "Identity-RACQ-002", "CH"));
+                    callQueues.CallQueues.Add(new CallQueue("cq-Contoso Reception", "Identity-CQ-001", "Longest Idle", 30));
+                    break;
+
+                case AutoAttendantsViewModel autoAttendants when scenario.StartsWith("task5-autoattendants-filter", StringComparison.Ordinal):
+                    autoAttendants.ResourceAccounts.Clear();
+                    autoAttendants.AutoAttendants.Clear();
+                    autoAttendants.SearchResourceAccountsText = string.Empty;
+                    autoAttendants.SearchAutoAttendantsText = string.Empty;
+                    autoAttendants.ShowCreateResourceAccountDialog = false;
+                    autoAttendants.ShowCreateAutoAttendantDialog = false;
+                    autoAttendants.ShowAssociateDialog = false;
+                    autoAttendants.ShowValidateCallQueueDialog = false;
+                    autoAttendants.ShowCreateCallTargetDialog = false;
+                    autoAttendants.ShowCreateDefaultCallFlowDialog = false;
+                    autoAttendants.ShowCreateAfterHoursCallFlowDialog = false;
+                    autoAttendants.ShowCreateAfterHoursScheduleDialog = false;
+                    autoAttendants.ShowCreateCallHandlingAssociationDialog = false;
+                    autoAttendants.StatusMessage = "Found 2 resource accounts starting with 'raaa-'";
+                    autoAttendants.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "raaa-zurich@contoso.com", "Identity-RAAA-001", "CH"));
+                    autoAttendants.ResourceAccounts.Add(new ResourceAccount("Support Basel", "raaa-basel@contoso.com", "Identity-RAAA-002", "CH"));
+                    autoAttendants.SearchResourceAccountsText = "Basel";
+                    break;
+
+                case HolidaysViewModel holidays when scenario.StartsWith("task5-holidays-dialog", StringComparison.Ordinal):
+                    holidays.ShowCreateHolidayDialog = false;
+                    holidays.ShowCheckAutoAttendantDialog = false;
+                    holidays.ShowAttachHolidayDialog = true;
+                    holidays.HolidayName = "hd-contoso-nationalday";
+                    holidays.AutoAttendantName = "aa-Contoso Reception";
+                    holidays.StatusMessage = "Holiday series 'hd-contoso-nationalday' created successfully.";
+                    break;
+
+                case BulkOperationsViewModel bulkOperations when scenario.StartsWith("task5-bulk-error", StringComparison.Ordinal):
+                    bulkOperations.IsExecuting = false;
+                    bulkOperations.SkipInvalidRows = true;
+                    bulkOperations.TotalCount = 0;
+                    bulkOperations.ProcessedCount = 0;
+                    bulkOperations.Plan = null;
+                    bulkOperations.ParsedEntries.Clear();
+                    bulkOperations.CsvContent = "Customer,CustomerGroupName\ncontoso";
+                    bulkOperations.ScriptPreview = string.Empty;
+                    bulkOperations.ExecutionLog = "ERROR: Missing required CSV columns.";
+                    bulkOperations.StatusMessage = "Parse error: Missing required CSV columns.";
+                    break;
+            }
         }
 
         private static void PumpRender()

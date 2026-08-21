@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -37,10 +38,10 @@
                             <fi:SymbolIcon Symbol="TableMultiple"/>
                         </Border>
                         <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center" Margin="14,0,0,0">
-                            <TextBlock Text="Bulk Operations"
+                            <TextBlock Text="{loc:Translate Key=MainNavigationBulkOperations}"
                                      Classes="page-title"
                                      Margin="0"/>
-                            <TextBlock Text="Import a CSV file to create multiple phone system setups at once. Each row defines a complete configuration (M365 Group, Resource Accounts, Call Queue, Auto Attendant)."
+                            <TextBlock Text="{loc:Translate Key=BulkOperationsSubtitle}"
                                      TextWrapping="Wrap"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -56,37 +57,37 @@
                         <Button Command="{Binding ExportTemplateFileCommand}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowDownload"/>
-                                <TextBlock Text="Download Template" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsDownloadTemplateAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ImportCsvFileCommand}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowUpload"/>
-                                <TextBlock Text="Import CSV" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsImportCsvAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding GenerateTemplateCommand}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="DocumentAdd"/>
-                                <TextBlock Text="Generate Template" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsGenerateTemplateAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ParseCsvCommand}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="TableSearch"/>
-                                <TextBlock Text="Parse CSV" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsParseCsvAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding PreviewScriptCommand}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Eye"/>
-                                <TextBlock Text="Preview Script" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsPreviewScriptAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding GeneratePlanCommand}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ClipboardTaskListLtr"/>
-                                <TextBlock Text="Dry-Run Plan" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsDryRunPlanAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ExecuteAllCommand}"
@@ -94,7 +95,7 @@
                                 IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Play"/>
-                                <TextBlock Text="Execute All" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsExecuteAllAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </WrapPanel>
@@ -104,17 +105,17 @@
                         <Button Command="{Binding ExportPlanJsonCommand}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Code"/>
-                                <TextBlock Text="Export Plan (JSON)" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsExportPlanJsonAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ExportPlanCsvCommand}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="DocumentTable"/>
-                                <TextBlock Text="Export Plan (CSV)" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=BulkOperationsExportPlanCsvAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <CheckBox IsChecked="{Binding SkipInvalidRows}"
-                                  Content="Skip invalid rows on execute"
+                                  Content="{loc:Translate Key=BulkOperationsSkipInvalidRowsToggle}"
                                   VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -139,7 +140,7 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
                     <!-- Cancel affordance -->
-                    <Button Content="Cancel"
+                    <Button Content="{loc:Translate Key=CommonCancel}"
                             Command="{Binding CancelOperationCommand}"
                             IsVisible="{Binding IsCancellable}"
                             Margin="0,8,0,0"
@@ -149,7 +150,7 @@
                 <!-- Content Tabs -->
                 <TabControl Grid.Row="1" Margin="24,0,24,24">
                     <!-- CSV Editor Tab -->
-                    <TabItem Header="CSV Data">
+                    <TabItem Header="{loc:Translate Key=BulkOperationsCsvDataTab}">
                         <Border Classes="sunken"
                                 CornerRadius="0,0,10,10"
                                 Margin="0">
@@ -160,12 +161,12 @@
                                      FontSize="12"
                                      BorderThickness="0"
                                      Padding="12"
-                                     Watermark="Paste CSV content here, or use Import/Generate buttons above..."/>
+                                     Watermark="{loc:Translate Key=BulkOperationsCsvDataWatermark}"/>
                         </Border>
                     </TabItem>
 
                     <!-- Parsed Entries Tab -->
-                    <TabItem Header="Parsed Entries">
+                    <TabItem Header="{loc:Translate Key=BulkOperationsParsedEntriesTab}">
                         <DataGrid ItemsSource="{Binding ParsedEntries}"
                                   AutoGenerateColumns="False"
                                   IsReadOnly="True"
@@ -173,26 +174,26 @@
                                   CanUserResizeColumns="True"
                                   CanUserSortColumns="True">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="120"/>
-                                <DataGridTextColumn Header="Group" Binding="{Binding GroupName}" Width="120"/>
-                                <DataGridTextColumn Header="M365 Group" Binding="{Binding M365Group}" Width="180"/>
-                                <DataGridTextColumn Header="Call Queue" Binding="{Binding CqDisplayName}" Width="180"/>
-                                <DataGridTextColumn Header="Auto Attendant" Binding="{Binding AaDisplayName}" Width="200"/>
-                                <DataGridTextColumn Header="Phone" Binding="{Binding PhoneNumber}" Width="140"/>
-                                <DataGridTextColumn Header="Language" Binding="{Binding Language}" Width="80"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsCustomerColumn}" Binding="{Binding Customer}" Width="120"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsGroupColumn}" Binding="{Binding GroupName}" Width="120"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsM365GroupColumn}" Binding="{Binding M365Group}" Width="180"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsCallQueueColumn}" Binding="{Binding CqDisplayName}" Width="180"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsAutoAttendantColumn}" Binding="{Binding AaDisplayName}" Width="200"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsPhoneColumn}" Binding="{Binding PhoneNumber}" Width="140"/>
+                                <DataGridTextColumn Header="{loc:Translate Key=BulkOperationsLanguageColumn}" Binding="{Binding Language}" Width="80"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </TabItem>
 
                     <!-- Dry-Run Plan Tab -->
-                    <TabItem Header="Dry-Run Plan">
+                    <TabItem Header="{loc:Translate Key=BulkOperationsDryRunPlanTab}">
                         <Grid RowDefinitions="Auto,*">
                             <TextBlock Grid.Row="0"
                                        Margin="0,8,0,8"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                        IsVisible="{Binding Plan, Converter={x:Static ObjectConverters.IsNull}}"
-                                       Text="Click 'Dry-Run Plan' above to preview what would be created for each row before any execution."/>
+                                       Text="{loc:Translate Key=BulkOperationsDryRunPlanHint}"/>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Plan.Entries}">
                                     <ItemsControl.ItemTemplate>
@@ -210,10 +211,13 @@
                                                         </Panel>
                                                         <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold"
                                                                    TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                                        <TextBlock Grid.Column="2" Text="{Binding RowNumber, StringFormat='Row {0}'}"
+                                                        <TextBlock Grid.Column="2"
                                                                    Margin="12,0,0,0"
                                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                   VerticalAlignment="Center"/>
+                                                                   VerticalAlignment="Center">
+                                                            <Run Text="{loc:Translate Key=BulkOperationsRowLabel}"/>
+                                                            <Run Text="{Binding RowNumber}"/>
+                                                        </TextBlock>
                                                     </Grid>
 
                                                     <!-- Validation errors -->
@@ -252,8 +256,10 @@
                                                                 <TextBlock FontSize="11"
                                                                            Margin="12,1,0,1"
                                                                            TextWrapping="Wrap"
-                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                           Text="{Binding Detail, StringFormat='Preflight — {0}'}"/>
+                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                                    <Run Text="{loc:Translate Key=BulkOperationsPreflightLabel}"/>
+                                                                    <Run Text="{Binding Detail}"/>
+                                                                </TextBlock>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
@@ -267,7 +273,7 @@
                     </TabItem>
 
                     <!-- Script Preview Tab -->
-                    <TabItem Header="Script Preview">
+                    <TabItem Header="{loc:Translate Key=BulkOperationsScriptPreviewTab}">
                         <Border Classes="sunken"
                                 CornerRadius="0,0,10,10">
                             <ScrollViewer HorizontalScrollBarVisibility="Auto"
@@ -280,13 +286,13 @@
                                          FontSize="12"
                                          BorderThickness="0"
                                          Padding="12"
-                                         Watermark="Click 'Preview Script' to see the generated PowerShell..."/>
+                                         Watermark="{loc:Translate Key=BulkOperationsScriptPreviewWatermark}"/>
                             </ScrollViewer>
                         </Border>
                     </TabItem>
 
                     <!-- Execution Log Tab -->
-                    <TabItem Header="Execution Log">
+                    <TabItem Header="{loc:Translate Key=BulkOperationsExecutionLogTab}">
                         <Border Classes="sunken"
                                 CornerRadius="0,0,10,10">
                             <ScrollViewer HorizontalScrollBarVisibility="Auto"
@@ -299,7 +305,7 @@
                                          FontSize="12"
                                          BorderThickness="0"
                                          Padding="12"
-                                         Watermark="Execution output will appear here after running..."/>
+                                         Watermark="{loc:Translate Key=BulkOperationsExecutionLogWatermark}"/>
                             </ScrollViewer>
                         </Border>
                     </TabItem>

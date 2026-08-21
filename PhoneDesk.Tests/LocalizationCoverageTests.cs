@@ -14,7 +14,12 @@ public sealed class LocalizationCoverageTests
         "src/PhoneDesk.Presentation/Views/VariablesView.axaml",
         "src/PhoneDesk.Presentation/Views/DashboardView.axaml",
         "src/PhoneDesk.Presentation/Views/DocumentationView.axaml",
-        "src/PhoneDesk.Presentation/Views/HistoryView.axaml"
+        "src/PhoneDesk.Presentation/Views/HistoryView.axaml",
+        "src/PhoneDesk.Presentation/Views/M365GroupsView.axaml",
+        "src/PhoneDesk.Presentation/Views/CallQueuesView.axaml",
+        "src/PhoneDesk.Presentation/Views/AutoAttendantsView.axaml",
+        "src/PhoneDesk.Presentation/Views/HolidaysView.axaml",
+        "src/PhoneDesk.Presentation/Views/BulkOperationsView.axaml"
     };
 
     private static readonly Regex AttributeRegex = new(

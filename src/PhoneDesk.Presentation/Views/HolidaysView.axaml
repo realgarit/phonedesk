@@ -5,7 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
              mc:Ignorable="d" 
@@ -43,8 +45,8 @@
                         <fi:SymbolIcon Symbol="Calendar"/>
                     </Border>
                     <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Text="Holiday Management" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="Create and manage holiday schedules for your auto attendants."
+                        <TextBlock Text="{loc:Translate Key=MainNavigationHolidays}" Classes="page-title" Margin="0"/>
+                        <TextBlock Text="{loc:Translate Key=HolidaysSubtitle}"
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                     </StackPanel>
@@ -62,7 +64,7 @@
                     <!-- Holiday Management Content -->
                     <ScrollViewer Grid.Row="2" Margin="0">
                         <StackPanel>
-                            <TextBlock Text="Follow these steps in order to create a holiday for your auto attendant:"
+                            <TextBlock Text="{loc:Translate Key=HolidaysGuidedSetupIntro}"
                                      FontSize="18"
                                  FontWeight="SemiBold"
                                      Margin="0,0,0,24"/>
@@ -70,11 +72,11 @@
                             <!-- Step 1: Create Holiday -->
                             <Border Classes="card interactive" Margin="0,0,0,16">
                                 <StackPanel>
-                                    <TextBlock Text="Step 1: Create Holiday"
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep1Title}"
                                              FontSize="18"
                                              FontWeight="Bold"
                                              Margin="0,0,0,8"/>
-                                    <TextBlock Text="Create a holiday schedule that will be used for the auto attendant. This defines when the holiday call flow should be active."
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep1Description}"
                                              FontSize="14"
                                              TextWrapping="Wrap"
                                              Margin="0,0,0,16"/>
@@ -83,7 +85,7 @@
                                             HorizontalAlignment="Left" Classes="IconText">
                                         <StackPanel Orientation="Horizontal">
                                             <fi:SymbolIcon  Symbol="CalendarAdd"/>
-                                            <TextBlock Text="Create Holiday" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=HolidaysCreateHolidayScheduleAction}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -92,11 +94,11 @@
                             <!-- Step 2: Check Auto Attendant -->
                             <Border Classes="card interactive" Margin="0,0,0,16">
                                 <StackPanel>
-                                    <TextBlock Text="Step 2: Check Auto Attendant"
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep2Title}"
                                              FontSize="18"
                                              FontWeight="Bold"
                                              Margin="0,0,0,8"/>
-                                    <TextBlock Text="Verify the auto attendant exists and is ready to receive the holiday configuration. You can modify the auto attendant name if needed."
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep2Description}"
                                              FontSize="14"
                                              TextWrapping="Wrap"
                                              Margin="0,0,0,16"/>
@@ -105,7 +107,7 @@
                                             HorizontalAlignment="Left" Classes="IconText">
                                         <StackPanel Orientation="Horizontal">
                                             <fi:SymbolIcon  Symbol="CallCheckmark"/>
-                                            <TextBlock Text="Check Auto Attendant" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=HolidaysCheckAutoAttendantAction}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -114,11 +116,11 @@
                             <!-- Step 3: Attach Holiday to Auto Attendant -->
                             <Border Classes="card interactive" Margin="0,0,0,16">
                                 <StackPanel>
-                                    <TextBlock Text="Step 3: Attach Holiday to Auto Attendant"
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep3Title}"
                                              FontSize="18"
                                              FontWeight="Bold"
                                              Margin="0,0,0,8"/>
-                                    <TextBlock Text="Attach the created holiday to the auto attendant. This will create a holiday call flow with disconnect action and associate it with the holiday schedule."
+                                    <TextBlock Text="{loc:Translate Key=HolidaysStep3Description}"
                                              FontSize="14"
                                              TextWrapping="Wrap"
                                              Margin="0,0,0,16"/>
@@ -128,7 +130,7 @@
                                                 Margin="0,0,16,0" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="Link"/>
-                                                <TextBlock Text="Attach to Auto Attendant" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=HolidaysLinkHolidayAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -170,13 +172,13 @@
                   PointerPressed="CreateHolidayCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="400" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Create Holiday"
+                        <TextBlock Text="{loc:Translate Key=HolidaysCreateDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Holiday Configuration:"
+                        <TextBlock Text="{loc:Translate Key=HolidaysConfigurationLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
-                        <TextBlock Text="Holidays will be created based on your configured holiday series in the Variables page. Each holiday will use the specified date, time, and greeting prompt."
+                        <TextBlock Text="{loc:Translate Key=HolidaysCreateDialogDescription}"
                                  FontSize="14"
                                  TextWrapping="Wrap"
                                  Margin="0,0,0,16"/>
@@ -187,14 +189,14 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding CreateHolidayCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="CalendarAdd"/>
-                                    <TextBlock Text="Create Holiday" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidaysCreateHolidayScheduleAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -226,15 +228,15 @@
                   PointerPressed="CheckAutoAttendantCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="400" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Check Auto Attendant"
+                        <TextBlock Text="{loc:Translate Key=HolidaysCheckDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Auto Attendant Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonAutoAttendantNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding AutoAttendantName}"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="This will verify that the auto attendant exists and is ready to receive holiday configuration. The value is auto-generated from your variables, but you can modify it if needed."
+                        <TextBlock Text="{loc:Translate Key=HolidaysCheckDialogDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -246,14 +248,14 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding VerifyAutoAttendantCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Verify &amp; Confirm" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidaysVerifyAndConfirmAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -285,21 +287,21 @@
                   PointerPressed="AttachHolidayCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="400" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Attach Holiday to Auto Attendant"
+                        <TextBlock Text="{loc:Translate Key=HolidaysLinkDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Holiday Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonHolidayNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding HolidayName}"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="Auto Attendant Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonAutoAttendantNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding AutoAttendantName}"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="This will attach the created holiday to the auto attendant, creating a holiday call flow with disconnect action and associating it with the holiday schedule."
+                        <TextBlock Text="{loc:Translate Key=HolidaysLinkDialogDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -311,14 +313,14 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding AttachHolidayToAutoAttendantCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Link"/>
-                                    <TextBlock Text="Attach Holiday" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidaysLinkHolidayAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -339,7 +341,7 @@
                        IsIndeterminate="{Binding IsProgressIndeterminate}"
                        Width="200"/>
                 <!-- Waiting Message -->
-                <TextBlock Text="{Binding WaitingMessage, TargetNullValue=''}"
+                <TextBlock Text="{Binding WaitingMessage, TargetNullValue={x:Static sys:String.Empty}}"
                            FontSize="14"
                            TextWrapping="Wrap"
                            TextAlignment="Center"/>
@@ -351,7 +353,7 @@
                            TextWrapping="Wrap"
                            TextAlignment="Center"/>
                 <!-- Cancel affordance -->
-                <Button Content="Cancel"
+                <Button Content="{loc:Translate Key=CommonCancel}"
                         Command="{Binding CancelOperationCommand}"
                         IsVisible="{Binding IsCancellable}"
                         HorizontalAlignment="Center"/>

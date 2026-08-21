@@ -1,4 +1,7 @@
 {
   "SettingsTitle": "Settings",
-  "UpdateAvailable": "Version {version} is available."
+  "UpdateAvailable": "Version {version} is available.",
+  "UpdateDownloading": "Downloading version {version}...",
+  "UpdateDownloadingProgress": "Downloading version {version}... {progress}%",
+  "UpdateStartingInstaller": "Starting the verified installer..."
 }

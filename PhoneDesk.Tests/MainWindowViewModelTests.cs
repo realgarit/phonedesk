@@ -45,7 +45,8 @@ namespace PhoneDesk.Tests
                 _pageViewModelFactory.Object,
                 _updateCheckService.Object,
                 _updateInstallerService.Object,
-                _bundledModuleVersionService.Object);
+                _bundledModuleVersionService.Object,
+                translationService: harness.TranslationService);
         }
 
         [Fact]
@@ -81,6 +82,22 @@ namespace PhoneDesk.Tests
             Assert.True(vm.IsUpdateBannerVisible);
             Assert.True(vm.IsUpdateAvailable);
             Assert.Contains("2.0.0", vm.UpdateBannerMessage);
+        }
+
+        [Fact]
+        public void VisibleUpdateBanner_RefreshesWhenLanguageChangesToGerman()
+        {
+            var harness = new ViewModelTestHarness();
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release"));
+
+            var vm = CreateViewModel(harness);
+            Assert.Equal("Version 2.0.0 is available.", vm.UpdateBannerMessage);
+
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            Assert.True(vm.IsUpdateBannerVisible);
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
         }
 
         [Fact]
@@ -148,6 +165,56 @@ namespace PhoneDesk.Tests
                     It.IsAny<IProgress<UpdateDownloadProgress>>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task InstallUpdateCommand_CancelRecovery_UsesCurrentLanguage()
+        {
+            var harness = new ViewModelTestHarness();
+            var asset = new UpdateAsset(
+                "phonedesk-win-x64-setup.exe",
+                "https://github.com/realgarit/phonedesk/releases/download/v2.0.0/setup.exe",
+                new string('a', 64));
+            _updateInstallerService.SetupGet(u => u.IsSupported).Returns(true);
+            _updateInstallerService
+                .Setup(u => u.DownloadInstallerAsync(
+                    asset,
+                    It.IsAny<IProgress<UpdateDownloadProgress>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new OperationCanceledException());
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release", asset));
+            var vm = CreateViewModel(harness);
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            await vm.InstallUpdateCommand.ExecuteAsync(null);
+
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
+        }
+
+        [Fact]
+        public async Task InstallUpdateCommand_FailureRecovery_UsesCurrentLanguage()
+        {
+            var harness = new ViewModelTestHarness();
+            var asset = new UpdateAsset(
+                "phonedesk-win-x64-setup.exe",
+                "https://github.com/realgarit/phonedesk/releases/download/v2.0.0/setup.exe",
+                new string('a', 64));
+            _updateInstallerService.SetupGet(u => u.IsSupported).Returns(true);
+            _updateInstallerService
+                .Setup(u => u.DownloadInstallerAsync(
+                    asset,
+                    It.IsAny<IProgress<UpdateDownloadProgress>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new UpdateInstallationException("checksum mismatch"));
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release", asset));
+            var vm = CreateViewModel(harness);
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            await vm.InstallUpdateCommand.ExecuteAsync(null);
+
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
         }
 
         [Fact]

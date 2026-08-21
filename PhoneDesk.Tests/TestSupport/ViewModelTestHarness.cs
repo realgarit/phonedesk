@@ -35,12 +35,18 @@ namespace PhoneDesk.Tests.TestSupport
                     [AppLanguage.English] = new Dictionary<UiTextKey, string>
                     {
                         [UiTextKey.SettingsTitle] = "Settings",
-                        [UiTextKey.UpdateAvailable] = "Version {version} is available."
+                        [UiTextKey.UpdateAvailable] = "Version {version} is available.",
+                        [UiTextKey.UpdateDownloading] = "Downloading version {version}...",
+                        [UiTextKey.UpdateDownloadingProgress] = "Downloading version {version}... {progress}%",
+                        [UiTextKey.UpdateStartingInstaller] = "Starting the verified installer..."
                     },
                     [AppLanguage.German] = new Dictionary<UiTextKey, string>
                     {
                         [UiTextKey.SettingsTitle] = "Einstellungen",
-                        [UiTextKey.UpdateAvailable] = "Version {version} ist verfügbar."
+                        [UiTextKey.UpdateAvailable] = "Version {version} ist verfügbar.",
+                        [UiTextKey.UpdateDownloading] = "Version {version} wird heruntergeladen...",
+                        [UiTextKey.UpdateDownloadingProgress] = "Version {version} wird heruntergeladen... {progress}%",
+                        [UiTextKey.UpdateStartingInstaller] = "Das verifizierte Installationsprogramm wird gestartet..."
                     }
                 });
 

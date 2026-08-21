@@ -25,6 +25,7 @@ namespace PhoneDesk.ViewModels
         private PropertyChangedEventHandler? _loggingPropertyHandler;
         private NotifyCollectionChangedEventHandler? _logEntriesHandler;
         private PropertyChangedEventHandler? _navigationPropertyHandler;
+        private PropertyChangedEventHandler? _translationPropertyHandler;
 
         private readonly IPageViewModelFactory _pageViewModelFactory;
         private readonly IUpdateCheckService _updateCheckService;
@@ -33,6 +34,9 @@ namespace PhoneDesk.ViewModels
         private readonly IBundledModuleVersionService _bundledModuleVersionService;
         private UpdateInfo? _availableUpdate;
         private CancellationTokenSource? _updateCancellation;
+        private UpdateBannerState _updateBannerState;
+        private string? _updateBannerVersion;
+        private double? _updateBannerProgress;
 
         [ObservableProperty]
         private bool _isUpdateBannerVisible;
@@ -66,6 +70,76 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private string _bundledPowerShellSdkVersion = string.Empty;
 
+        private enum UpdateBannerState
+        {
+            None,
+            Available,
+            Downloading,
+            DownloadingProgress,
+            StartingInstaller
+        }
+
+        private void SetUpdateBannerState(UpdateBannerState state, string? version = null, double? progress = null)
+        {
+            _updateBannerState = state;
+            _updateBannerVersion = version ?? _updateBannerVersion;
+            _updateBannerProgress = progress;
+            RefreshUpdateBannerMessage();
+        }
+
+        private void RefreshUpdateBannerMessage()
+        {
+            UpdateBannerMessage = _updateBannerState switch
+            {
+                UpdateBannerState.Available when !string.IsNullOrEmpty(_updateBannerVersion)
+                    => GetUpdateBannerText(
+                        UiTextKey.UpdateAvailable,
+                        "Version {version} is available.",
+                        new Dictionary<string, object?> { ["version"] = _updateBannerVersion }),
+                UpdateBannerState.Downloading when !string.IsNullOrEmpty(_updateBannerVersion)
+                    => GetUpdateBannerText(
+                        UiTextKey.UpdateDownloading,
+                        "Downloading version {version}...",
+                        new Dictionary<string, object?> { ["version"] = _updateBannerVersion }),
+                UpdateBannerState.DownloadingProgress when !string.IsNullOrEmpty(_updateBannerVersion) && _updateBannerProgress is { } progress
+                    => GetUpdateBannerText(
+                        UiTextKey.UpdateDownloadingProgress,
+                        "Downloading version {version}... {progress}%",
+                        new Dictionary<string, object?> { ["version"] = _updateBannerVersion, ["progress"] = progress }),
+                UpdateBannerState.StartingInstaller
+                    => GetUpdateBannerText(
+                        UiTextKey.UpdateStartingInstaller,
+                        "Starting the verified installer...",
+                        parameters: null),
+                _ => string.Empty
+            };
+        }
+
+        private string GetUpdateBannerText(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters)
+            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
+
+        private static string FormatFallback(string template, IReadOnlyDictionary<string, object?>? parameters)
+        {
+            if (parameters is null || parameters.Count == 0)
+            {
+                return template;
+            }
+
+            var value = template;
+            foreach (var parameter in parameters)
+            {
+                value = value.Replace(
+                    "{" + parameter.Key + "}",
+                    parameter.Value?.ToString() ?? string.Empty,
+                    StringComparison.Ordinal);
+            }
+
+            return value;
+        }
+
         private async Task CheckForUpdateAsync()
         {
             var update = await _updateCheckService.CheckForUpdateAsync();
@@ -76,10 +150,7 @@ namespace PhoneDesk.ViewModels
 
             _availableUpdate = update;
             _updateReleaseUrl = update.ReleaseUrl;
-            UpdateBannerMessage = (_translationService?.Get(
-                UiTextKey.UpdateAvailable,
-                new Dictionary<string, object?> { ["version"] = update.LatestVersion }))
-                ?? $"Version {update.LatestVersion} is available.";
+            SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
             CanInstallUpdate = _updateInstallerService.IsSupported && update.WindowsInstaller is not null;
             IsUpdateAvailable = true;
             IsUpdateBannerVisible = true;
@@ -123,15 +194,16 @@ namespace PhoneDesk.ViewModels
             IsUpdateInProgress = true;
             IsUpdateProgressIndeterminate = true;
             UpdateDownloadProgress = 0;
-            UpdateBannerMessage = $"Downloading version {update.LatestVersion}...";
+            SetUpdateBannerState(UpdateBannerState.Downloading, update.LatestVersion);
 
             var progress = new Progress<UpdateDownloadProgress>(download =>
             {
                 IsUpdateProgressIndeterminate = download.TotalBytes is not > 0;
                 UpdateDownloadProgress = download.Percentage;
-                UpdateBannerMessage = download.TotalBytes is > 0
-                    ? $"Downloading version {update.LatestVersion}... {download.Percentage}%"
-                    : $"Downloading version {update.LatestVersion}...";
+                SetUpdateBannerState(
+                    download.TotalBytes is > 0 ? UpdateBannerState.DownloadingProgress : UpdateBannerState.Downloading,
+                    update.LatestVersion,
+                    download.TotalBytes is > 0 ? download.Percentage : null);
             });
 
             try
@@ -141,7 +213,7 @@ namespace PhoneDesk.ViewModels
                     progress,
                     _updateCancellation.Token);
 
-                UpdateBannerMessage = "Starting the verified installer...";
+                SetUpdateBannerState(UpdateBannerState.StartingInstaller, update.LatestVersion);
                 _updateInstallerService.LaunchInstaller(installerPath);
                 _loggingService.Log(
                     $"Starting installer for version {update.LatestVersion}",
@@ -155,12 +227,12 @@ namespace PhoneDesk.ViewModels
             }
             catch (OperationCanceledException)
             {
-                UpdateBannerMessage = $"Version {update.LatestVersion} is available.";
+                SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
                 _loggingService.Log("Update download cancelled.", LogLevel.Info);
             }
             catch (UpdateInstallationException ex)
             {
-                UpdateBannerMessage = $"Version {update.LatestVersion} is available.";
+                SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
                 _loggingService.Log($"Update installation failed: {ex.Message}", LogLevel.Error);
                 await _updateDialogService.ShowMessageAsync("Update failed", ex.Message);
             }
@@ -437,6 +509,15 @@ namespace PhoneDesk.ViewModels
             };
             LogEntries.CollectionChanged += _logEntriesHandler;
 
+            _translationPropertyHandler = (s, e) =>
+            {
+                if (e.PropertyName == nameof(ITranslationService.CurrentLanguage) && IsUpdateBannerVisible)
+                {
+                    RefreshUpdateBannerMessage();
+                }
+            };
+            _translationService?.PropertyChanged += _translationPropertyHandler;
+
             _navigationPropertyHandler = (s, e) =>
             {
                 if (e.PropertyName == nameof(INavigationService.CurrentPage))
@@ -520,6 +601,9 @@ namespace PhoneDesk.ViewModels
 
                 if (_navigationPropertyHandler != null)
                     _navigationService.PropertyChanged -= _navigationPropertyHandler;
+
+                if (_translationPropertyHandler != null && _translationService != null)
+                    _translationService.PropertyChanged -= _translationPropertyHandler;
 
                 _disposed = true;
             }

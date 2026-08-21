@@ -3,5 +3,8 @@ namespace PhoneDesk.Localization;
 public enum UiTextKey
 {
     SettingsTitle,
-    UpdateAvailable
+    UpdateAvailable,
+    UpdateDownloading,
+    UpdateDownloadingProgress,
+    UpdateStartingInstaller
 }

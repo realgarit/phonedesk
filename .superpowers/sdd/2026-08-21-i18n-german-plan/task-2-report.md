@@ -86,3 +86,69 @@ Results:
 - `src/PhoneDesk.Presentation/App.xaml.cs`
 - `PhoneDesk.Tests/TranslationCatalogLoaderTests.cs`
 - `PhoneDesk.Tests/TestSupport/ViewModelTestHarness.cs`
+
+## Fix Round 1 — update banner localization refresh and recovery
+
+Scope:
+
+- Replaced the remaining raw-English update-available recovery assignments in `MainWindowViewModel` cancel/failure paths with the typed translation flow.
+- Centralized update banner text generation behind one helper that tracks the current banner state and recomputes from `UiTextKey` plus the latest version/progress state.
+- Subscribed `MainWindowViewModel` to `ITranslationService.PropertyChanged`, refreshed visible banner text when `CurrentLanguage` changes, and detached the handler in `Dispose`.
+- Added focused regression tests covering:
+  - visible update banner refresh after switching to German
+  - cancel recovery staying localized
+  - failure recovery staying localized
+
+### Fix Round 1 RED
+
+Command:
+
+```text
+dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~MainWindowViewModelTests
+```
+
+Observed output:
+
+```text
+Failed PhoneDesk.Tests.MainWindowViewModelTests.InstallUpdateCommand_CancelRecovery_UsesCurrentLanguage
+Expected: "Version 2.0.0 ist verfügbar."
+Actual:   "Version 2.0.0 is available."
+
+Failed PhoneDesk.Tests.MainWindowViewModelTests.InstallUpdateCommand_FailureRecovery_UsesCurrentLanguage
+Expected: "Version 2.0.0 ist verfügbar."
+Actual:   "Version 2.0.0 is available."
+
+Failed PhoneDesk.Tests.MainWindowViewModelTests.VisibleUpdateBanner_RefreshesWhenLanguageChangesToGerman
+Expected: "Version 2.0.0 ist verfügbar."
+Actual:   "Version 2.0.0 is available."
+
+Failed!  - Failed:     3, Passed:    17, Skipped:     0, Total:    20, Duration: 192 ms - PhoneDesk.Tests.dll (net10.0)
+```
+
+### Fix Round 1 GREEN
+
+Command:
+
+```text
+dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~MainWindowViewModelTests
+```
+
+Observed output:
+
+```text
+Passed!  - Failed:     0, Passed:    20, Skipped:     0, Total:    20, Duration: 234 ms - PhoneDesk.Tests.dll (net10.0)
+```
+
+### Fix Round 1 full-suite verification
+
+Command:
+
+```text
+dotnet test PhoneDesk.slnx --no-restore
+```
+
+Observed output:
+
+```text
+Passed!  - Failed:     0, Passed:   568, Skipped:     0, Total:   568, Duration: 3 s - PhoneDesk.Tests.dll (net10.0)
+```

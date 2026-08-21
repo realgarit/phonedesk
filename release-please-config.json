@@ -18,8 +18,9 @@
           "path": "src/PhoneDesk.Domain/ConstantsService.cs"
         },
         {
-          "type": "generic",
-          "path": "app.manifest"
+          "type": "xml",
+          "path": "app.manifest",
+          "xpath": "//*[local-name()=\"assemblyIdentity\"]/@version"
         }
       ]
     }

@@ -107,6 +107,20 @@ sources listed above; the version-sync guard checks all of them before packaging
 - Check that `.release-please-manifest.json` contains the same three-part version as the
   release tag.
 
+### Recover a tagged draft release after a downstream failure
+
+If release-please created the tag and draft release but a later validation or packaging
+job failed, repair the source/configuration issue first and merge that repair to `main`.
+Then dispatch the same workflow with the existing tag:
+
+```sh
+gh workflow run build.yml --ref main -f release_tag=vX.Y.Z
+```
+
+The recovery path validates the repaired `main` sources against the existing tag, rebuilds
+all platform packages, uploads them to the existing draft release, publishes it, and
+updates the Homebrew cask. It refuses unknown tags or missing draft releases.
+
 ### Windows builds fail on version mismatch
 
 - `<AssemblyVersion>` and `<FileVersion>` must be four-part values such as `3.21.3.0`.

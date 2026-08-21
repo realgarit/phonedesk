@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <!-- x-release-please-version -->
+  <!-- release-please updates this attribute through release-please-config.json -->
   <assemblyIdentity 
-    version="3.24.3.0"
+    version="3.25.0.0"
     name="PhoneDesk"
     processorArchitecture="*"
     type="win32"/>
@@ -26,4 +26,3 @@
     </application>
   </compatibility>
 </assembly>
-

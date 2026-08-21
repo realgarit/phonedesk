@@ -96,7 +96,7 @@ public sealed class LocalizationServiceTests
                 [AppLanguage.German] = new Dictionary<UiTextKey, string>
                 {
                     [UiTextKey.SettingsTitle] = "Einstellungen",
-                    [UiTextKey.UpdateAvailable] = "Update {version} ist verfugbar."
+                    [UiTextKey.UpdateAvailable] = "Update {version} ist verfügbar."
                 }
             });
 

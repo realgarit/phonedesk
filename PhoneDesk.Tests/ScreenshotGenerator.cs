@@ -17,6 +17,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using PhoneDesk;
+using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.ViewModels;
@@ -59,18 +60,21 @@ namespace PhoneDesk.Tests
         private static int PixelHeight =>
             Frameless ? ContentPixelHeight : ContentPixelHeight + TitleBarPixelHeight;
 
-        private sealed record Shot(string Page, bool Dark, string FileName);
+        private sealed record Shot(string Page, bool Dark, string FileName, string Scenario = "empty");
 
         private static readonly Shot[] Shots =
         {
             new("Welcome", true, "welcome.png"),
             new("GetStarted", true, "get-started.png"),
+            new("GetStarted", true, "get-started-ready.png", "ready"),
             new("Variables", true, "variables.png"),
             new("M365Groups", true, "m365-groups.png"),
             new("CallQueues", true, "call-queues.png"),
             new("AutoAttendants", true, "auto-attendants.png"),
             new("Holidays", true, "holidays.png"),
             new("Wizard", true, "setup-wizard.png"),
+            new("Wizard", true, "setup-wizard-ready.png", "ready"),
+            new("Wizard", true, "setup-wizard-failed.png", "failed"),
             new("BulkOperations", true, "bulk-operations.png"),
             new("Documentation", true, "documentation.png"),
             new("Welcome", false, "welcome-light.png"),
@@ -119,14 +123,23 @@ namespace PhoneDesk.Tests
                 ?? throw new InvalidOperationException("NavigationListBox not found in MainWindow.");
 
             var kept = new List<string>();
+            string? previousPage = null;
 
             foreach (var shot in Shots)
             {
                 Application.Current.RequestedThemeVariant = shot.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
+                if (string.Equals(previousPage, shot.Page, StringComparison.Ordinal))
+                {
+                    SelectNav(navList, "Welcome");
+                    PumpRender();
+                }
+                ApplyScenario(provider, shot.Scenario);
                 // Drive navigation the way a user does — by selecting the sidebar item. This both
                 // navigates (via the SelectionChanged handler) and paints the selected-item highlight,
                 // which service-only navigation would not do for the already-current page.
                 SelectNav(navList, shot.Page);
+                PumpRender();
+                ApplyPostNavigationScenario(vm, shot.Scenario);
 
                 if (!CaptureShot(window, shot, outDir, out var stats))
                 {
@@ -138,6 +151,7 @@ namespace PhoneDesk.Tests
                 Console.WriteLine(
                     $"[screenshot] {shot.FileName}: {stats.Width}x{stats.Height} " +
                     $"distinctColors={stats.DistinctColors} brandPurplePixels={stats.BrandPurplePixels}");
+                previousPage = shot.Page;
             }
 
             if (kept.Count > 0)
@@ -195,12 +209,68 @@ namespace PhoneDesk.Tests
                     && listBoxItem.Tag is string tag
                     && string.Equals(tag, page, StringComparison.Ordinal))
                 {
+                    if (ReferenceEquals(navList.SelectedItem, listBoxItem))
+                    {
+                        navList.SelectedItem = null;
+                        PumpRender();
+                    }
                     navList.SelectedItem = listBoxItem;
                     return;
                 }
             }
 
             throw new InvalidOperationException($"No sidebar nav item with Tag '{page}'.");
+        }
+
+        private static void ApplyScenario(ServiceProvider provider, string scenario)
+        {
+            var session = provider.GetRequiredService<ISessionManager>();
+            var sharedState = provider.GetRequiredService<ISharedStateService>();
+
+            if (string.Equals(scenario, "ready", StringComparison.Ordinal)
+                || string.Equals(scenario, "failed", StringComparison.Ordinal))
+            {
+                sharedState.Variables = new PhoneManagerVariables
+                {
+                    Customer = "contoso",
+                    CustomerGroupName = "reception",
+                    MsFallbackDomain = "contoso.onmicrosoft.com",
+                    CustomerLegalName = "Contoso AG",
+                    LanguageId = "de-DE",
+                    TimeZoneId = "W. Europe Standard Time",
+                    UsageLocation = "CH",
+                    RaaAnr = "+41441234567",
+                    PhoneNumberType = "CallingPlan",
+                    AaDefaultGreetingType = "TextToSpeech",
+                    AaDefaultGreetingTextToSpeechPrompt = "Welcome to Contoso.",
+                    AaAfterHoursGreetingType = "TextToSpeech",
+                    AaAfterHoursGreetingTextToSpeechPrompt = "Our office is currently closed.",
+                    HolidayNameSuffix = "holiday",
+                    HolidayGreetingPromptDE = "Unser Büro ist heute geschlossen."
+                };
+                session.UpdateModulesChecked(true);
+                session.UpdateTeamsConnection(true, "operator@contoso.com");
+                session.UpdateGraphConnection(true, "operator@contoso.com");
+                return;
+            }
+
+            sharedState.Variables = new PhoneManagerVariables();
+            session.ResetSession();
+        }
+
+        private static void ApplyPostNavigationScenario(MainWindowViewModel mainWindowViewModel, string scenario)
+        {
+            if (!string.Equals(scenario, "failed", StringComparison.Ordinal)
+                || mainWindowViewModel.CurrentViewModel is not WizardViewModel wizard)
+            {
+                return;
+            }
+
+            wizard.Steps[1].IsFailed = true;
+            wizard.Steps[1].Result = "Microsoft 365 group could not be created. Retry the step or skip it after checking the output.";
+            wizard.CurrentStep = 1;
+            wizard.StepFailed = true;
+            wizard.StepResult = wizard.Steps[1].Result;
         }
 
         private static void PumpRender()

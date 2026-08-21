@@ -51,7 +51,7 @@ namespace PhoneDesk.Services
 
         public static class Application
         {
-            public const string Version = "Version 3.24.2"; // x-release-please-version
+            public const string Version = "Version 3.24.3"; // x-release-please-version
             public const string Copyright = "Patrik Lleshaj © 2026. MIT License.";
         }
 

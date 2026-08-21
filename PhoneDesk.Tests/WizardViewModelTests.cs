@@ -26,6 +26,23 @@ namespace PhoneDesk.Tests
                 harness.SharedStateService.Object,
                 harness.DialogService.Object);
 
+        private static void CompleteReview(WizardViewModel vm)
+            => vm.ExecuteCurrentStepCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+
+        private static void MoveToStepOne(WizardViewModel vm)
+        {
+            CompleteReview(vm);
+            vm.GoToNextStepCommand.Execute(null);
+        }
+
+        private static void MarkProvisioningStepsCompleted(WizardViewModel vm)
+        {
+            for (var index = 1; index < vm.TotalSteps - 1; index++)
+            {
+                vm.Steps[index].IsCompleted = true;
+            }
+        }
+
         [Fact]
         public void Construction_InitializesStepsAndStartsAtStepZero()
         {
@@ -36,7 +53,83 @@ namespace PhoneDesk.Tests
             Assert.Equal(0, vm.CurrentStep);
             Assert.Equal("Review Configuration", vm.StepTitle);
             Assert.False(vm.CanGoPrevious);
-            Assert.True(vm.CanGoNext);
+            Assert.False(vm.CanGoNext);
+            Assert.True(vm.CanExecuteStep);
+        }
+
+        [Fact]
+        public void InvalidConfiguration_CannotCompleteReviewOrAdvance()
+        {
+            var validation = new ValidationResult();
+            validation.AddError("Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+
+            var vm = CreateViewModel(harness);
+
+            Assert.False(vm.ConfigurationReady);
+            Assert.False(vm.CanExecuteStep);
+            Assert.False(vm.CanGoNext);
+            Assert.Contains("Customer name is required", vm.ValidationSummary);
+            Assert.Contains("not available yet", vm.ReviewSummary, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task InvalidConfiguration_ReviewCommandDoesNotCompleteStep()
+        {
+            var validation = new ValidationResult();
+            validation.AddError("Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+            var vm = CreateViewModel(harness);
+
+            await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
+
+            Assert.False(vm.StepCompleted);
+            Assert.Equal(0, vm.CurrentStep);
+            Assert.Contains("Customer name is required", vm.StatusMessage);
+        }
+
+        [Fact]
+        public void IncompletePrerequisites_BlocksProvisioningAndLeavingReview()
+        {
+            var prerequisites = new ValidationResult();
+            prerequisites.AddError("Not connected to Microsoft Teams.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidatePrerequisites())
+                .Returns(prerequisites);
+            var vm = CreateViewModel(harness);
+
+            Assert.True(vm.ConfigurationReady);
+            Assert.False(vm.PrerequisitesReady);
+            Assert.True(vm.CanExecuteStep); // The read-only review itself is still allowed.
+            Assert.False(vm.CanGoNext);
+
+            vm.CurrentStep = 1;
+
+            Assert.False(vm.CanExecuteStep);
+            Assert.Contains("Get Started", vm.ReadinessMessage);
+        }
+
+        [Fact]
+        public void ReadinessProperties_ExposeHumanReadableStepNumber()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness);
+
+            Assert.Equal("Step 1 of 10", vm.StepNumberText);
+            Assert.True(vm.ConfigurationReady);
+            Assert.True(vm.PrerequisitesReady);
+
+            CompleteReview(vm);
+            vm.GoToNextStepCommand.Execute(null);
+
+            Assert.Equal("Step 2 of 10", vm.StepNumberText);
         }
 
         // ── Forward/backward navigation and boundaries ─────────────────────
@@ -47,10 +140,23 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             var vm = CreateViewModel(harness);
 
+            CompleteReview(vm);
             vm.GoToNextStepCommand.Execute(null);
 
             Assert.Equal(1, vm.CurrentStep);
             Assert.Equal("Create M365 Group", vm.StepTitle);
+        }
+
+        [Fact]
+        public void GoToNextStep_CannotJumpOverAnUncompletedStep()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness);
+
+            vm.GoToNextStepCommand.Execute(null);
+
+            Assert.Equal(0, vm.CurrentStep);
+            Assert.Contains("Complete or skip this step", vm.StatusMessage);
         }
 
         [Fact]
@@ -71,10 +177,14 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             var vm = CreateViewModel(harness);
 
-            for (int i = 0; i < vm.TotalSteps + 3; i++)
+            CompleteReview(vm);
+            for (var step = 1; step < vm.TotalSteps - 1; step++)
             {
+                vm.Steps[step].IsCompleted = true;
+                vm.StepCompleted = true;
                 vm.GoToNextStepCommand.Execute(null);
             }
+            vm.GoToNextStepCommand.Execute(null);
 
             Assert.Equal(vm.TotalSteps - 1, vm.CurrentStep);
             Assert.False(vm.CanGoNext);
@@ -85,7 +195,9 @@ namespace PhoneDesk.Tests
         {
             var harness = new ViewModelTestHarness();
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null);
+            MoveToStepOne(vm);
+            vm.Steps[1].IsCompleted = true;
+            vm.StepCompleted = true;
             vm.GoToNextStepCommand.Execute(null);
 
             vm.GoToPreviousStepCommand.Execute(null);
@@ -106,9 +218,7 @@ namespace PhoneDesk.Tests
 
             Assert.Equal("contoso", vm.Variables.Customer);
 
-            vm.GoToNextStepCommand.Execute(null);
-            vm.GoToNextStepCommand.Execute(null);
-            vm.GoToNextStepCommand.Execute(null);
+            vm.CurrentStep = 3;
 
             // The same shared variables instance (and the value captured before navigating) is still
             // visible after moving through several steps — wizard state is not reset per step.
@@ -151,7 +261,7 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             harness.PowerShellCommandService.Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>())).Returns("New-CsGroup ...");
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null); // step 1: Create M365 Group
+            MoveToStepOne(vm);
             harness.SetExecutionResult("SUCCESS: group created");
 
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
@@ -168,7 +278,7 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             harness.PowerShellCommandService.Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>())).Returns("New-CsGroup ...");
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null); // step 1
+            MoveToStepOne(vm);
             harness.SetExecutionResult("ERROR: group creation failed", hadErrors: true);
 
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
@@ -176,6 +286,7 @@ namespace PhoneDesk.Tests
             Assert.True(vm.StepFailed);
             Assert.False(vm.StepCompleted);
             Assert.True(vm.Steps[1].IsFailed);
+            Assert.False(vm.CanExecuteStep);
             Assert.Contains("failed", vm.StatusMessage);
         }
 
@@ -189,7 +300,7 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             harness.PowerShellCommandService.Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>())).Returns("New-CsGroup ...");
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null); // step 1
+            MoveToStepOne(vm);
             harness.SetExecutionResult("ERROR: boom", hadErrors: true);
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
             Assert.True(vm.StepFailed);
@@ -208,7 +319,7 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             harness.PowerShellCommandService.Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>())).Returns("New-CsGroup ...");
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null); // step 1
+            MoveToStepOne(vm);
             harness.SetExecutionResult("ERROR: boom", hadErrors: true);
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
             Assert.False(vm.GoToNextStepCommand.CanExecute(null));
@@ -230,7 +341,7 @@ namespace PhoneDesk.Tests
             var harness = new ViewModelTestHarness();
             harness.PowerShellCommandService.Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>())).Returns("New-CsGroup ...");
             var vm = CreateViewModel(harness);
-            vm.GoToNextStepCommand.Execute(null); // step 1
+            MoveToStepOne(vm);
             harness.SetExecutionResult("ERROR: boom", hadErrors: true);
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
             Assert.True(vm.StepFailed);
@@ -262,10 +373,9 @@ namespace PhoneDesk.Tests
         {
             var harness = new ViewModelTestHarness();
             var vm = CreateViewModel(harness);
-            for (int i = 0; i < 9; i++)
-            {
-                vm.GoToNextStepCommand.Execute(null);
-            }
+            CompleteReview(vm);
+            MarkProvisioningStepsCompleted(vm);
+            vm.CurrentStep = 9;
             Assert.Equal(9, vm.CurrentStep);
 
             await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
@@ -275,6 +385,26 @@ namespace PhoneDesk.Tests
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task ExecuteCurrentStepAsync_SummaryRefusesSuccessWhenProvisioningWasSkipped()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness);
+            CompleteReview(vm);
+
+            while (vm.CurrentStep < vm.TotalSteps - 1)
+            {
+                vm.SkipStepCommand.Execute(null);
+            }
+
+            Assert.Equal(vm.TotalSteps - 1, vm.CurrentStep);
+
+            await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
+
+            Assert.False(vm.StepCompleted);
+            Assert.Contains("not complete", vm.StepResult, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]

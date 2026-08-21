@@ -48,6 +48,7 @@ The Wizard remains a ten-step flow, but its state becomes explicit:
 - Treat step 1 as a readable configuration review, not a raw script preview. Show the customer, group, tenant domain, language/time zone, phone number, and generated names in a wrapped summary. Use plain ASCII separators so screenshots and copied text remain reliable.
 - Require valid variables before the review step can be completed.
 - Require module, Teams, and Graph prerequisites before provisioning steps can execute or the operator can advance from review.
+- Do not let `Next` jump over an uncompleted provisioning step; the operator must complete or explicitly skip each step. The final summary must not claim setup succeeded when required steps were skipped.
 - Keep dry-run plan generation available as a safe, read-only action and explain that it makes no tenant changes.
 - Keep execution previews for provisioning steps, but make the safety boundary visible in the action area.
 - Show “Edit configuration” only on the review step.

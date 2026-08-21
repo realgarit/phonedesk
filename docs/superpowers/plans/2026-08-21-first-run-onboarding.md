@@ -56,6 +56,8 @@ public void InvalidConfiguration_CannotCompleteReviewOrAdvance()
 
 Add a test that sets a valid variable result but an invalid prerequisite result, advances only through test setup as needed, and proves provisioning cannot execute or advance. Add a valid-readiness test proving `StepNumberText` is `Step 1 of 10`, review can complete, and an execution step remains allowed only when both validations are valid. Add a test that invokes the review command while invalid and proves no step completion occurs.
 
+Also prove that `Next` cannot jump over an uncompleted provisioning step and that the final summary refuses to claim setup complete after a provisioning step was skipped.
+
 - [ ] **Step 2: Run the focused tests and verify they fail for the missing readiness behavior**
 
 Run:
@@ -73,6 +75,7 @@ In `WizardViewModel`:
 - Add computed bindable-facing properties for `StepNumberText`, `ConfigurationReady`, `PrerequisitesReady`, `ReadinessMessage`, and `ValidationSummary`.
 - Re-evaluate the two existing validation services when the current step is refreshed and before review/provisioning actions.
 - Let step zero review require valid variables; let steps one through eight require both valid variables and valid prerequisites; keep the final summary non-mutating.
+- Do not allow `Next` to jump over an uncompleted step. A skipped step remains visible as skipped, and the final summary must refuse to report successful setup when any provisioning step was skipped.
 - When a guard blocks an action, set `StatusMessage` to a plain next action and leave the current step unchanged.
 - Keep all existing script-building calls and `PreviewAndExecuteAsync` behavior unchanged.
 - Notify command can-execute state and computed properties whenever the step changes or a guard re-evaluates.

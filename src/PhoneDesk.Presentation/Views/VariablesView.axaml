@@ -138,6 +138,10 @@
                                     <TextBlock Text="Example: CH" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="4,0,0,8">
+                                    <TextBlock Text="Teams Phone license SKU (read-only)"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Margin="4,0,0,4"/>
                                     <Grid>
                                         <TextBox 
                                                  Text="{Binding Variables.SkuId}"

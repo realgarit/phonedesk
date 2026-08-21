@@ -82,26 +82,40 @@
                          FontWeight="Bold"
                          LetterSpacing="-0.8"
                          TextAlignment="Center"/>
-                <TextBlock Text="Configure and deploy Microsoft Teams Phone infrastructure"
+                <TextBlock Text="Set up Microsoft Teams Phone for a customer — one guided step at a time."
                          FontSize="15"
                          TextAlignment="Center"
+                         MaxWidth="620"
+                         TextWrapping="Wrap"
                          Margin="0,10,0,0"
                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8" Margin="0,16,0,0">
+                    <Border Classes="chip">
+                        <TextBlock Text="No PowerShell knowledge required"/>
+                    </Border>
+                    <Border Classes="chip">
+                        <TextBlock Text="Preview before changes"/>
+                    </Border>
+                    <Border Classes="chip">
+                        <TextBlock Text="Pause and return anytime"/>
+                    </Border>
+                </StackPanel>
+
                 <!-- Quick Actions -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,28,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,24,0,0">
                     <Button Command="{Binding NavigateToGetStartedCommand}"
                             Classes="accent IconTextCentered" MinWidth="180">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon Symbol="Rocket"/>
-                            <TextBlock Text="Get Started"/>
+                            <TextBlock Text="Start setup"/>
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding OpenDocumentationCommand}"
                             Classes="IconTextCentered" MinWidth="180">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon Symbol="Open"/>
-                            <TextBlock Text="GitHub"/>
+                            <TextBlock Text="Read the guide"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -127,7 +141,7 @@
                                     </Border>
                                     <TextBlock Text="Connect" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="Install modules, connect to Teams &amp; Graph"
+                                <TextBlock Text="Check prerequisites and sign in"
                                          FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
@@ -142,7 +156,7 @@
                                     </Border>
                                     <TextBlock Text="Configure" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="Set variables, domains, time zones, holidays"
+                                <TextBlock Text="Enter customer details and review"
                                          FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
@@ -157,7 +171,7 @@
                                     </Border>
                                     <TextBlock Text="Build" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="Create groups, queues, auto attendants"
+                                <TextBlock Text="Preview, approve, and create safely"
                                          FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
@@ -172,7 +186,7 @@
                                     </Border>
                                     <TextBlock Text="Export" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="Generate documentation &amp; scripts"
+                                <TextBlock Text="Keep a record of what changed"
                                          FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>

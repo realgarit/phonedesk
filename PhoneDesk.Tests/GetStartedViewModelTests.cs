@@ -43,7 +43,21 @@ namespace PhoneDesk.Tests
             Assert.True(vm.TeamsConnected);
             Assert.False(vm.GraphConnected);
             Assert.False(vm.CanProceed);
+            Assert.Contains("Graph next", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("Connect Graph", vm.GraphActionText);
             harness.LoggingService.Verify(l => l.Log("Get Started page loaded", LogLevel.Info), Times.Once);
+        }
+
+        [Fact]
+        public void Construction_EmptySession_ExplainsFirstAction()
+        {
+            var harness = new ViewModelTestHarness();
+
+            var vm = CreateViewModel(harness);
+
+            Assert.Contains("bundled modules", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("Check modules first", vm.TeamsActionText);
+            Assert.Equal("Check modules first", vm.GraphActionText);
         }
 
         [Fact]
@@ -56,6 +70,8 @@ namespace PhoneDesk.Tests
             await vm.CheckModulesCommand.ExecuteAsync(null);
 
             Assert.True(vm.ModulesChecked);
+            Assert.Contains("Teams next", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("Connect Teams", vm.TeamsActionText);
             harness.SessionManager.Verify(s => s.UpdateModulesChecked(true), Times.Once);
         }
 
@@ -69,7 +85,37 @@ namespace PhoneDesk.Tests
             await vm.CheckModulesCommand.ExecuteAsync(null);
 
             Assert.False(vm.ModulesChecked);
+            Assert.Contains("try again", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
             harness.SessionManager.Verify(s => s.UpdateModulesChecked(false), Times.Once);
+        }
+
+        [Fact]
+        public void Construction_AllChecksPassed_ExplainsWhatToDoNext()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.SessionManager.SetupGet(s => s.ModulesChecked).Returns(true);
+            harness.SessionManager.SetupGet(s => s.TeamsConnected).Returns(true);
+            harness.SessionManager.SetupGet(s => s.GraphConnected).Returns(true);
+
+            var vm = CreateViewModel(harness);
+
+            Assert.True(vm.CanProceed);
+            Assert.Contains("ready", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task ConnectGraphAsync_MsalAuthFails_ExplainsBrowserSignInRecovery()
+        {
+            var harness = new ViewModelTestHarness();
+            _msalAuthService.Setup(m => m.AuthenticateAsync(It.IsAny<nint?>()))
+                .ReturnsAsync((false, null, null, "auth failed"));
+            var vm = CreateViewModel(harness);
+            vm.ModulesChecked = true;
+
+            await vm.ConnectGraphCommand.ExecuteAsync(null);
+
+            Assert.Contains("sign-in", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("try again", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]

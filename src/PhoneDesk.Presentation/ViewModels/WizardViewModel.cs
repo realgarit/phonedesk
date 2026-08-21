@@ -6,6 +6,7 @@ using PhoneDesk.Models;
 using PhoneDesk.Planning;
 using PhoneDesk.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
@@ -50,9 +51,107 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private DryRunPlan? _plan;
 
-        public bool CanGoNext => CurrentStep < TotalSteps - 1 && !StepFailed;
+        private ValidationResult _configurationValidation = new();
+        private ValidationResult _prerequisiteValidation = new();
+
+        public string StepNumberText => $"Step {Math.Clamp(CurrentStep + 1, 1, TotalSteps)} of {TotalSteps}";
+        public string StepNumberBadgeText => Math.Clamp(CurrentStep + 1, 1, TotalSteps).ToString();
+        public double WizardProgressValue => Math.Clamp(CurrentStep + 1, 1, TotalSteps);
+        public bool IsReviewStep => CurrentStep == 0;
+        public bool IsSummaryStep => CurrentStep == TotalSteps - 1;
+        public string ExecuteButtonText => IsReviewStep
+            ? "Confirm configuration"
+            : IsSummaryStep ? "Finish setup" : "Execute step";
+        public bool ConfigurationReady => _configurationValidation.IsValid;
+        public bool PrerequisitesReady => _prerequisiteValidation.IsValid;
+        public string ReviewSummary
+        {
+            get
+            {
+                var vars = Variables;
+                return $"""
+                Customer
+                {DisplayValue(vars.Customer)}
+
+                Customer group
+                {DisplayValue(vars.CustomerGroupName)}
+
+                Fallback domain
+                {DisplayValue(vars.MsFallbackDomain)}
+
+                Language and time zone
+                {DisplayValue(vars.LanguageId)} · {DisplayValue(vars.TimeZoneId)}
+
+                Usage location
+                {DisplayValue(vars.UsageLocation)}
+
+                Computed Teams Phone names
+                M365 group: {DisplayComputedValue(vars.M365Group)}
+                Call queue account: {DisplayComputedValue(vars.RacqUPN)}
+                Auto attendant account: {DisplayComputedValue(vars.RaaaUPN)}
+
+                Phone number
+                {DisplayValue(vars.RaaAnr)} ({DisplayValue(vars.PhoneNumberType)})
+                """;
+            }
+        }
+
+        public string ValidationSummary
+        {
+            get
+            {
+                var messages = new List<string>(_configurationValidation.Errors);
+                if (!PrerequisitesReady)
+                {
+                    messages.Add("Connection checks are incomplete. Open Get Started to connect to Teams and Microsoft Graph.");
+                }
+
+                return string.Join(Environment.NewLine, messages);
+            }
+        }
+
+        public string ReadinessMessage
+        {
+            get
+            {
+                if (!ConfigurationReady)
+                {
+                    return "Complete the required configuration in Configuration before continuing.";
+                }
+
+                if (!PrerequisitesReady)
+                {
+                    return "Complete the connection checks in Get Started before provisioning.";
+                }
+
+                if (IsSummaryStep)
+                {
+                    return "Review the completed steps or add holidays next.";
+                }
+
+                if (IsReviewStep)
+                {
+                    return "Review the configuration, then confirm it before starting setup.";
+                }
+
+                return "Preview this step before you run it. It changes the tenant only after you confirm it.";
+            }
+        }
+
+        public bool CanGoNext => CurrentStep < TotalSteps - 1
+            && !StepFailed
+            && ConfigurationReady
+            && PrerequisitesReady
+            && CurrentStep >= 0
+            && CurrentStep < Steps.Count
+            && (StepCompleted || Steps[CurrentStep].IsSkipped);
         public bool CanGoPrevious => CurrentStep > 0;
-        public bool CanExecuteStep => !IsBusy && !StepCompleted;
+        public bool CanExecuteStep => !IsBusy
+            && !StepFailed
+            && !StepCompleted
+            && (IsSummaryStep
+                ? AllProvisioningStepsCompleted()
+                : (IsReviewStep ? ConfigurationReady : ConfigurationReady && PrerequisitesReady));
 
         public PhoneManagerVariables Variables => _sharedStateService?.Variables ?? new PhoneManagerVariables();
 
@@ -97,6 +196,75 @@ namespace PhoneDesk.ViewModels
             TotalSteps = Steps.Count;
         }
 
+        private void RefreshReadiness()
+        {
+            _configurationValidation = _validationService.ValidateVariables(Variables);
+            _prerequisiteValidation = _validationService.ValidatePrerequisites();
+
+            OnPropertyChanged(nameof(ConfigurationReady));
+            OnPropertyChanged(nameof(PrerequisitesReady));
+            OnPropertyChanged(nameof(ValidationSummary));
+            OnPropertyChanged(nameof(ReadinessMessage));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(CanExecuteStep));
+            GoToNextStepCommand.NotifyCanExecuteChanged();
+        }
+
+        private bool EnsureConfigurationReady()
+        {
+            RefreshReadiness();
+            if (ConfigurationReady)
+            {
+                return true;
+            }
+
+            StatusMessage = ValidationSummary;
+            return false;
+        }
+
+        private bool EnsureProvisioningReady()
+        {
+            RefreshReadiness();
+            if (ConfigurationReady && PrerequisitesReady)
+            {
+                return true;
+            }
+
+            StatusMessage = !ConfigurationReady
+                ? ValidationSummary
+                : "Complete the connection checks in Get Started before provisioning.";
+            return false;
+        }
+
+        private bool AllProvisioningStepsCompleted()
+        {
+            for (var index = 1; index < Steps.Count - 1; index++)
+            {
+                if (!Steps[index].IsCompleted)
+                {
+                    return false;
+                }
+            }
+
+            return Steps.Count > 1;
+        }
+
+        private bool EnsureAdvanceReady()
+        {
+            if (!EnsureProvisioningReady())
+            {
+                return false;
+            }
+
+            if (CurrentStep >= 0 && CurrentStep < Steps.Count && (StepCompleted || Steps[CurrentStep].IsSkipped))
+            {
+                return true;
+            }
+
+            StatusMessage = "Complete or skip this step before moving on.";
+            return false;
+        }
+
         private void UpdateCurrentStep()
         {
             if (CurrentStep >= 0 && CurrentStep < Steps.Count)
@@ -108,6 +276,14 @@ namespace PhoneDesk.ViewModels
                 StepFailed = step.IsFailed;
                 StepResult = step.Result;
                 StepScript = GetScriptForStep(CurrentStep);
+                RefreshReadiness();
+                OnPropertyChanged(nameof(ReviewSummary));
+                OnPropertyChanged(nameof(StepNumberText));
+                OnPropertyChanged(nameof(StepNumberBadgeText));
+                OnPropertyChanged(nameof(WizardProgressValue));
+                OnPropertyChanged(nameof(IsReviewStep));
+                OnPropertyChanged(nameof(IsSummaryStep));
+                OnPropertyChanged(nameof(ExecuteButtonText));
                 OnPropertyChanged(nameof(CanGoNext));
                 OnPropertyChanged(nameof(CanGoPrevious));
                 OnPropertyChanged(nameof(CanExecuteStep));
@@ -144,38 +320,47 @@ namespace PhoneDesk.ViewModels
         private string FormatVariablesSummary(PhoneManagerVariables vars)
         {
             return $"""
-            # ═══════════════════════════════════════
+            # ======================================
             # Configuration Review
-            # ═══════════════════════════════════════
+            # ======================================
             
-            # Customer:          {vars.Customer}
-            # Customer Group:    {vars.CustomerGroupName}
-            # Fallback Domain:   {vars.MsFallbackDomain}
-            # Language:           {vars.LanguageId}
-            # Time Zone:          {vars.TimeZoneId}
-            # Usage Location:     {vars.UsageLocation}
+            # Customer:          {DisplayValue(vars.Customer)}
+            # Customer Group:    {DisplayValue(vars.CustomerGroupName)}
+            # Fallback Domain:   {DisplayValue(vars.MsFallbackDomain)}
+            # Language:           {DisplayValue(vars.LanguageId)}
+            # Time Zone:          {DisplayValue(vars.TimeZoneId)}
+            # Usage Location:     {DisplayValue(vars.UsageLocation)}
             
-            # ── Computed Names ──
-            # M365 Group:         {vars.M365Group}
-            # CQ Resource UPN:    {vars.RacqUPN}
-            # CQ Display Name:    {vars.CqDisplayName}
-            # AA Resource UPN:    {vars.RaaaUPN}
-            # AA Display Name:    {vars.AaDisplayName}
-            # Phone Number:       {vars.RaaAnr}
-            # Phone Number Type:  {vars.PhoneNumberType}
+            # --- Computed Names ---
+            # M365 Group:         {DisplayComputedValue(vars.M365Group)}
+            # CQ Resource UPN:    {DisplayComputedValue(vars.RacqUPN)}
+            # CQ Display Name:    {DisplayComputedValue(vars.CqDisplayName)}
+            # AA Resource UPN:    {DisplayComputedValue(vars.RaaaUPN)}
+            # AA Display Name:    {DisplayComputedValue(vars.AaDisplayName)}
+            # Phone Number:       {DisplayValue(vars.RaaAnr)}
+            # Phone Number Type:  {DisplayValue(vars.PhoneNumberType)}
             
-            # ── Licensing ──
-            # SKU ID:             {vars.SkuId}
-            # CQ App ID:          {vars.CsAppCqId}
-            # AA App ID:          {vars.CsAppAaId}
+            # --- Licensing ---
+            # SKU ID:             {DisplayValue(vars.SkuId)}
+            # CQ App ID:          {DisplayValue(vars.CsAppCqId)}
+            # AA App ID:          {DisplayValue(vars.CsAppAaId)}
             
-            # ═══════════════════════════════════════
+            # ======================================
             # Ensure all values are correct before
             # proceeding. Use the Variables page to
             # make changes.
-            # ═══════════════════════════════════════
+            # ======================================
             """;
         }
+
+        private static string DisplayValue(string? value)
+            => string.IsNullOrWhiteSpace(value) ? "(not set)" : value;
+
+        private static string DisplayComputedValue(string? value)
+            => string.IsNullOrWhiteSpace(value)
+                || value is "ttgrp--" or "racq--" or "cq--" or "raaa---" or "aa---"
+                ? "(not available yet)"
+                : value;
 
         private string BuildLicenseCqScript(PhoneManagerVariables vars)
         {
@@ -210,14 +395,45 @@ namespace PhoneDesk.ViewModels
 
             var step = Steps[CurrentStep];
 
-            // Step 0 is review-only, step 9 is summary
-            if (CurrentStep == 0 || CurrentStep == 9)
+            // Step 0 is review-only and must still pass configuration validation.
+            if (CurrentStep == 0)
             {
+                if (!EnsureConfigurationReady())
+                {
+                    return;
+                }
+
                 step.IsCompleted = true;
                 StepCompleted = true;
-                StepResult = CurrentStep == 0 ? "Configuration reviewed." : "Setup complete!";
+                StepResult = "Configuration reviewed.";
                 step.Result = StepResult;
                 OnPropertyChanged(nameof(CanExecuteStep));
+                OnPropertyChanged(nameof(CanGoNext));
+                GoToNextStepCommand.NotifyCanExecuteChanged();
+                return;
+            }
+
+            // Step 9 is a non-mutating summary and may only report success after every provisioning
+            // step has completed. A skipped step keeps the operator in a recoverable, incomplete state.
+            if (CurrentStep == 9)
+            {
+                if (!AllProvisioningStepsCompleted())
+                {
+                    StepResult = "Setup is not complete. Return to the skipped or incomplete steps before finishing.";
+                    StatusMessage = StepResult;
+                    return;
+                }
+
+                step.IsCompleted = true;
+                StepCompleted = true;
+                StepResult = "Setup complete!";
+                step.Result = StepResult;
+                OnPropertyChanged(nameof(CanExecuteStep));
+                return;
+            }
+
+            if (!EnsureProvisioningReady())
+            {
                 return;
             }
 
@@ -259,12 +475,14 @@ namespace PhoneDesk.ViewModels
             }
 
             OnPropertyChanged(nameof(CanExecuteStep));
+            OnPropertyChanged(nameof(CanGoNext));
+            GoToNextStepCommand.NotifyCanExecuteChanged();
         }
 
         [RelayCommand(CanExecute = nameof(CanGoNext))]
         private void GoToNextStep()
         {
-            if (CurrentStep < TotalSteps - 1 && !StepFailed)
+            if (CurrentStep < TotalSteps - 1 && !StepFailed && EnsureAdvanceReady())
             {
                 CurrentStep++;
                 UpdateCurrentStep();
@@ -284,7 +502,8 @@ namespace PhoneDesk.ViewModels
         [RelayCommand]
         private void SkipStep()
         {
-            if (CurrentStep < TotalSteps - 1)
+            if (CurrentStep < TotalSteps - 1
+                && (CurrentStep != 0 || EnsureProvisioningReady()))
             {
                 var step = Steps[CurrentStep];
                 step.IsSkipped = true;
@@ -307,7 +526,9 @@ namespace PhoneDesk.ViewModels
                 StepCompleted = false;
                 StepFailed = false;
                 StepResult = string.Empty;
+                RefreshReadiness();
                 OnPropertyChanged(nameof(CanExecuteStep));
+                ExecuteCurrentStepCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -388,7 +609,9 @@ namespace PhoneDesk.ViewModels
 
         partial void OnStepFailedChanged(bool value)
         {
+            OnPropertyChanged(nameof(CanExecuteStep));
             OnPropertyChanged(nameof(CanGoNext));
+            ExecuteCurrentStepCommand.NotifyCanExecuteChanged();
             GoToNextStepCommand.NotifyCanExecuteChanged();
         }
     }

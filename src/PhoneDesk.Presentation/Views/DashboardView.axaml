@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              mc:Ignorable="d"
              d:DesignHeight="760" d:DesignWidth="1100">
@@ -33,8 +34,8 @@
                         <fi:SymbolIcon Symbol="DataTrending"/>
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center" Margin="14,0,0,0">
-                        <TextBlock Text="Tenant Dashboard" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="A read-only, live view of your telephony topology: auto attendants, call queues, resource accounts, phone numbers and groups — with relationships and orphan detection."
+                        <TextBlock Text="{loc:Translate Key=DashboardTitle}" Classes="page-title" Margin="0"/>
+                        <TextBlock Text="{loc:Translate Key=DashboardSubtitle}"
                                    TextWrapping="Wrap"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>
@@ -48,18 +49,18 @@
                                     IsEnabled="{Binding !IsBusy}">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="ArrowClockwise"/>
-                                    <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonRefresh}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding CancelOperationCommand}" Classes="IconText"
                                     IsVisible="{Binding IsCancellable}">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <TextBox Text="{Binding SearchText}" MinWidth="260"
-                                     Watermark="Search by name, number or UPN"/>
+                                     Watermark="{loc:Translate Key=DashboardSearchWatermark}"/>
                             <Button Command="{Binding ClearSearchCommand}" Classes="IconText"
                                     IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <fi:SymbolIcon Symbol="DismissCircle"/>
@@ -86,8 +87,12 @@
                         <StackPanel Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <fi:SymbolIcon Symbol="Warning" Foreground="{DynamicResource StatusOffBrush}"/>
-                                <TextBlock Text="{Binding OrphanCount, StringFormat='Orphans detected: {0}'}"
-                                           FontWeight="SemiBold"/>
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="{loc:Translate Key=DashboardOrphansDetectedLabel}"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding OrphanCount}"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
                             </StackPanel>
                             <ItemsControl ItemsSource="{Binding Orphans}">
                                 <ItemsControl.ItemTemplate>
@@ -115,7 +120,7 @@
 
                             <!-- Auto attendants -->
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Auto Attendants" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:Translate Key=DashboardAutoAttendantsSectionTitle}" FontWeight="SemiBold"/>
                                 <ListBox ItemsSource="{Binding AutoAttendantsView}"
                                          SelectedItem="{Binding SelectedAutoAttendant}"
                                          MaxHeight="220">
@@ -137,7 +142,7 @@
 
                             <!-- Call queues -->
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Call Queues" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:Translate Key=DashboardCallQueuesSectionTitle}" FontWeight="SemiBold"/>
                                 <ListBox ItemsSource="{Binding CallQueuesView}"
                                          SelectedItem="{Binding SelectedCallQueue}"
                                          MaxHeight="220">
@@ -159,7 +164,7 @@
 
                             <!-- Resource accounts -->
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Resource Accounts" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:Translate Key=DashboardResourceAccountsSectionTitle}" FontWeight="SemiBold"/>
                                 <ListBox ItemsSource="{Binding ResourceAccountsView}" MaxHeight="220">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
@@ -179,7 +184,7 @@
 
                             <!-- Groups -->
                             <StackPanel Spacing="6">
-                                <TextBlock Text="M365 Groups" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:Translate Key=DashboardM365GroupsSectionTitle}" FontWeight="SemiBold"/>
                                 <ListBox ItemsSource="{Binding GroupsView}" MaxHeight="180">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
@@ -199,7 +204,7 @@
                                         IsVisible="{Binding !HasData}">
                                 <fi:SymbolIcon Symbol="DataTrending" FontSize="32" HorizontalAlignment="Center"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="No topology loaded yet. Connect to Teams and Graph, then press Refresh."
+                                <TextBlock Text="{loc:Translate Key=DashboardNoTopologyLoaded}"
                                            HorizontalAlignment="Center"
                                            TextAlignment="Center"
                                            TextWrapping="Wrap"
@@ -213,13 +218,18 @@
                     <Border Grid.Column="1" Classes="sunken" Padding="16">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel Spacing="14">
-                                <TextBlock Text="Relationships" FontWeight="SemiBold"/>
+                                <TextBlock Text="{loc:Translate Key=DashboardRelationshipsTitle}" FontWeight="SemiBold"/>
 
                                 <!-- Selected auto attendant -->
                                 <StackPanel Spacing="6" IsVisible="{Binding SelectedAutoAttendant, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                    <TextBlock Text="{Binding SelectedAutoAttendant.Name, StringFormat='Auto attendant: {0}'}"
-                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="Resource accounts" FontSize="11"
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{loc:Translate Key=DashboardAutoAttendantLabel}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedAutoAttendant.Name}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{loc:Translate Key=DashboardResourceAccountsLabel}" FontSize="11"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedAutoAttendantResourceAccounts}">
                                         <ItemsControl.ItemTemplate>
@@ -228,7 +238,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="Linked call queues" FontSize="11" Margin="0,6,0,0"
+                                    <TextBlock Text="{loc:Translate Key=DashboardLinkedCallQueuesLabel}" FontSize="11" Margin="0,6,0,0"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedAutoAttendantCallQueues}">
                                         <ItemsControl.ItemTemplate>
@@ -237,7 +247,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="Holiday schedules" FontSize="11" Margin="0,6,0,0"
+                                    <TextBlock Text="{loc:Translate Key=DashboardHolidaySchedulesLabel}" FontSize="11" Margin="0,6,0,0"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedAutoAttendantHolidayIds}">
                                         <ItemsControl.ItemTemplate>
@@ -251,9 +261,14 @@
                                 <!-- Selected call queue -->
                                 <StackPanel Spacing="6" IsVisible="{Binding SelectedCallQueue, Converter={x:Static ObjectConverters.IsNotNull}}">
                                     <Border Height="1" Background="{DynamicResource HairlineBrush}"/>
-                                    <TextBlock Text="{Binding SelectedCallQueue.Name, StringFormat='Call queue: {0}'}"
-                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="Resource accounts" FontSize="11"
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{loc:Translate Key=DashboardCallQueueLabel}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedCallQueue.Name}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{loc:Translate Key=DashboardResourceAccountsLabel}" FontSize="11"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedCallQueueResourceAccounts}">
                                         <ItemsControl.ItemTemplate>
@@ -262,7 +277,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="Agent groups" FontSize="11" Margin="0,6,0,0"
+                                    <TextBlock Text="{loc:Translate Key=DashboardAgentGroupsLabel}" FontSize="11" Margin="0,6,0,0"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedCallQueueGroups}">
                                         <ItemsControl.ItemTemplate>
@@ -271,7 +286,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Text="Agents" FontSize="11" Margin="0,6,0,0"
+                                    <TextBlock Text="{loc:Translate Key=DashboardAgentsLabel}" FontSize="11" Margin="0,6,0,0"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     <ItemsControl ItemsSource="{Binding SelectedCallQueueAgentIds}">
                                         <ItemsControl.ItemTemplate>
@@ -282,7 +297,7 @@
                                     </ItemsControl>
                                 </StackPanel>
 
-                                <TextBlock Text="Select an auto attendant or call queue to see its relationships."
+                                <TextBlock Text="{loc:Translate Key=DashboardSelectRelationshipHint}"
                                            FontSize="12" TextWrapping="Wrap"
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                            IsVisible="{Binding SelectedAutoAttendant, Converter={x:Static ObjectConverters.IsNull}}"/>
@@ -303,7 +318,7 @@
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <TextBlock FontSize="12" VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                       Text="Read-only view. No changes are made to the tenant."/>
+                                   Text="{loc:Translate Key=DashboardReadOnlyFooter}"/>
                         </StackPanel>
                         <TextBlock Grid.Column="1" FontSize="12" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"

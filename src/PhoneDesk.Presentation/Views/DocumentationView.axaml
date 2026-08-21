@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -31,10 +32,10 @@
                             <fi:SymbolIcon Symbol="DocumentText"/>
                         </Border>
                         <StackPanel Spacing="4" VerticalAlignment="Center">
-                            <TextBlock Text="Tenant Documentation"
+                            <TextBlock Text="{loc:Translate Key=DocumentationTitle}"
                                      Classes="page-title"
                                      Margin="0"/>
-                            <TextBlock Text="Export a complete overview of your Teams Phone System configuration — routing topology, phone numbers, users, schedules, and more."
+                            <TextBlock Text="{loc:Translate Key=DocumentationSubtitle}"
                                      TextWrapping="Wrap"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -46,7 +47,7 @@
                                 IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowDownload"/>
-                                <TextBlock Text="Export Documentation" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationExportAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -55,7 +56,7 @@
                                 IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Copy"/>
-                                <TextBlock Text="Copy to Clipboard" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=CommonCopyToClipboard}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -87,7 +88,7 @@
                                  FontSize="12"
                                  BorderThickness="0"
                                  Padding="16"
-                                 Watermark="Click 'Export Documentation' to generate a complete tenant overview with routing topology, phone numbers, users, schedules, and configuration details..."/>
+                                 Watermark="{loc:Translate Key=DocumentationWatermark}"/>
                     </ScrollViewer>
                 </Border>
 
@@ -99,7 +100,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <fi:SymbolIcon Symbol="Info" FontSize="14"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="The export queries your tenant live via PowerShell. Ensure you are connected before exporting."
+                        <TextBlock Text="{loc:Translate Key=DocumentationFooter}"
                                  FontSize="12"
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  VerticalAlignment="Center"/>

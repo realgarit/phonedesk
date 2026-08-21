@@ -70,16 +70,23 @@ namespace PhoneDesk.Tests
             new("Welcome", true, "welcome.png"),
             new("GetStarted", true, "get-started.png"),
             new("GetStarted", true, "get-started-ready.png", "ready"),
+            new("GetStarted", true, "get-started-ready-de.png", "ready-de"),
             new("Variables", true, "variables.png"),
+            new("Variables", true, "variables-de.png", "ready-de"),
+            new("Dashboard", true, "dashboard-de.png", "ready-de"),
             new("M365Groups", true, "m365-groups.png"),
             new("CallQueues", true, "call-queues.png"),
             new("AutoAttendants", true, "auto-attendants.png"),
             new("Holidays", true, "holidays.png"),
             new("Wizard", true, "setup-wizard.png"),
             new("Wizard", true, "setup-wizard-ready.png", "ready"),
+            new("Wizard", true, "setup-wizard-ready-de.png", "ready-de"),
             new("Wizard", true, "setup-wizard-failed.png", "failed"),
+            new("Wizard", true, "setup-wizard-failed-de.png", "failed-de"),
             new("BulkOperations", true, "bulk-operations.png"),
             new("Documentation", true, "documentation.png"),
+            new("Documentation", true, "documentation-de.png", "ready-de"),
+            new("History", true, "history-de.png", "ready-de"),
             new("Welcome", false, "welcome-light.png"),
         };
 
@@ -232,12 +239,12 @@ namespace PhoneDesk.Tests
             var sharedState = provider.GetRequiredService<ISharedStateService>();
             var translation = provider.GetRequiredService<ITranslationService>();
 
-            translation.CurrentLanguage = string.Equals(scenario, "settings-de", StringComparison.Ordinal)
+            translation.CurrentLanguage = scenario.Contains("-de", StringComparison.Ordinal)
                 ? AppLanguage.German
                 : AppLanguage.English;
 
-            if (string.Equals(scenario, "ready", StringComparison.Ordinal)
-                || string.Equals(scenario, "failed", StringComparison.Ordinal))
+            if (scenario.StartsWith("ready", StringComparison.Ordinal)
+                || scenario.StartsWith("failed", StringComparison.Ordinal))
             {
                 sharedState.Variables = new PhoneManagerVariables
                 {

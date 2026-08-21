@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              mc:Ignorable="d"
              d:DesignHeight="700" d:DesignWidth="900">
@@ -25,10 +26,10 @@
                             <fi:SymbolIcon Symbol="History"/>
                         </Border>
                         <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center" Margin="14,0,0,0">
-                            <TextBlock Text="Operation History"
+                            <TextBlock Text="{loc:Translate Key=HistoryTitle}"
                                      Classes="page-title"
                                      Margin="0"/>
-                            <TextBlock Text="A persistent audit trail of operations performed against your tenants. Records are stored locally as JSON lines, one file per tenant."
+                            <TextBlock Text="{loc:Translate Key=HistorySubtitle}"
                                      TextWrapping="Wrap"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
@@ -39,21 +40,21 @@
                                 Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowClockwise"/>
-                                <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=CommonRefresh}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding OpenLogFolderCommand}"
                                 Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="FolderOpen"/>
-                                <TextBlock Text="Open Log Folder" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=HistoryOpenLogFolderAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ClearFiltersCommand}"
                                 Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Dismiss"/>
-                                <TextBlock Text="Clear Filters" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=HistoryClearFiltersAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -63,37 +64,37 @@
                 <Border Grid.Row="1" Classes="sunken" Margin="24,0,24,16" Padding="16,12">
                     <WrapPanel Orientation="Horizontal">
                         <StackPanel Margin="0,0,20,8" Spacing="4">
-                            <TextBlock Text="From" FontSize="11"
+                            <TextBlock Text="{loc:Translate Key=HistoryFromLabel}" FontSize="11"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <DatePicker SelectedDate="{Binding FromDate}"/>
                         </StackPanel>
                         <StackPanel Margin="0,0,20,8" Spacing="4">
-                            <TextBlock Text="To" FontSize="11"
+                            <TextBlock Text="{loc:Translate Key=HistoryToLabel}" FontSize="11"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <DatePicker SelectedDate="{Binding ToDate}"/>
                         </StackPanel>
                         <StackPanel Margin="0,0,20,8" Spacing="4">
-                            <TextBlock Text="Object" FontSize="11"
+                            <TextBlock Text="{loc:Translate Key=HistoryObjectLabel}" FontSize="11"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <TextBox Text="{Binding ObjectFilter}"
                                      MinWidth="180"
-                                     Watermark="Filter by object or operation"/>
+                                     Watermark="{loc:Translate Key=HistoryObjectFilterWatermark}"/>
                         </StackPanel>
                         <StackPanel Margin="0,0,20,8" Spacing="4">
-                            <TextBlock Text="Outcome" FontSize="11"
+                            <TextBlock Text="{loc:Translate Key=HistoryOutcomeLabel}" FontSize="11"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <ComboBox SelectedIndex="{Binding SelectedOutcomeIndex}" MinWidth="120">
-                                <ComboBoxItem Content="All"/>
-                                <ComboBoxItem Content="Success"/>
-                                <ComboBoxItem Content="Failure"/>
-                                <ComboBoxItem Content="Cancelled"/>
+                                <ComboBoxItem Content="{loc:Translate Key=CommonOutcomeAll}"/>
+                                <ComboBoxItem Content="{loc:Translate Key=CommonOutcomeSuccess}"/>
+                                <ComboBoxItem Content="{loc:Translate Key=CommonOutcomeFailure}"/>
+                                <ComboBoxItem Content="{loc:Translate Key=CommonOutcomeCancelled}"/>
                             </ComboBox>
                         </StackPanel>
                         <StackPanel Margin="0,0,0,8" Spacing="4" VerticalAlignment="Bottom">
-                            <TextBlock Text="Read operations" FontSize="11"
+                            <TextBlock Text="{loc:Translate Key=HistoryReadOperationsLabel}" FontSize="11"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <ToggleSwitch IsChecked="{Binding ShowReadOperations}"
-                                          OnContent="Shown" OffContent="Hidden"/>
+                                          OnContent="{loc:Translate Key=CommonShown}" OffContent="{loc:Translate Key=CommonHidden}"/>
                         </StackPanel>
                     </WrapPanel>
                 </Border>
@@ -117,12 +118,12 @@
                                     <Setter Property="Margin" Value="0,0,12,0"/>
                                 </Style>
                             </Grid.Styles>
-                            <TextBlock Grid.Column="0" Text="Time (UTC)"/>
-                            <TextBlock Grid.Column="1" Text="Operation"/>
-                            <TextBlock Grid.Column="2" Text="Target"/>
-                            <TextBlock Grid.Column="3" Text="Operator"/>
-                            <TextBlock Grid.Column="4" Text="Outcome"/>
-                            <TextBlock Grid.Column="5" Text="Kind"/>
+                            <TextBlock Grid.Column="0" Text="{loc:Translate Key=HistoryTimeUtcColumn}"/>
+                            <TextBlock Grid.Column="1" Text="{loc:Translate Key=HistoryOperationColumn}"/>
+                            <TextBlock Grid.Column="2" Text="{loc:Translate Key=HistoryTargetColumn}"/>
+                            <TextBlock Grid.Column="3" Text="{loc:Translate Key=HistoryOperatorColumn}"/>
+                            <TextBlock Grid.Column="4" Text="{loc:Translate Key=HistoryOutcomeColumn}"/>
+                            <TextBlock Grid.Column="5" Text="{loc:Translate Key=HistoryKindColumn}"/>
                         </Grid>
 
                         <Border Grid.Row="0" Height="1" VerticalAlignment="Bottom"
@@ -172,7 +173,7 @@
                                     <fi:SymbolIcon Symbol="History" FontSize="32"
                                                    HorizontalAlignment="Center"
                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                    <TextBlock Text="No matching audit records."
+                                    <TextBlock Text="{loc:Translate Key=HistoryNoMatchingAuditRecords}"
                                                HorizontalAlignment="Center"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
@@ -191,18 +192,32 @@
                         <fi:SymbolIcon Grid.Column="0" Symbol="Info" FontSize="14"
                                      VerticalAlignment="Center"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Grid.Column="1"
-                                 FontSize="12"
-                                 Margin="8,0,16,0"
-                                 TextTrimming="CharacterEllipsis"
-                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                 VerticalAlignment="Center"
-                                 Text="{Binding AuditLogDirectory, StringFormat='Log location: {0}'}"/>
-                        <TextBlock Grid.Column="2"
-                                 FontSize="12"
-                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                 VerticalAlignment="Center"
-                                 Text="{Binding VisibleCount, StringFormat='Showing {0}'}"/>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Margin="8,0,16,0">
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{loc:Translate Key=HistoryLogLocationLabel}"/>
+                            <TextBlock FontSize="12"
+                                       Margin="4,0,0,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding AuditLogDirectory}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{loc:Translate Key=HistoryShowingCountLabel}"/>
+                            <TextBlock FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding VisibleCount}"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>

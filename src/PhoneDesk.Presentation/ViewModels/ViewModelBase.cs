@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
+using PhoneDesk.Localization;
 using PhoneDesk.Audit;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
@@ -21,6 +22,8 @@ namespace PhoneDesk.ViewModels
         protected readonly IValidationService _validationService;
         protected readonly ISharedStateService? _sharedStateService;
         protected readonly IDialogService? _dialogService;
+        protected readonly ITranslationService? _translationService;
+        private static readonly TranslationCatalog EmptyTranslationCatalog = new(new Dictionary<UiTextKey, string>());
 
         /// <summary>
         /// Optional persistent audit sink. When supplied by the composition root, every PowerShell-backed
@@ -28,6 +31,8 @@ namespace PhoneDesk.ViewModels
         /// appends a record. Null in unit tests, where auditing is not under test.
         /// </summary>
         protected readonly IAuditLog? _auditLog;
+
+        public TranslationCatalog Text { get; }
 
         [ObservableProperty]
         private bool _isBusy;
@@ -111,7 +116,8 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService? sharedStateService = null,
             IDialogService? dialogService = null,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
         {
             _powerShellContextService = powerShellContextService;
             _powerShellCommandService = powerShellCommandService;
@@ -123,6 +129,8 @@ namespace PhoneDesk.ViewModels
             _sharedStateService = sharedStateService;
             _dialogService = dialogService;
             _auditLog = auditLog;
+            _translationService = translationService;
+            Text = translationService?.Text ?? EmptyTranslationCatalog;
         }
 
         protected void UpdateStatus(string message)

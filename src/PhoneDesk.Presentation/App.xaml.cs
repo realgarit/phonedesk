@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using PhoneDesk.Localization;
 using PhoneDesk.ViewModels;
 
 namespace PhoneDesk;
@@ -24,6 +25,9 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && Services is not null)
         {
+            var translationService = Services.GetRequiredService<ITranslationService>();
+            Resources["TranslationCatalog"] = translationService.Text;
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = Services.GetRequiredService<MainWindowViewModel>()

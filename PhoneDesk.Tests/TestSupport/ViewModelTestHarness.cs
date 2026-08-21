@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Moq;
+using PhoneDesk.Localization;
 using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
@@ -23,9 +24,26 @@ namespace PhoneDesk.Tests.TestSupport
         public Mock<IValidationService> ValidationService { get; } = new();
         public Mock<ISharedStateService> SharedStateService { get; } = new();
         public Mock<IDialogService> DialogService { get; } = new();
+        public ITranslationService TranslationService { get; }
 
         public ViewModelTestHarness()
         {
+            TranslationService = new TranslationService(
+                new InMemoryUserPreferencesStore(),
+                new Dictionary<AppLanguage, IReadOnlyDictionary<UiTextKey, string>>
+                {
+                    [AppLanguage.English] = new Dictionary<UiTextKey, string>
+                    {
+                        [UiTextKey.SettingsTitle] = "Settings",
+                        [UiTextKey.UpdateAvailable] = "Version {version} is available."
+                    },
+                    [AppLanguage.German] = new Dictionary<UiTextKey, string>
+                    {
+                        [UiTextKey.SettingsTitle] = "Einstellungen",
+                        [UiTextKey.UpdateAvailable] = "Version {version} ist verfügbar."
+                    }
+                });
+
             // Session: valid, not expired, so ExecutePowerShellCommandAsync's pre-flight check passes by default.
             SessionManager.SetupGet(s => s.IsSessionExpired).Returns(false);
             SessionManager.SetupGet(s => s.IsSessionValid).Returns(true);
@@ -95,6 +113,15 @@ namespace PhoneDesk.Tests.TestSupport
         {
             SessionManager.SetupGet(s => s.IsSessionExpired).Returns(true);
             SessionManager.SetupGet(s => s.IsSessionValid).Returns(true);
+        }
+
+        private sealed class InMemoryUserPreferencesStore : IUserPreferencesStore
+        {
+            public AppLanguage? LoadLanguage() => null;
+
+            public void SaveLanguage(AppLanguage language)
+            {
+            }
         }
     }
 }

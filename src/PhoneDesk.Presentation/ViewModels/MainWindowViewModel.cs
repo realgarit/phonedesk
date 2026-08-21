@@ -11,6 +11,7 @@ using PhoneDesk.Models;
 using FluentAvalonia.Styling;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using PhoneDesk.Localization;
 
 namespace PhoneDesk.ViewModels
 {
@@ -75,7 +76,10 @@ namespace PhoneDesk.ViewModels
 
             _availableUpdate = update;
             _updateReleaseUrl = update.ReleaseUrl;
-            UpdateBannerMessage = $"Version {update.LatestVersion} is available.";
+            UpdateBannerMessage = (_translationService?.Get(
+                UiTextKey.UpdateAvailable,
+                new Dictionary<string, object?> { ["version"] = update.LatestVersion }))
+                ?? $"Version {update.LatestVersion} is available.";
             CanInstallUpdate = _updateInstallerService.IsSupported && update.WindowsInstaller is not null;
             IsUpdateAvailable = true;
             IsUpdateBannerVisible = true;
@@ -390,9 +394,10 @@ namespace PhoneDesk.ViewModels
             IUpdateCheckService updateCheckService,
             IUpdateInstallerService updateInstallerService,
             IBundledModuleVersionService bundledModuleVersionService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _pageViewModelFactory = pageViewModelFactory;
             _updateCheckService = updateCheckService;

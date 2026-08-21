@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using PhoneDesk.Planning;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Services.ScriptBuilders;
@@ -49,6 +50,16 @@ class Program
         services.AddSingleton<IPowerShellContextService, PowerShellContextService>();
         services.AddSingleton<IMsalGraphAuthenticationService, MsalGraphAuthenticationService>();
         services.AddSingleton<ISharedStateService, SharedStateService>();
+        services.AddSingleton<IUserPreferencesStore, UserPreferencesStore>();
+        services.AddSingleton<ITranslationService>(_ => new TranslationService(
+            _.GetRequiredService<IUserPreferencesStore>(),
+            new Dictionary<AppLanguage, IReadOnlyDictionary<UiTextKey, string>>
+            {
+                [AppLanguage.English] = TranslationCatalogLoader.Load(
+                    new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.en.json")),
+                [AppLanguage.German] = TranslationCatalogLoader.Load(
+                    new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.de.json"))
+            }));
         services.AddSingleton<IUpdateCheckService, GitHubUpdateCheckService>();
         services.AddSingleton<IUpdateInstallerService, GitHubUpdateInstallerService>();
 

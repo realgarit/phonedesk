@@ -11,9 +11,13 @@ on:
         description: Release Please branch to validate
         required: false
         type: string
+      release_tag:
+        description: Existing draft release tag to rebuild after a failed release run
+        required: false
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || inputs.validate_ref || 'release' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || inputs.release_tag || inputs.validate_ref || 'release' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || inputs.validate_ref != '' }}
 
 jobs:
@@ -27,19 +31,61 @@ jobs:
       issues: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.version }}
+      release_created: ${{ steps.release.outputs.release_created || steps.recover.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name || steps.recover.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version || steps.recover.outputs.version }}
       release_sha: ${{ github.sha }}
     
     steps:
     - name: Create or update release pull request
       id: release
+      if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
       uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         config-file: release-please-config.json
         manifest-file: .release-please-manifest.json
+
+    - name: Checkout recovery source
+      if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+
+    - name: Recover existing draft release
+      id: recover
+      if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_TAG: ${{ inputs.release_tag }}
+      run: |
+        set -euo pipefail
+        if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::Release tag '$RELEASE_TAG' is not a stable semantic version."
+          exit 1
+        fi
+
+        VERSION="${RELEASE_TAG#v}"
+        bash scripts/validate-version-sync.sh "$VERSION"
+
+        MANIFEST_VERSION="$(jq -r '."."' .release-please-manifest.json)"
+        if [[ "$MANIFEST_VERSION" != "$VERSION" ]]; then
+          echo "::error::.release-please-manifest.json contains '$MANIFEST_VERSION', expected '$VERSION'."
+          exit 1
+        fi
+
+        TAG_SHA="$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')"
+        if [[ -z "$TAG_SHA" ]]; then
+          echo "::error::Release tag '$RELEASE_TAG' was not found on origin."
+          exit 1
+        fi
+
+        gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json databaseId --jq .databaseId > /dev/null
+
+        echo "release_created=true" >> "$GITHUB_OUTPUT"
+        echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
     - name: Start release pull request validation
       if: steps.release.outputs.prs_created == 'true'

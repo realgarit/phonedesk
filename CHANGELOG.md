@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.25.0](https://github.com/realgarit/phonedesk/compare/v3.24.2...v3.25.0) (2026-08-21)
+
+
+### Features
+
+* harden first-run onboarding ([95d9212](https://github.com/realgarit/phonedesk/commit/95d9212f21e5aea6c33e030f8ef7945541ac893b))
+* harden first-run onboarding ([f61a149](https://github.com/realgarit/phonedesk/commit/f61a14905e7cae6ffef460ec40a6b6e5670971c4))
+
 ## [3.24.2](https://github.com/realgarit/phonedesk/compare/v3.24.0...v3.24.2) (2026-08-10)
 
 

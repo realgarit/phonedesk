@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
+using PhoneDesk.Localization;
 using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Services
@@ -10,6 +11,37 @@ namespace PhoneDesk.Services
     public class DialogService : IDialogService
     {
         private static readonly FontFamily MonospaceFont = new("Cascadia Code, Consolas, Courier New, monospace");
+        private readonly ITranslationService? _translationService;
+
+        public DialogService(ITranslationService? translationService = null)
+        {
+            _translationService = translationService;
+        }
+
+        private string GetText(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
+
+        private static string FormatFallback(string template, IReadOnlyDictionary<string, object?>? parameters)
+        {
+            if (parameters is null || parameters.Count == 0)
+            {
+                return template;
+            }
+
+            var value = template;
+            foreach (var parameter in parameters)
+            {
+                value = value.Replace(
+                    "{" + parameter.Key + "}",
+                    parameter.Value?.ToString() ?? string.Empty,
+                    StringComparison.Ordinal);
+            }
+
+            return value;
+        }
 
         private Window? GetMainWindow()
         {
@@ -27,7 +59,7 @@ namespace PhoneDesk.Services
                 {
                     Title = title,
                     Content = message,
-                    PrimaryButtonText = "OK",
+                    PrimaryButtonText = GetText(UiTextKey.DialogOk, "OK"),
                     DefaultButton = ContentDialogButton.Primary
                 };
                 await dialog.ShowAsync(window);
@@ -47,8 +79,8 @@ namespace PhoneDesk.Services
                 {
                     Title = title,
                     Content = message,
-                    PrimaryButtonText = "OK",
-                    SecondaryButtonText = "Cancel",
+                    PrimaryButtonText = GetText(UiTextKey.DialogOk, "OK"),
+                    SecondaryButtonText = GetText(UiTextKey.DialogCancel, "Cancel"),
                     DefaultButton = ContentDialogButton.Primary
                 };
                 var result = await dialog.ShowAsync(window);
@@ -64,24 +96,8 @@ namespace PhoneDesk.Services
             var window = GetMainWindow();
             if (window == null) return false;
 
-            var panel = new StackPanel
-            {
-                Spacing = 8,
-                Children =
-                {
-                    new TextBlock { Text = "Review the PowerShell script that will be executed:", TextWrapping = TextWrapping.Wrap },
-                    CreateScriptViewer(script, maxHeight: 400, minHeight: 200)
-                }
-            };
-
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = panel,
-                PrimaryButtonText = "Execute",
-                SecondaryButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Secondary
-            };
+            var state = CreateScriptPreviewDialogForTesting(title, script);
+            var dialog = BuildScriptPreviewDialog(state, maxHeight: 400, minHeight: 200);
 
             var result = await dialog.ShowAsync(window);
             return result == ContentDialogResult.Primary;
@@ -92,6 +108,37 @@ namespace PhoneDesk.Services
             var window = GetMainWindow();
             if (window == null) return false;
 
+            var state = CreateConfirmationWithPreviewDialogForTesting(title, message, script);
+            var dialog = BuildConfirmationWithPreviewDialog(state, maxHeight: 300, minHeight: 150);
+
+            var result = await dialog.ShowAsync(window);
+            return result == ContentDialogResult.Primary;
+        }
+
+        private ContentDialog BuildScriptPreviewDialog(InspectableDialogState state, double maxHeight, double minHeight)
+        {
+            var panel = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = state.ChromeText, TextWrapping = TextWrapping.Wrap },
+                    CreateScriptViewer(state.ScriptBody, state.Watermark, maxHeight, minHeight)
+                }
+            };
+
+            return new ContentDialog
+            {
+                Title = state.Title,
+                Content = panel,
+                PrimaryButtonText = state.PrimaryButtonText,
+                SecondaryButtonText = state.SecondaryButtonText,
+                DefaultButton = ContentDialogButton.Secondary
+            };
+        }
+
+        private ContentDialog BuildConfirmationWithPreviewDialog(ConfirmationDialogState state, double maxHeight, double minHeight)
+        {
             var panel = new StackPanel
             {
                 Spacing = 8,
@@ -99,30 +146,27 @@ namespace PhoneDesk.Services
                 {
                     new TextBlock
                     {
-                        Text = message,
+                        Text = state.Message,
                         TextWrapping = TextWrapping.Wrap,
                         Foreground = Brushes.OrangeRed,
                         FontWeight = FontWeight.SemiBold
                     },
-                    new TextBlock { Text = "Script to be executed:", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) },
-                    CreateScriptViewer(script, maxHeight: 300, minHeight: 150)
+                    new TextBlock { Text = state.ChromeText, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) },
+                    CreateScriptViewer(state.ScriptBody, state.Watermark, maxHeight, minHeight)
                 }
             };
 
-            var dialog = new ContentDialog
+            return new ContentDialog
             {
-                Title = title,
+                Title = state.Title,
                 Content = panel,
-                PrimaryButtonText = "Confirm & Execute",
-                SecondaryButtonText = "Cancel",
+                PrimaryButtonText = state.PrimaryButtonText,
+                SecondaryButtonText = state.SecondaryButtonText,
                 DefaultButton = ContentDialogButton.Secondary
             };
-
-            var result = await dialog.ShowAsync(window);
-            return result == ContentDialogResult.Primary;
         }
 
-        private static ScrollViewer CreateScriptViewer(string script, double maxHeight, double minHeight)
+        private static ScrollViewer CreateScriptViewer(string script, string watermark, double maxHeight, double minHeight)
         {
             var textBox = new TextBox
             {
@@ -134,7 +178,7 @@ namespace PhoneDesk.Services
                 FontSize = 12,
                 MaxHeight = maxHeight,
                 MinHeight = minHeight,
-                Watermark = "PowerShell Script"
+                Watermark = watermark
             };
 
             return new ScrollViewer
@@ -144,5 +188,41 @@ namespace PhoneDesk.Services
                 VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
             };
         }
+
+        private InspectableDialogState CreateScriptPreviewDialogForTesting(string title, string script)
+            => new(
+                title,
+                GetText(UiTextKey.DialogExecute, "Execute"),
+                GetText(UiTextKey.DialogCancel, "Cancel"),
+                GetText(UiTextKey.DialogReviewPowerShellScript, "Review the PowerShell script that will be executed:"),
+                GetText(UiTextKey.DialogPowerShellScriptWatermark, "PowerShell Script"),
+                script);
+
+        private ConfirmationDialogState CreateConfirmationWithPreviewDialogForTesting(string title, string message, string script)
+            => new(
+                title,
+                message,
+                GetText(UiTextKey.DialogConfirmAndExecute, "Confirm & Execute"),
+                GetText(UiTextKey.DialogCancel, "Cancel"),
+                GetText(UiTextKey.DialogScriptToBeExecuted, "Script to be executed:"),
+                GetText(UiTextKey.DialogPowerShellScriptWatermark, "PowerShell Script"),
+                script);
+
+        private sealed record InspectableDialogState(
+            string Title,
+            string PrimaryButtonText,
+            string SecondaryButtonText,
+            string ChromeText,
+            string Watermark,
+            string ScriptBody);
+
+        private sealed record ConfirmationDialogState(
+            string Title,
+            string Message,
+            string PrimaryButtonText,
+            string SecondaryButtonText,
+            string ChromeText,
+            string Watermark,
+            string ScriptBody);
     }
 }

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 
@@ -16,9 +17,10 @@ namespace PhoneDesk.ViewModels
             INavigationService navigationService,
             IErrorHandlingService errorHandlingService,
             IValidationService validationService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
             _loggingService.Log("Welcome page loaded", LogLevel.Info);
         }

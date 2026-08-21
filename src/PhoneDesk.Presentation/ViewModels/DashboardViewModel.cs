@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Topology;
@@ -80,10 +81,11 @@ namespace PhoneDesk.ViewModels
             ITenantTopologyCache cache,
             ISharedStateService? sharedStateService = null,
             IDialogService? dialogService = null,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService,
-                  sharedStateService, dialogService, auditLog)
+                  sharedStateService, dialogService, auditLog, translationService)
         {
             _assembler = assembler;
             _cache = cache;

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.ScriptBuilders;
 using System;
@@ -48,9 +49,10 @@ namespace PhoneDesk.ViewModels
             ISharedStateService sharedStateService,
             IDialogService dialogService,
             IDocumentationScriptBuilder docBuilder,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _docBuilder = docBuilder;
             _loggingService.Log("Documentation page loaded", LogLevel.Info);

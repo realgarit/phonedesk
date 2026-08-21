@@ -7,6 +7,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Audit;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 
@@ -61,9 +62,10 @@ namespace PhoneDesk.ViewModels
             INavigationService navigationService,
             IErrorHandlingService errorHandlingService,
             IValidationService validationService,
-            IAuditLog auditLog)
+            IAuditLog auditLog,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
             _auditLogService = auditLog;
             AuditLogDirectory = auditLog.LogDirectoryPath;

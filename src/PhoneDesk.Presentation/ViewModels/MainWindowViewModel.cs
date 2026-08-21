@@ -181,9 +181,11 @@ namespace PhoneDesk.ViewModels
             }
 
             var confirmed = await _updateDialogService.ShowConfirmationAsync(
-                "Install update",
-                $"Download and install version {update.LatestVersion}? " +
-                "PhoneDesk will close and restart automatically.");
+                GetText(UiTextKey.MainInstallUpdateDialogTitle, "Install update"),
+                GetText(
+                    UiTextKey.MainInstallUpdateDialogMessage,
+                    "Download and install version {version}? PhoneDesk will close and restart automatically.",
+                    new Dictionary<string, object?> { ["version"] = update.LatestVersion }));
             if (!confirmed)
             {
                 return;
@@ -234,7 +236,9 @@ namespace PhoneDesk.ViewModels
             {
                 SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
                 _loggingService.Log($"Update installation failed: {ex.Message}", LogLevel.Error);
-                await _updateDialogService.ShowMessageAsync("Update failed", ex.Message);
+                await _updateDialogService.ShowMessageAsync(
+                    GetText(UiTextKey.MainUpdateFailedTitle, "Update failed"),
+                    ex.Message);
             }
             finally
             {
@@ -633,7 +637,7 @@ namespace PhoneDesk.ViewModels
             _loggingService.Log("Log viewer closed", LogLevel.Info);
         }
 
-        private string GetText(
+        private new string GetText(
             UiTextKey key,
             string fallback,
             IReadOnlyDictionary<string, object?>? parameters = null)

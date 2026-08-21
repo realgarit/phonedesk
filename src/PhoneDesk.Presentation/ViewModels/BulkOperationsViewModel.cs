@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.ScriptBuilders;
 using PhoneDesk.Models;
@@ -70,9 +71,10 @@ namespace PhoneDesk.ViewModels
             BulkOperationsScriptBuilder bulkBuilder,
             IDryRunPlanBuilder? planBuilder = null,
             IDryRunPlanExporter? planExporter = null,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _bulkBuilder = bulkBuilder;
             _planBuilder = planBuilder;

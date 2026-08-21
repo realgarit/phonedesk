@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Models;
 using System;
@@ -64,9 +65,10 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _loggingService.Log("Call Queues page loaded", LogLevel.Info);
 

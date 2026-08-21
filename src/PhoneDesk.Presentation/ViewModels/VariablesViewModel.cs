@@ -11,6 +11,7 @@ using System.Text.Json;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using PhoneDesk.Helpers;
+using PhoneDesk.Localization;
 
 namespace PhoneDesk.ViewModels
 {
@@ -191,9 +192,10 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _loggingService.Log("Variables page loaded", LogLevel.Info);
 

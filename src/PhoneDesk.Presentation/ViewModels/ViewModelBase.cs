@@ -86,8 +86,8 @@ namespace PhoneDesk.ViewModels
         {
             if (_operationCts is { IsCancellationRequested: false })
             {
-                _loggingService.Log("Cancellation requested by user", LogLevel.Info);
-                StatusMessage = "Cancelling…";
+                LogLocalized(UiTextKey.RuntimeCancellationRequestedLog, "Cancellation requested by user", LogLevel.Info);
+                StatusMessage = GetText(UiTextKey.RuntimeCancelling, "Cancelling…");
                 _operationCts.Cancel();
             }
         }
@@ -133,10 +133,62 @@ namespace PhoneDesk.ViewModels
             Text = translationService?.Text ?? EmptyTranslationCatalog;
         }
 
+        protected string GetText(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
+
         protected void UpdateStatus(string message)
         {
             StatusMessage = message;
             LogMessage = $"{DateTime.Now:HH:mm:ss} - {message}";
+        }
+
+        protected void UpdateStatus(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => UpdateStatus(GetText(key, fallback, parameters));
+
+        protected void SetWaiting(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => WaitingMessage = GetText(key, fallback, parameters);
+
+        protected void LogLocalized(
+            UiTextKey key,
+            string fallback,
+            LogLevel level,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => _loggingService.Log(GetText(key, fallback, parameters), level);
+
+        protected string FormatError(string error)
+            => GetText(
+                UiTextKey.RuntimeErrorWithDetails,
+                "Error: {error}",
+                new Dictionary<string, object?> { ["error"] = error });
+
+        private static string FormatFallback(
+            string template,
+            IReadOnlyDictionary<string, object?>? parameters)
+        {
+            if (parameters is null || parameters.Count == 0)
+            {
+                return template;
+            }
+
+            var value = template;
+            foreach (var parameter in parameters)
+            {
+                value = value.Replace(
+                    "{" + parameter.Key + "}",
+                    parameter.Value?.ToString() ?? string.Empty,
+                    StringComparison.Ordinal);
+            }
+
+            return value;
         }
 
         /// <summary>
@@ -169,10 +221,12 @@ namespace PhoneDesk.ViewModels
                 _sessionManager.ResetSession();
                 await _errorHandlingService.HandleConnectionError(
                     "Session",
-                    "Your session has expired (24h timeout). Please reconnect to Teams and Microsoft Graph.");
+                    GetText(
+                        UiTextKey.RuntimeSessionExpiredMessage,
+                        "Your session has expired (24h timeout). Please reconnect to Teams and Microsoft Graph."));
                 return PowerShellOperationResultMapper.Failure(
                     OperationErrorCategory.AuthSession,
-                    "Session expired. Please reconnect.",
+                    GetText(UiTextKey.RuntimeSessionExpiredShort, "Session expired. Please reconnect."),
                     "ERROR: Session expired. Please reconnect.");
             }
 
@@ -224,12 +278,16 @@ namespace PhoneDesk.ViewModels
             {
                 // User cancelled: this is not an error, so we deliberately do NOT raise the error dialog.
                 // The runspace remains reusable, so the next operation runs normally.
-                _loggingService.Log($"Operation cancelled: {context}", LogLevel.Warning);
-                StatusMessage = "Operation cancelled.";
+                LogLocalized(
+                    UiTextKey.RuntimeOperationCancelledLog,
+                    "Operation cancelled: {context}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["context"] = context });
+                StatusMessage = GetText(UiTextKey.RuntimeOperationCancelled, "Operation cancelled.");
                 RecordAudit(context, environmentVariables, allowThrottleRetry, AuditOutcome.Cancelled, null, correlationId: null);
                 return PowerShellOperationResultMapper.Failure(
                     OperationErrorCategory.Cancelled,
-                    "Operation cancelled by user.",
+                    GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user."),
                     "ERROR: Operation cancelled by user.");
             }
             catch (Exception ex)
@@ -355,7 +413,7 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
+                StatusMessage = FormatError(ex.Message);
                 _loggingService.Log($"Exception in {context}: {ex}", LogLevel.Error);
             }
             finally
@@ -412,10 +470,19 @@ namespace PhoneDesk.ViewModels
         {
             if (_dialogService != null && !(_sharedStateService?.SkipScriptPreview ?? false))
             {
-                var confirmed = await _dialogService.ShowScriptPreviewAsync($"Preview: {context}", command);
+                var confirmed = await _dialogService.ShowScriptPreviewAsync(
+                    GetText(
+                        UiTextKey.DialogPreviewTitle,
+                        "Preview: {context}",
+                        new Dictionary<string, object?> { ["context"] = context }),
+                    command);
                 if (!confirmed)
                 {
-                    _loggingService.Log($"User cancelled script preview for: {context}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.RuntimeScriptPreviewCancelledLog,
+                        "User cancelled script preview for: {context}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["context"] = context });
                     return null;
                 }
             }
@@ -432,12 +499,19 @@ namespace PhoneDesk.ViewModels
             if (_dialogService != null && !(_sharedStateService?.SkipDeleteConfirmation ?? false))
             {
                 var confirmed = await _dialogService.ShowConfirmationWithPreviewAsync(
-                    $"Confirm: {context}",
+                    GetText(
+                        UiTextKey.DialogConfirmTitle,
+                        "Confirm: {context}",
+                        new Dictionary<string, object?> { ["context"] = context }),
                     confirmMessage,
                     command);
                 if (!confirmed)
                 {
-                    _loggingService.Log($"User cancelled destructive operation: {context}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.RuntimeDestructiveOperationCancelledLog,
+                        "User cancelled destructive operation: {context}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["context"] = context });
                     return null;
                 }
             }

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json;
 using PhoneDesk.Localization;
 using PhoneDesk.Services.Interfaces;
 
@@ -59,6 +60,50 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void ShellCatalogContainsRequiredSemanticEnglishAndGermanEntries()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var englishCatalog = LoadCatalog(Path.Combine(
+            repositoryRoot,
+            "src",
+            "PhoneDesk.Presentation",
+            "Resources",
+            "Localization",
+            "Strings.en.json"));
+        var germanCatalog = LoadCatalog(Path.Combine(
+            repositoryRoot,
+            "src",
+            "PhoneDesk.Presentation",
+            "Resources",
+            "Localization",
+            "Strings.de.json"));
+
+        Assert.Equal("Readiness Check", englishCatalog[UiTextKey.MainNavigationReadinessCheck]);
+        Assert.Equal("Configuration", englishCatalog[UiTextKey.MainNavigationConfiguration]);
+        Assert.Equal("Tenant Report", englishCatalog[UiTextKey.MainNavigationTenantReport]);
+        Assert.Equal("Audit Log", englishCatalog[UiTextKey.MainNavigationAuditLog]);
+        Assert.Equal("Guided Setup", englishCatalog[UiTextKey.MainNavigationGuidedSetup]);
+        Assert.Equal("Language", englishCatalog[UiTextKey.SettingsLanguageSectionTitle]);
+        Assert.Equal("English", englishCatalog[UiTextKey.SettingsLanguageEnglish]);
+        Assert.Equal("Deutsch", englishCatalog[UiTextKey.SettingsLanguageGerman]);
+        Assert.Equal("Open", englishCatalog[UiTextKey.MainActionOpenAuditLogFolder]);
+        Assert.Equal("Install update", englishCatalog[UiTextKey.UpdateInstallAction]);
+        Assert.Equal("View release", englishCatalog[UiTextKey.UpdateViewReleaseAction]);
+
+        Assert.Equal("Bereitschaftscheck", germanCatalog[UiTextKey.MainNavigationReadinessCheck]);
+        Assert.Equal("Konfiguration", germanCatalog[UiTextKey.MainNavigationConfiguration]);
+        Assert.Equal("Mandantenbericht", germanCatalog[UiTextKey.MainNavigationTenantReport]);
+        Assert.Equal("Prüfprotokoll", germanCatalog[UiTextKey.MainNavigationAuditLog]);
+        Assert.Equal("Geführte Einrichtung", germanCatalog[UiTextKey.MainNavigationGuidedSetup]);
+        Assert.Equal("Sprache", germanCatalog[UiTextKey.SettingsLanguageSectionTitle]);
+        Assert.Equal("English", germanCatalog[UiTextKey.SettingsLanguageEnglish]);
+        Assert.Equal("Deutsch", germanCatalog[UiTextKey.SettingsLanguageGerman]);
+        Assert.Equal("Öffnen", germanCatalog[UiTextKey.MainActionOpenAuditLogFolder]);
+        Assert.Equal("Update installieren", germanCatalog[UiTextKey.UpdateInstallAction]);
+        Assert.Equal("Release öffnen", germanCatalog[UiTextKey.UpdateViewReleaseAction]);
+    }
+
+    [Fact]
     public void MissingCatalogKeyThrowsClearException()
     {
         var service = new TranslationService(
@@ -107,5 +152,32 @@ public sealed class LocalizationServiceTests
         public AppLanguage? LoadLanguage() => SavedLanguage;
 
         public void SaveLanguage(AppLanguage language) => SavedLanguage = language;
+    }
+
+    private static Dictionary<UiTextKey, string> LoadCatalog(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var document = JsonDocument.Parse(stream);
+        return document.RootElement
+            .EnumerateObject()
+            .ToDictionary(
+                property => Enum.Parse<UiTextKey>(property.Name, ignoreCase: false),
+                property => property.Value.GetString() ?? string.Empty);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "phonedesk.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the repository root from the test output directory.");
     }
 }

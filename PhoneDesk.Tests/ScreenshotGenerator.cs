@@ -17,6 +17,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using PhoneDesk;
+using PhoneDesk.Localization;
 using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
@@ -64,6 +65,8 @@ namespace PhoneDesk.Tests
 
         private static readonly Shot[] Shots =
         {
+            new("Welcome", true, "shell-settings-en.png", "settings-en"),
+            new("Welcome", true, "shell-settings-de.png", "settings-de"),
             new("Welcome", true, "welcome.png"),
             new("GetStarted", true, "get-started.png"),
             new("GetStarted", true, "get-started-ready.png", "ready"),
@@ -105,6 +108,7 @@ namespace PhoneDesk.Tests
 
             using var provider = BuildProvider();
             ((App)Application.Current!).Services = provider;
+            Application.Current.Resources["TranslationCatalog"] = provider.GetRequiredService<ITranslationService>().Text;
 
             var vm = provider.GetRequiredService<MainWindowViewModel>();
             var window = new MainWindow
@@ -226,6 +230,11 @@ namespace PhoneDesk.Tests
         {
             var session = provider.GetRequiredService<ISessionManager>();
             var sharedState = provider.GetRequiredService<ISharedStateService>();
+            var translation = provider.GetRequiredService<ITranslationService>();
+
+            translation.CurrentLanguage = string.Equals(scenario, "settings-de", StringComparison.Ordinal)
+                ? AppLanguage.German
+                : AppLanguage.English;
 
             if (string.Equals(scenario, "ready", StringComparison.Ordinal)
                 || string.Equals(scenario, "failed", StringComparison.Ordinal))
@@ -260,6 +269,13 @@ namespace PhoneDesk.Tests
 
         private static void ApplyPostNavigationScenario(MainWindowViewModel mainWindowViewModel, string scenario)
         {
+            if (string.Equals(scenario, "settings-en", StringComparison.Ordinal)
+                || string.Equals(scenario, "settings-de", StringComparison.Ordinal))
+            {
+                mainWindowViewModel.IsSettingsOpen = true;
+                return;
+            }
+
             if (!string.Equals(scenario, "failed", StringComparison.Ordinal)
                 || mainWindowViewModel.CurrentViewModel is not WizardViewModel wizard)
             {

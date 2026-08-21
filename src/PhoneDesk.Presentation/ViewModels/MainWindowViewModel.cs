@@ -374,8 +374,29 @@ namespace PhoneDesk.ViewModels
             }
         }
 
+        public AppLanguage CurrentLanguage
+        {
+            get => _translationService?.CurrentLanguage ?? AppLanguage.English;
+            set
+            {
+                if (_translationService is null || _translationService.CurrentLanguage == value)
+                {
+                    return;
+                }
+
+                _translationService.CurrentLanguage = value;
+            }
+        }
+
+        public IReadOnlyList<LanguageOption> LanguageOptions =>
+        [
+            new(AppLanguage.English, GetText(UiTextKey.SettingsLanguageEnglish, "English")),
+            new(AppLanguage.German, GetText(UiTextKey.SettingsLanguageGerman, "Deutsch"))
+        ];
+
         /// <summary>The directory where per-tenant audit log files are stored (shown in Settings).</summary>
-        public string AuditLogDirectory => _auditLog?.LogDirectoryPath ?? "Audit log not available";
+        public string AuditLogDirectory => _auditLog?.LogDirectoryPath
+            ?? GetText(UiTextKey.SettingsAuditLogUnavailable, "Audit log not available");
 
         [RelayCommand]
         private void OpenAuditFolder()
@@ -433,9 +454,24 @@ namespace PhoneDesk.ViewModels
         {
             get
             {
-                var teams = _sessionManager.TeamsConnected ? "Connected" : "Disconnected";
-                var graph = _sessionManager.GraphConnected ? "Connected" : "Disconnected";
-                return $"Teams: {teams} | Graph: {graph}";
+                var teams = GetText(
+                    _sessionManager.TeamsConnected
+                        ? UiTextKey.MainConnectionStatusConnected
+                        : UiTextKey.MainConnectionStatusDisconnected,
+                    _sessionManager.TeamsConnected ? "Connected" : "Disconnected");
+                var graph = GetText(
+                    _sessionManager.GraphConnected
+                        ? UiTextKey.MainConnectionStatusConnected
+                        : UiTextKey.MainConnectionStatusDisconnected,
+                    _sessionManager.GraphConnected ? "Connected" : "Disconnected");
+                return GetText(
+                    UiTextKey.MainConnectionStatusSummary,
+                    "Teams: {teamsStatus} | Graph: {graphStatus}",
+                    new Dictionary<string, object?>
+                    {
+                        ["teamsStatus"] = teams,
+                        ["graphStatus"] = graph
+                    });
             }
         }
 
@@ -511,9 +547,17 @@ namespace PhoneDesk.ViewModels
 
             _translationPropertyHandler = (s, e) =>
             {
-                if (e.PropertyName == nameof(ITranslationService.CurrentLanguage) && IsUpdateBannerVisible)
+                if (e.PropertyName == nameof(ITranslationService.CurrentLanguage))
                 {
-                    RefreshUpdateBannerMessage();
+                    if (IsUpdateBannerVisible)
+                    {
+                        RefreshUpdateBannerMessage();
+                    }
+
+                    OnPropertyChanged(nameof(CurrentLanguage));
+                    OnPropertyChanged(nameof(LanguageOptions));
+                    OnPropertyChanged(nameof(ConnectionStatusText));
+                    OnPropertyChanged(nameof(AuditLogDirectory));
                 }
             };
             _translationService?.PropertyChanged += _translationPropertyHandler;
@@ -588,6 +632,14 @@ namespace PhoneDesk.ViewModels
             IsLogDialogOpen = false;
             _loggingService.Log("Log viewer closed", LogLevel.Info);
         }
+
+        private string GetText(
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
+
+        public sealed record LanguageOption(AppLanguage Language, string Label);
 
         public void Dispose()
         {

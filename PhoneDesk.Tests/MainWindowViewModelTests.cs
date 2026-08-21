@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Moq;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Tests.TestSupport;
@@ -254,6 +256,48 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void CurrentLanguage_StartsInEnglish()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness);
+
+            Assert.Equal(AppLanguage.English, vm.CurrentLanguage);
+        }
+
+        [Fact]
+        public void CurrentLanguage_SettingGermanPersistsChoiceAndRaisesNotification()
+        {
+            var store = new TrackingUserPreferencesStore();
+            var translationService = CreateTranslationService(store);
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness, translationService);
+            var notifications = new List<string?>();
+            vm.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
+
+            vm.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal(AppLanguage.German, vm.CurrentLanguage);
+            Assert.Equal(AppLanguage.German, translationService.CurrentLanguage);
+            Assert.Equal(AppLanguage.German, store.SavedLanguage);
+            Assert.Equal(1, store.SaveCount);
+            Assert.Contains(nameof(MainWindowViewModel.CurrentLanguage), notifications);
+        }
+
+        [Fact]
+        public void CurrentLanguage_SettingSameLanguageTwiceDoesNotPersistRepeatedly()
+        {
+            var store = new TrackingUserPreferencesStore();
+            var translationService = CreateTranslationService(store);
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness, translationService);
+
+            vm.CurrentLanguage = AppLanguage.German;
+            vm.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal(1, store.SaveCount);
+        }
+
+        [Fact]
         public void CloseSettingsCommand_ClosesSettingsPanel()
         {
             var harness = new ViewModelTestHarness();
@@ -353,6 +397,65 @@ namespace PhoneDesk.Tests
             var exception = Record.Exception(() => vm.Dispose());
 
             Assert.Null(exception);
+        }
+
+        private MainWindowViewModel CreateViewModel(ViewModelTestHarness harness, ITranslationService translationService)
+        {
+            harness.LoggingService.SetupGet(l => l.LogEntries).Returns(new ObservableCollection<string>());
+
+            return new MainWindowViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                _pageViewModelFactory.Object,
+                _updateCheckService.Object,
+                _updateInstallerService.Object,
+                _bundledModuleVersionService.Object,
+                translationService: translationService);
+        }
+
+        private static ITranslationService CreateTranslationService(TrackingUserPreferencesStore store)
+            => new TranslationService(
+                store,
+                new Dictionary<AppLanguage, IReadOnlyDictionary<UiTextKey, string>>
+                {
+                    [AppLanguage.English] = new Dictionary<UiTextKey, string>
+                    {
+                        [UiTextKey.SettingsTitle] = "Settings",
+                        [UiTextKey.UpdateAvailable] = "Version {version} is available.",
+                        [UiTextKey.UpdateDownloading] = "Downloading version {version}...",
+                        [UiTextKey.UpdateDownloadingProgress] = "Downloading version {version}... {progress}%",
+                        [UiTextKey.UpdateStartingInstaller] = "Starting the verified installer..."
+                    },
+                    [AppLanguage.German] = new Dictionary<UiTextKey, string>
+                    {
+                        [UiTextKey.SettingsTitle] = "Einstellungen",
+                        [UiTextKey.UpdateAvailable] = "Version {version} ist verfügbar.",
+                        [UiTextKey.UpdateDownloading] = "Version {version} wird heruntergeladen...",
+                        [UiTextKey.UpdateDownloadingProgress] = "Version {version} wird heruntergeladen... {progress}%",
+                        [UiTextKey.UpdateStartingInstaller] = "Das verifizierte Installationsprogramm wird gestartet..."
+                    }
+                });
+
+        private sealed class TrackingUserPreferencesStore : IUserPreferencesStore
+        {
+            public AppLanguage? SavedLanguage { get; private set; }
+
+            public int SaveCount { get; private set; }
+
+            public AppLanguage? LoadLanguage() => SavedLanguage;
+
+            public void SaveLanguage(AppLanguage language)
+            {
+                SavedLanguage = language;
+                SaveCount++;
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Completed.
+Completed with Fix Round 1 applied on top of `951ca13`.
 
 ## Scope executed
 
@@ -52,7 +52,7 @@ Allowed cases:
 - `{Binding ...}`
 - `{DynamicResource ...}`
 - `{x:Static ...}`
-- values using `StringFormat=`
+- bindings whose `StringFormat=` resolves to placeholder-only formatting or a nested non-literal markup expression
 - raw `PhoneDesk`
 - raw wizard step numerals `1` to `4`
 
@@ -92,13 +92,18 @@ Result:
 
 Expanded `UiTextKey` for the Task 4 surface so the seven views could use typed `TranslateExtension` bindings.
 
-Current counts after implementation:
+Reviewer-corrected parity for the original Task 4 shared enum/catalog surface at commit `951ca13`:
 
-- `UiTextKey` enum entries: 280
-- English catalog keys: 281
-- German catalog keys: 281
+- shared `UiTextKey` + English catalog + German catalog entries: `281 / 281 / 281`
 
-Catalog counts are intentionally equal; both catalogs remain aligned.
+Verification method:
+
+- computed the normalized intersection of enum entries and both catalog key sets instead of relying on the stale handwritten statement
+
+Fix Round 1 follow-up:
+
+- added the six missing German catalog entries required by the Variables/Dashboard bindings exposed by the strengthened coverage test
+- post-fix full-file parity is now `287 / 287 / 287`
 
 ### Catalogs
 
@@ -152,7 +157,7 @@ These remain Task 6 unless the literal was fixed directly in page XAML.
 Behavioral scope of the test-only change:
 
 - add German screenshot scenarios
-- reuse existing ready/failed state setup
+- reuse the same failed Wizard setup for `failed-de` that already existed for `failed`
 - switch locale to German when scenario name ends with `-de`
 
 No production behavior was changed.
@@ -189,6 +194,8 @@ Inspection result:
 
 - all rendered successfully
 - localized fixed page labels/buttons/headers were present
+- `variables-de.png` stayed visually clean on the German general-configuration surface; the greeting/call-flow wording corrections themselves live deeper in Variables dialogs and were verified from the updated XAML plus coverage checks
+- `setup-wizard-failed-de.png` now shows the failed Wizard state in German instead of the ready-state content
 - no blocking clipping, overlap, or alignment defects found in the inspected screenshots
 
 Observed but out of scope for Task 4:
@@ -214,25 +221,20 @@ Results:
 Result:
 
 - passed
-- `Failed: 0, Passed: 573, Skipped: 0, Total: 573`
+- `Failed: 0, Passed: 577, Skipped: 0, Total: 577`
 
-## Changed files
+## Fix Round 1 changed files
 
 - `PhoneDesk.Tests/LocalizationCoverageTests.cs`
 - `PhoneDesk.Tests/ScreenshotGenerator.cs`
 - `src/PhoneDesk.Presentation/Localization/UiTextKey.cs`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.en.json`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.de.json`
-- `src/PhoneDesk.Presentation/Views/WelcomeView.axaml`
-- `src/PhoneDesk.Presentation/Views/GetStartedView.axaml`
-- `src/PhoneDesk.Presentation/Views/WizardView.axaml`
 - `src/PhoneDesk.Presentation/Views/VariablesView.axaml`
 - `src/PhoneDesk.Presentation/Views/DashboardView.axaml`
-- `src/PhoneDesk.Presentation/Views/DocumentationView.axaml`
-- `src/PhoneDesk.Presentation/Views/HistoryView.axaml`
 
 ## Commit
 
-Planned commit message:
+- Fix Round 1 commit message:
 
-- `feat: localize onboarding and reporting pages`
+- `fix: address Task 4 localization review`

@@ -284,6 +284,7 @@ namespace PhoneDesk.Tests
             }
 
             if (!string.Equals(scenario, "failed", StringComparison.Ordinal)
+                && !string.Equals(scenario, "failed-de", StringComparison.Ordinal)
                 || mainWindowViewModel.CurrentViewModel is not WizardViewModel wizard)
             {
                 return;

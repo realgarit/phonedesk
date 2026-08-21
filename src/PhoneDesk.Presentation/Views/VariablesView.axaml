@@ -370,10 +370,18 @@
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,8,4,8">
                                     <Grid>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Variables.Customer, StringFormat=hd-\{0\}-, FallbackValue=hd-}" 
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCustomerPrefix}" 
                                                        Opacity="0.7"
                                                        VerticalAlignment="Center"
                                                        Margin="12,0,4,0"/>
+                                            <TextBlock Text="{Binding Variables.Customer}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding Variables.Customer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCustomerSuffix}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding Variables.Customer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                             <TextBox Text="{Binding Variables.HolidayNameSuffix}"
                                                      Background="Transparent"
                                                      MinWidth="200"
@@ -388,10 +396,16 @@
                                         <StackPanel Orientation="Horizontal">
                                             <fi:SymbolIcon  Symbol="Calendar"/>
                                             <TextBlock Text="{loc:Translate Key=VariablesManageHolidaySeriesAction}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Variables.HolidaySeries.Count, StringFormat=' ({0} holidays)'}"
-                                                     Margin="8,0,0,0"
-                                                     Opacity="0.7"
-                                                     VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCountPrefix}"
+                                                       Margin="8,0,0,0"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Variables.HolidaySeries.Count}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCountSuffix}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                     <TextBlock Text="{loc:Translate Key=VariablesManageHolidaySeriesHint}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
@@ -655,10 +669,15 @@
                                                     <TextBlock Text="{Binding DisplayText}"
                                                              FontSize="16"
                                                              FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{Binding Name, StringFormat='Holiday: {0}'}"
-                                                             FontSize="12"
-                                                             Opacity="0.7"
-                                                             IsVisible="{Binding Name, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                    <StackPanel Orientation="Horizontal"
+                                                                IsVisible="{Binding Name, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="{loc:Translate Key=VariablesHolidayNamePrefix}"
+                                                                   FontSize="12"
+                                                                   Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontSize="12"
+                                                                   Opacity="0.7"/>
+                                                    </StackPanel>
                                                 </StackPanel>
                                                 <Button Grid.Column="1"
                                                         Command="{Binding DataContext.EditHolidayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1071,7 +1090,7 @@
                                 <TextBlock Text="{loc:Translate Key=VariablesGreetingAndMusicTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding GreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.CqGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1106,7 +1125,7 @@
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.CqGreetingTextToSpeechPrompt}"
                                                  Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>
@@ -1220,7 +1239,7 @@
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowOverflowVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqOverflowActionTextToSpeechPrompt}"
                                                      Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
@@ -1294,7 +1313,7 @@
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowTimeoutVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqTimeoutActionTextToSpeechPrompt}"
                                                      Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
@@ -1363,7 +1382,7 @@
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowNoAgentVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqNoAgentActionTextToSpeechPrompt}"
                                                      Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
@@ -1432,7 +1451,7 @@
                                 <TextBlock Text="{loc:Translate Key=VariablesDefaultCallFlowBusinessHoursTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaGreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.AaDefaultGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1467,7 +1486,7 @@
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaDefaultGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaDefaultGreetingTextToSpeechPrompt}"
                                                  Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>
@@ -1497,7 +1516,7 @@
                                 <TextBlock Text="{loc:Translate Key=VariablesAfterHoursCallFlowTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaGreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.AaAfterHoursGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1532,7 +1551,7 @@
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaAfterHoursGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="{loc:Translate Key=CommonTextToSpeechPrompt}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaAfterHoursGreetingTextToSpeechPrompt}"
                                                  Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>

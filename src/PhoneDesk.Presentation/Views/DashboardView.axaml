@@ -153,9 +153,16 @@
                                                 <TextBlock Grid.Column="1" Text="{Binding RoutingMethod}" FontSize="12" Margin="10,0,0,0"
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                <TextBlock Grid.Column="2" FontSize="12" Margin="10,0,0,0"
-                                                           Text="{Binding AgentAlertTime, StringFormat='{}{0}s'}"
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                <StackPanel Grid.Column="2"
+                                                            Orientation="Horizontal"
+                                                            Margin="10,0,0,0">
+                                                    <TextBlock Text="{Binding AgentAlertTime}"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <TextBlock Text="{loc:Translate Key=DashboardSecondsAbbreviation}"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                </StackPanel>
                                             </Grid>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>

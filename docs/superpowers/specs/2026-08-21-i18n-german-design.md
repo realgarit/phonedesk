@@ -61,7 +61,7 @@ ASD-STE100 is an English controlled-language standard, not a German translation 
 
 ### A. Strongly typed in-repository catalog — selected
 
-Use a `UiTextKey` enum, JSON catalogs for `en` and `de`, and a singleton translation service with an observable typed catalog. XAML binds to typed catalog properties; ViewModels request formatted text through `UiTextKey` values.
+Use a `UiTextKey` enum, JSON catalogs for `en` and `de`, and a singleton translation service with an observable typed catalog. XAML uses a `TranslateExtension` whose `Key` property is `UiTextKey`; ViewModels request formatted text through `UiTextKey` values.
 
 Advantages:
 
@@ -94,7 +94,8 @@ Create a presentation-owned localization area:
 - `Strings.en.json` is the source/default catalog.
 - `Strings.de.json` contains exactly the same keys.
 - Values may contain named placeholders such as `{version}`, `{count}`, or `{name}`. Placeholder names and multiplicity must match between languages.
-- `TranslationCatalog` exposes typed properties for XAML and a typed `Get(UiTextKey, IReadOnlyDictionary<string, object?>?)` method for formatted ViewModel text.
+- `TranslationCatalog` exposes an enum indexer and a typed `Get(UiTextKey, IReadOnlyDictionary<string, object?>?)` method for formatted ViewModel text.
+- `TranslateExtension` accepts only `UiTextKey` and returns a live binding to the observable catalog. This avoids string key paths in XAML while still updating when the language changes.
 - The catalog exposes language-neutral product names separately where they are intentionally not translated.
 
 ### Runtime service

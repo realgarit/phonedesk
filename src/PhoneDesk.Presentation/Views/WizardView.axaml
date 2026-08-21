@@ -16,6 +16,16 @@
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <Style Selector="Border.wizard-guidance">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+    </UserControl.Styles>
+
     <Grid>
         <Border Classes="card" Margin="0">
             <Grid>
@@ -43,7 +53,7 @@
                                      FontSize="17"
                                      FontWeight="SemiBold"
                                      Margin="0,0,0,4"/>
-                            <TextBlock Text="Step-by-step phone system setup"
+                            <TextBlock Text="A safe, reviewable setup for each customer"
                                      FontSize="12"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                      TextWrapping="Wrap"/>
@@ -94,19 +104,23 @@
                                     CornerRadius="16"
                                     Width="32" Height="32"
                                     HorizontalAlignment="Left">
-                                <TextBlock Text="{Binding CurrentStep, StringFormat={}{0}}"
+                                <TextBlock Text="{Binding StepNumberBadgeText}"
                                          Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
                                          FontWeight="Bold"
                                          FontSize="14"
                                          HorizontalAlignment="Center"
                                          VerticalAlignment="Center"/>
                             </Border>
-                            <TextBlock Text="{Binding StepTitle}"
-                                     FontFamily="{StaticResource DisplayFontFamily}"
-                                     FontSize="21"
-                                     FontWeight="SemiBold"
-                                     LetterSpacing="-0.2"
-                                     VerticalAlignment="Center"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="1">
+                                <TextBlock Text="{Binding StepNumberText}"
+                                         FontSize="11"
+                                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="{Binding StepTitle}"
+                                         FontFamily="{StaticResource DisplayFontFamily}"
+                                         FontSize="21"
+                                         FontWeight="SemiBold"
+                                         LetterSpacing="-0.2"/>
+                            </StackPanel>
                         </StackPanel>
                         <TextBlock Text="{Binding StepDescription}"
                                  FontSize="14"
@@ -119,7 +133,7 @@
                     <Grid Grid.Row="1" Margin="0,0,0,16">
                         <ProgressBar Minimum="0"
                                      Maximum="{Binding TotalSteps}"
-                                     Value="{Binding CurrentStep}"
+                                     Value="{Binding WizardProgressValue}"
                                      Height="4"/>
                     </Grid>
 
@@ -127,67 +141,117 @@
                     <Border Grid.Row="2"
                             Classes="sunken"
                             Margin="0,0,0,12">
-                        <Grid>
-                            <!-- PowerShell script preview (default view) -->
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                          VerticalScrollBarVisibility="Auto"
-                                          IsVisible="{Binding Plan, Converter={x:Static ObjectConverters.IsNull}}">
-                                <TextBox Text="{Binding StepScript}"
-                                         IsReadOnly="True"
-                                         AcceptsReturn="True"
-                                         TextWrapping="NoWrap"
-                                         FontFamily="{StaticResource CodeFontFamily}"
-                                         FontSize="12"
-                                         BorderThickness="0"
-                                         Padding="16"
-                                         Watermark="Script preview will appear here..."/>
-                            </ScrollViewer>
+                        <Grid RowDefinitions="Auto,*">
+                            <Border Grid.Row="0"
+                                    Classes="wizard-guidance"
+                                    Margin="12,12,12,0">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                    <fi:SymbolIcon Grid.Column="0"
+                                                   Symbol="Info"
+                                                   FontSize="20"
+                                                   Foreground="{DynamicResource TeamsPrimaryBrush}"
+                                                   VerticalAlignment="Top"/>
+                                    <StackPanel Grid.Column="1" Spacing="3">
+                                        <TextBlock Text="{Binding ReadinessMessage}"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding ValidationSummary}"
+                                                   IsVisible="{Binding ValidationSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <!-- Dry-run plan (shown once generated) -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          IsVisible="{Binding Plan, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                          Padding="16">
-                                <ItemsControl ItemsSource="{Binding Plan.Entries}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Spacing="8">
-                                                <Grid ColumnDefinitions="Auto,*">
-                                                    <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,1,8,0">
-                                                        <fi:SymbolIcon Symbol="CheckmarkCircle" Foreground="Green" IsVisible="{Binding IsValid}"/>
-                                                        <fi:SymbolIcon Symbol="ErrorCircle" Foreground="OrangeRed" IsVisible="{Binding !IsValid}"/>
-                                                    </Panel>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold"
-                                                               TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                                </Grid>
-                                                <ItemsControl ItemsSource="{Binding ValidationErrors}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock Text="{Binding}" Foreground="OrangeRed" FontSize="12" TextWrapping="Wrap"/>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <ItemsControl ItemsSource="{Binding Objects}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Grid ColumnDefinitions="Auto,*" Margin="8,2,0,2">
-                                                                <fi:SymbolIcon Grid.Column="0" Symbol="ChevronRight" FontSize="12"
-                                                                               VerticalAlignment="Top" Margin="0,2,8,0"/>
-                                                                <StackPanel Grid.Column="1" Spacing="1">
-                                                                    <TextBlock Text="{Binding Summary}" FontSize="12" TextWrapping="Wrap"/>
-                                                                    <TextBlock Text="{Binding Upn}" FontSize="12"
-                                                                               TextWrapping="Wrap"
-                                                                               IsVisible="{Binding Upn, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                                </StackPanel>
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                            <Grid Grid.Row="1">
+                                <!-- Human-readable configuration review. -->
+                                <Grid IsVisible="{Binding Plan, Converter={x:Static ObjectConverters.IsNull}}">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  IsVisible="{Binding IsReviewStep}"
+                                                  Padding="16">
+                                        <StackPanel Spacing="14">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <fi:SymbolIcon Symbol="Settings"
+                                                               Foreground="{DynamicResource TeamsPrimaryBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                <TextBlock Text="Configuration snapshot"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="15"
+                                                           VerticalAlignment="Center"/>
                                             </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                            <TextBlock Text="{Binding ReviewSummary}"
+                                                       TextWrapping="Wrap"
+                                                       FontSize="13"/>
+                                            <TextBlock Text="Need to change something? Use Edit Variables, then return here to review again."
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </ScrollViewer>
+
+                                    <!-- PowerShell script preview for provisioning steps. -->
+                                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  IsVisible="{Binding IsReviewStep, Converter={StaticResource InverseBooleanConverter}}">
+                                        <TextBox Text="{Binding StepScript}"
+                                                 IsReadOnly="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="NoWrap"
+                                                 FontFamily="{StaticResource CodeFontFamily}"
+                                                 FontSize="12"
+                                                 BorderThickness="0"
+                                                 Padding="16"
+                                                 Watermark="Script preview will appear here..."/>
+                                    </ScrollViewer>
+                                </Grid>
+
+                                <!-- Dry-run plan (shown once generated). -->
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              IsVisible="{Binding Plan, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                              Padding="16">
+                                    <ItemsControl ItemsSource="{Binding Plan.Entries}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Spacing="8">
+                                                    <Grid ColumnDefinitions="Auto,*">
+                                                        <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,1,8,0">
+                                                            <fi:SymbolIcon Symbol="CheckmarkCircle" Foreground="Green" IsVisible="{Binding IsValid}"/>
+                                                            <fi:SymbolIcon Symbol="ErrorCircle" Foreground="OrangeRed" IsVisible="{Binding !IsValid}"/>
+                                                        </Panel>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Label}" FontWeight="SemiBold"
+                                                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                    <ItemsControl ItemsSource="{Binding ValidationErrors}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding}" Foreground="OrangeRed" FontSize="12" TextWrapping="Wrap"/>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <ItemsControl ItemsSource="{Binding Objects}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid ColumnDefinitions="Auto,*" Margin="8,2,0,2">
+                                                                    <fi:SymbolIcon Grid.Column="0" Symbol="ChevronRight" FontSize="12"
+                                                                                   VerticalAlignment="Top" Margin="0,2,8,0"/>
+                                                                    <StackPanel Grid.Column="1" Spacing="1">
+                                                                        <TextBlock Text="{Binding Summary}" FontSize="12" TextWrapping="Wrap"/>
+                                                                        <TextBlock Text="{Binding Upn}" FontSize="12"
+                                                                                   TextWrapping="Wrap"
+                                                                                   IsVisible="{Binding Upn, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
                         </Grid>
                     </Border>
 
@@ -244,7 +308,7 @@
                                     IsEnabled="{Binding CanExecuteStep}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="Play" FontSize="14"/>
-                                    <TextBlock Text="Execute Step" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ExecuteButtonText}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
@@ -260,10 +324,10 @@
                             <!-- Dry-run plan preview + export -->
                             <Button Command="{Binding GeneratePlanCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    ToolTip.Tip="Preview every object that would be created, with resolved names, UPNs, number and settings — no changes are made.">
+                                    ToolTip.Tip="Preview every object that would be created, with resolved names, UPNs, number and settings — no tenant changes are made.">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="ClipboardTaskListLtr" FontSize="14"/>
-                                    <TextBlock Text="Dry-Run Plan" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Preview changes" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding ExportPlanJsonCommand}"
@@ -287,7 +351,7 @@
 
                             <!-- Navigate to Variables (step 0 only) -->
                             <Button Command="{Binding GoToVariablesPageCommand}"
-                                    IsVisible="{Binding StepTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    IsVisible="{Binding IsReviewStep}"
                                     Tag="edit_variables">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="Edit" FontSize="14"/>

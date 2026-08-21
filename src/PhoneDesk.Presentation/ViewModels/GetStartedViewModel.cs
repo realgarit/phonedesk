@@ -21,12 +21,27 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private bool _canProceed;
 
+        private string? _lastSetupError;
+
         public bool CanConnectTeams => ModulesChecked && !TeamsConnected;
         public bool CanConnectGraph => ModulesChecked && !GraphConnected;
 
-        public string ModulesStatusText => $"Step 1: Check PowerShell Modules. Status: {(ModulesChecked ? "Completed" : "Pending")}.";
-        public string TeamsStatusText => $"Step 2: Connect to Microsoft Teams. Status: {(TeamsConnected ? "Completed" : "Pending")}.";
-        public string GraphStatusText => $"Step 3: Connect to Microsoft Graph. Status: {(GraphConnected ? "Completed" : "Pending")}.";
+        public string SetupGuidance { get; private set; } = string.Empty;
+        public string SetupGuidanceDetail => CanProceed
+            ? "Your connections are ready. You can start the customer configuration now."
+            : "Setup becomes available only after all three checks pass.";
+
+        public string ModulesActionText => ModulesChecked ? "Check again" : "Check modules";
+        public string TeamsActionText => TeamsConnected
+            ? "Connected"
+            : ModulesChecked ? "Connect Teams" : "Check modules first";
+        public string GraphActionText => GraphConnected
+            ? "Connected"
+            : ModulesChecked ? "Connect Graph" : "Check modules first";
+
+        public string ModulesStatusText => $"Step 1 of 3: Modules — {(ModulesChecked ? "Ready" : "Not checked yet")}";
+        public string TeamsStatusText => $"Step 2 of 3: Microsoft Teams — {(TeamsConnected ? "Connected" : "Waiting")}";
+        public string GraphStatusText => $"Step 3 of 3: Microsoft Graph — {(GraphConnected ? "Connected" : "Waiting")}";
 
         private readonly IMsalGraphAuthenticationService _msalAuthService;
 
@@ -69,6 +84,7 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
+                _lastSetupError = null;
                 IsBusy = true;
                 _loggingService.Log("Checking PowerShell modules...", LogLevel.Info);
 
@@ -110,6 +126,7 @@ namespace PhoneDesk.ViewModels
                 {
                     var errorMessage = "One or more required modules could not be installed";
                     _loggingService.Log(errorMessage, LogLevel.Error);
+                    SetSetupError("Some required PowerShell modules are missing. Review the log, then try again.");
                 }
             }
             catch (Exception ex)
@@ -117,6 +134,7 @@ namespace PhoneDesk.ViewModels
                 _loggingService.Log($"Error checking PowerShell modules: {ex.Message}", LogLevel.Error);
                 ModulesChecked = false;
                 _sessionManager.UpdateModulesChecked(false);
+                SetSetupError("The module check could not be completed. Review the log and try again.");
             }
             finally
             {
@@ -132,9 +150,11 @@ namespace PhoneDesk.ViewModels
                 if (!ModulesChecked)
                 {
                     _loggingService.Log("Please check modules first", LogLevel.Warning);
+                    SetSetupError("Check the required modules before connecting to Microsoft Teams.");
                     return;
                 }
 
+                _lastSetupError = null;
                 IsBusy = true;
                 _loggingService.Log("Connecting to Microsoft Teams...", LogLevel.Info);
 
@@ -165,6 +185,7 @@ namespace PhoneDesk.ViewModels
                 else
                 {
                     _loggingService.Log($"Error connecting to Microsoft Teams: {result.Value}", LogLevel.Error);
+                    SetSetupError("Microsoft Teams could not be connected. Check the sign-in window and try again.");
                 }
 
                 _sessionManager.UpdateTeamsConnection(TeamsConnected);
@@ -181,6 +202,7 @@ namespace PhoneDesk.ViewModels
                 TeamsConnected = false;
                 _sessionManager.UpdateTeamsConnection(false);
                 UpdateCanProceed();
+                SetSetupError("Microsoft Teams could not be connected. Check the sign-in window and try again.");
             }
             finally
             {
@@ -196,9 +218,11 @@ namespace PhoneDesk.ViewModels
                 if (!ModulesChecked)
                 {
                     _loggingService.Log("Please check modules first", LogLevel.Warning);
+                    SetSetupError("Check the required modules before connecting to Microsoft Graph.");
                     return;
                 }
 
+                _lastSetupError = null;
                 IsBusy = true;
                 _loggingService.Log("Authenticating to Microsoft Graph...", LogLevel.Info);
 
@@ -211,6 +235,7 @@ namespace PhoneDesk.ViewModels
                     GraphConnected = false;
                     _sessionManager.UpdateGraphConnection(false);
                     UpdateCanProceed();
+                    SetSetupError("Microsoft Graph sign-in did not complete. Finish the browser sign-in and try again.");
                     return;
                 }
 
@@ -235,6 +260,7 @@ namespace PhoneDesk.ViewModels
                 else
                 {
                     _loggingService.Log($"Error connecting to Microsoft Graph: {result.Value}", LogLevel.Error);
+                    SetSetupError("Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
                 }
 
                 _sessionManager.UpdateGraphConnection(GraphConnected, account);
@@ -246,6 +272,7 @@ namespace PhoneDesk.ViewModels
                 GraphConnected = false;
                 _sessionManager.UpdateGraphConnection(false);
                 UpdateCanProceed();
+                SetSetupError("Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
             }
             finally
             {
@@ -258,6 +285,7 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
+                _lastSetupError = null;
                 IsBusy = true;
                 _loggingService.Log("Disconnecting from Microsoft Teams...", LogLevel.Info);
 
@@ -283,6 +311,7 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
+                _lastSetupError = null;
                 IsBusy = true;
                 _loggingService.Log("Disconnecting from Microsoft Graph...", LogLevel.Info);
 
@@ -309,6 +338,31 @@ namespace PhoneDesk.ViewModels
         private void UpdateCanProceed()
         {
             CanProceed = ModulesChecked && TeamsConnected && GraphConnected;
+            UpdateGuidance();
+        }
+
+        private void SetSetupError(string message)
+        {
+            _lastSetupError = message;
+            UpdateGuidance();
+        }
+
+        private void UpdateGuidance()
+        {
+            SetupGuidance = CanProceed
+                ? "Everything is ready. Start configuration when you're ready."
+                : _lastSetupError
+                    ?? (!ModulesChecked
+                        ? "Start here: check the bundled modules before connecting to a customer tenant."
+                        : !TeamsConnected
+                            ? "The modules are ready. Connect to Microsoft Teams next."
+                            : "Teams is connected. Connect to Microsoft Graph next; a browser sign-in window will open.");
+
+            OnPropertyChanged(nameof(SetupGuidance));
+            OnPropertyChanged(nameof(SetupGuidanceDetail));
+            OnPropertyChanged(nameof(ModulesActionText));
+            OnPropertyChanged(nameof(TeamsActionText));
+            OnPropertyChanged(nameof(GraphActionText));
         }
 
         partial void OnModulesCheckedChanged(bool value)
@@ -317,6 +371,7 @@ namespace PhoneDesk.ViewModels
             OnPropertyChanged(nameof(CanConnectTeams));
             OnPropertyChanged(nameof(CanConnectGraph));
             OnPropertyChanged(nameof(ModulesStatusText));
+            OnPropertyChanged(nameof(ModulesActionText));
         }
 
         partial void OnTeamsConnectedChanged(bool value)
@@ -324,6 +379,7 @@ namespace PhoneDesk.ViewModels
             UpdateCanProceed();
             OnPropertyChanged(nameof(CanConnectTeams));
             OnPropertyChanged(nameof(TeamsStatusText));
+            OnPropertyChanged(nameof(TeamsActionText));
         }
 
         partial void OnGraphConnectedChanged(bool value)
@@ -331,6 +387,7 @@ namespace PhoneDesk.ViewModels
             UpdateCanProceed();
             OnPropertyChanged(nameof(CanConnectGraph));
             OnPropertyChanged(nameof(GraphStatusText));
+            OnPropertyChanged(nameof(GraphActionText));
         }
     }
 }

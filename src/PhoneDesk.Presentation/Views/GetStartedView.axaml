@@ -16,6 +16,16 @@
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <Style Selector="Border.setup-guidance">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentHairlineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14"/>
+        </Style>
+    </UserControl.Styles>
+
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,0,0,32">
         <StackPanel Margin="32" MaxWidth="850" HorizontalAlignment="Center" Spacing="24">
 
@@ -28,11 +38,43 @@
                     <TextBlock Text="Setup Steps"
                              Classes="page-title"
                              Margin="0"/>
-                    <TextBlock Text="Follow these steps to connect to your Microsoft 365 environment and configure the phone manager."
+                    <TextBlock Text="A short readiness check before you configure a customer. You can pause after any step and return later."
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                 </StackPanel>
             </StackPanel>
+
+            <Border Classes="setup-guidance">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <fi:SymbolIcon Grid.Column="0"
+                                   Symbol="Info"
+                                   FontSize="22"
+                                   Foreground="{DynamicResource TeamsPrimaryBrush}"
+                                   VerticalAlignment="Top"/>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="What happens here"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding SetupGuidance}"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding SetupGuidanceDetail}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="2"
+                            Command="{Binding NavigateToPageCommand}"
+                            CommandParameter="Variables"
+                            IsVisible="{Binding CanProceed}"
+                            Classes="accent IconText"
+                            VerticalAlignment="Center"
+                            MinWidth="190">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Start configuration" VerticalAlignment="Center"/>
+                            <fi:SymbolIcon Symbol="ArrowRight"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
 
             <!-- Step 1: PowerShell Modules -->
             <Border Classes="card interactive" AutomationProperties.Name="{Binding ModulesStatusText}">
@@ -83,9 +125,9 @@
                                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
                                 Classes="IconText"
                                 MinWidth="160">
-                            <StackPanel Orientation="Horizontal">
-                                <fi:SymbolIcon Symbol="BoxToolbox"/>
-                                <TextBlock Text="Check Modules" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="BoxToolbox"/>
+                                <TextBlock Text="{Binding ModulesActionText}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -128,7 +170,7 @@
                         <TextBlock Text="Connect to Microsoft Teams"
                                  FontSize="18"
                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Establish a secure connection to your Microsoft Teams tenant."
+                        <TextBlock Text="Establish a secure connection to your Microsoft Teams tenant. A sign-in window may appear."
                                  FontSize="14"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"/>
@@ -142,7 +184,7 @@
                                 MinWidth="160">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Person"/>
-                                <TextBlock Text="Connect" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding TeamsActionText}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding DisconnectTeamsCommand}"
@@ -195,7 +237,7 @@
                         <TextBlock Text="Connect to Microsoft Graph"
                                  FontSize="18"
                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Connect to Microsoft Graph to manage M365 groups and resources."
+                        <TextBlock Text="Connect to Microsoft Graph to manage groups and phone resources. A browser sign-in window will open."
                                  FontSize="14"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"/>
@@ -209,7 +251,7 @@
                                 MinWidth="160">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Cloud"/>
-                                <TextBlock Text="Connect" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding GraphActionText}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding DisconnectGraphCommand}"

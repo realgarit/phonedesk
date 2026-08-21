@@ -81,7 +81,9 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(
+                    UiTextKey.RuntimeWorkingPleaseWait,
+                    "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ResourceAccounts.Clear();
                 StatusMessage = "Retrieving resource accounts...";
@@ -199,45 +201,65 @@ namespace PhoneDesk.ViewModels
             var variables = _sharedStateService?.Variables;
             if (variables == null)
             {
-                StatusMessage = "Error: Variables not found";
+                StatusMessage = GetText(
+                    UiTextKey.RuntimeVariablesNotFoundError,
+                    "Error: Configuration not found.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(variables.RacqUPN))
             {
-                StatusMessage = "Error: Resource Account UPN is not set. Please set variables first.";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesResourceAccountUpnMissingError,
+                    "Error: Resource account UPN is not set. Set the configuration first.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(variables.SkuId))
             {
-                StatusMessage = "Error: SKU ID is not set. Please set the SKU ID variable first.";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesSkuIdMissingError,
+                    "Error: SKU ID is not set. Set the SKU ID in Configuration first.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.LicenseWaitingMessage;
+                SetWaiting(
+                    UiTextKey.RuntimeApplyingLicensePleaseWait,
+                    "Please wait while the Teams Phone Resource License is being applied.");
                 IsBusy = true;
-                StatusMessage = "Assigning license to resource account...";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesAssignLicenseStatus,
+                    "Assigning the license to the resource account...");
 
                 var command = _powerShellCommandService.GetAssignLicenseCommand(variables.RacqUPN, variables.SkuId);
                 var result = await ExecutePowerShellCommandAsync(command, "AssignLicense");
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"License assigned to resource account '{variables.RacqUPN}' successfully";
-                    _loggingService.Log($"License assigned to resource account {variables.RacqUPN}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssignLicenseSuccess,
+                        "License assigned to resource account '{upn}' successfully.",
+                        new Dictionary<string, object?> { ["upn"] = variables.RacqUPN });
+                    LogLocalized(
+                        UiTextKey.CallQueuesAssignLicenseLog,
+                        "License assigned to resource account '{upn}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = variables.RacqUPN });
                 }
                 else
                 {
-                    StatusMessage = $"Error assigning license: {result.Value}";
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssignLicenseError,
+                        "Error assigning the license: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                     _loggingService.Log($"Error assigning license to {variables.RacqUPN}: {result.Value}", LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
+                StatusMessage = FormatError(ex.Message);
                 _loggingService.Log($"Exception in AssignLicenseAsync: {ex}", LogLevel.Error);
             }
             finally
@@ -599,8 +621,11 @@ namespace PhoneDesk.ViewModels
 
                 var command = _powerShellCommandService.GetRemoveCallQueueCommand(name);
                 var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the call queue '{name}'. This action cannot be undone.",
-                    "Remove Call Queue");
+                    GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueConfirm,
+                        "This permanently deletes the call queue '{name}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["name"] = name }),
+                    "Delete Call Queue");
 
                 if (result == null)
                 {
@@ -610,20 +635,26 @@ namespace PhoneDesk.ViewModels
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Call queue '{name}' removed successfully";
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueSuccess,
+                        "Call queue '{name}' deleted successfully.",
+                        new Dictionary<string, object?> { ["name"] = name });
                     _loggingService.Log($"Call queue {name} removed successfully", LogLevel.Info);
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveCallQueuesAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error removing call queue: {result.Value}";
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueError,
+                        "Error deleting the call queue: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                     _loggingService.Log($"Error removing call queue {name}: {result.Value}", LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
+                StatusMessage = FormatError(ex.Message);
                 _loggingService.Log($"Exception in RemoveCallQueueAsync: {ex}", LogLevel.Error);
             }
             finally

@@ -4,6 +4,7 @@ using PhoneDesk.Localization;
 using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.ViewModels;
 
 namespace PhoneDesk.Tests.TestSupport
 {
@@ -24,6 +25,10 @@ namespace PhoneDesk.Tests.TestSupport
         public Mock<IValidationService> ValidationService { get; } = new();
         public Mock<ISharedStateService> SharedStateService { get; } = new();
         public Mock<IDialogService> DialogService { get; } = new();
+        public Mock<IPageViewModelFactory> PageViewModelFactory { get; } = new();
+        public Mock<IUpdateCheckService> UpdateCheckService { get; } = new();
+        public Mock<IUpdateInstallerService> UpdateInstallerService { get; } = new();
+        public Mock<IBundledModuleVersionService> BundledModuleVersionService { get; } = new();
         public ITranslationService TranslationService { get; }
 
         public ViewModelTestHarness()
@@ -58,6 +63,10 @@ namespace PhoneDesk.Tests.TestSupport
                         [UiTextKey.RuntimeErrorWithDetails] = "Error: {error}",
                         [UiTextKey.RuntimeScriptPreviewCancelledLog] = "User cancelled script preview for: {context}",
                         [UiTextKey.RuntimeDestructiveOperationCancelledLog] = "User cancelled destructive operation: {context}",
+                        [UiTextKey.RuntimeWorkingPleaseWait] = "Please wait while the previous operation is processed by Microsoft.",
+                        [UiTextKey.RuntimeApplyingLicensePleaseWait] = "Please wait while the Teams Phone Resource License is being applied.",
+                        [UiTextKey.RuntimeVariablesNotFoundError] = "Error: Configuration not found.",
+                        [UiTextKey.RuntimeFallbackDomainInvalidError] = "Error: Microsoft fallback domain is not set or is invalid. Set a valid domain such as @yourdomain.com in Configuration.",
                         [UiTextKey.ErrorPowerShellTitle] = "PowerShell Error",
                         [UiTextKey.ErrorPowerShellMessage] = "An error occurred while executing the PowerShell command.\n\n{error}",
                         [UiTextKey.ErrorPowerShellLog] = "PowerShell Error in {context}:\nCommand: {command}\nError: {error}",
@@ -77,6 +86,15 @@ namespace PhoneDesk.Tests.TestSupport
                         [UiTextKey.MainInstallUpdateDialogTitle] = "Install update",
                         [UiTextKey.MainInstallUpdateDialogMessage] = "Download and install version {version}? PhoneDesk will close and restart automatically.",
                         [UiTextKey.MainUpdateFailedTitle] = "Update failed",
+                        [UiTextKey.CallQueuesResourceAccountUpnMissingError] = "Error: Resource account UPN is not set. Set the configuration first.",
+                        [UiTextKey.CallQueuesSkuIdMissingError] = "Error: SKU ID is not set. Set the SKU ID in Configuration first.",
+                        [UiTextKey.CallQueuesAssignLicenseStatus] = "Assigning the license to the resource account...",
+                        [UiTextKey.CallQueuesAssignLicenseSuccess] = "License assigned to resource account '{upn}' successfully.",
+                        [UiTextKey.CallQueuesAssignLicenseLog] = "License assigned to resource account '{upn}'.",
+                        [UiTextKey.CallQueuesAssignLicenseError] = "Error assigning the license: {details}",
+                        [UiTextKey.CallQueuesDeleteCallQueueConfirm] = "This permanently deletes the call queue '{name}'. This action cannot be undone.",
+                        [UiTextKey.CallQueuesDeleteCallQueueSuccess] = "Call queue '{name}' deleted successfully.",
+                        [UiTextKey.CallQueuesDeleteCallQueueError] = "Error deleting the call queue: {details}",
                         [UiTextKey.HolidaysVerifyAutoAttendantSuccess] = "Auto attendant '{name}' verified successfully and is ready for holiday configuration",
                         [UiTextKey.HolidaysResetStateStatus] = "Holiday state reset. You can now create a new holiday.",
                         [UiTextKey.HolidaysVariablesNotFoundError] = "Error: Variables not found",
@@ -114,6 +132,10 @@ namespace PhoneDesk.Tests.TestSupport
                         [UiTextKey.RuntimeErrorWithDetails] = "Fehler: {error}",
                         [UiTextKey.RuntimeScriptPreviewCancelledLog] = "Benutzer hat die Skriptvorschau abgebrochen: {context}",
                         [UiTextKey.RuntimeDestructiveOperationCancelledLog] = "Benutzer hat den destruktiven Vorgang abgebrochen: {context}",
+                        [UiTextKey.RuntimeWorkingPleaseWait] = "Bitte warten Sie, während Microsoft den vorherigen Vorgang verarbeitet.",
+                        [UiTextKey.RuntimeApplyingLicensePleaseWait] = "Bitte warten Sie, während die Teams-Phone-Ressourcenlizenz angewendet wird.",
+                        [UiTextKey.RuntimeVariablesNotFoundError] = "Fehler: Konfiguration nicht gefunden.",
+                        [UiTextKey.RuntimeFallbackDomainInvalidError] = "Fehler: Microsoft-Fallbackdomäne ist nicht gesetzt oder ungültig. Legen Sie in der Konfiguration eine gültige Domäne wie @ihredomäne.com fest.",
                         [UiTextKey.ErrorPowerShellTitle] = "PowerShell-Fehler",
                         [UiTextKey.ErrorPowerShellMessage] = "Beim Ausführen des PowerShell-Befehls ist ein Fehler aufgetreten.\n\n{error}",
                         [UiTextKey.ErrorPowerShellLog] = "PowerShell-Fehler in {context}:\nBefehl: {command}\nFehler: {error}",
@@ -133,6 +155,15 @@ namespace PhoneDesk.Tests.TestSupport
                         [UiTextKey.MainInstallUpdateDialogTitle] = "Update installieren",
                         [UiTextKey.MainInstallUpdateDialogMessage] = "Version {version} herunterladen und installieren? PhoneDesk wird geschlossen und automatisch neu gestartet.",
                         [UiTextKey.MainUpdateFailedTitle] = "Update fehlgeschlagen",
+                        [UiTextKey.CallQueuesResourceAccountUpnMissingError] = "Fehler: Ressourcenkonto-UPN ist nicht gesetzt. Legen Sie zuerst die Konfiguration fest.",
+                        [UiTextKey.CallQueuesSkuIdMissingError] = "Fehler: SKU-ID ist nicht gesetzt. Legen Sie zuerst die SKU-ID in der Konfiguration fest.",
+                        [UiTextKey.CallQueuesAssignLicenseStatus] = "Lizenz wird dem Ressourcenkonto zugewiesen...",
+                        [UiTextKey.CallQueuesAssignLicenseSuccess] = "Lizenz wurde dem Ressourcenkonto '{upn}' erfolgreich zugewiesen.",
+                        [UiTextKey.CallQueuesAssignLicenseLog] = "Lizenz wurde dem Ressourcenkonto '{upn}' zugewiesen.",
+                        [UiTextKey.CallQueuesAssignLicenseError] = "Fehler beim Zuweisen der Lizenz: {details}",
+                        [UiTextKey.CallQueuesDeleteCallQueueConfirm] = "Dies löscht die Anrufwarteschleife '{name}' dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
+                        [UiTextKey.CallQueuesDeleteCallQueueSuccess] = "Anrufwarteschleife '{name}' wurde erfolgreich gelöscht.",
+                        [UiTextKey.CallQueuesDeleteCallQueueError] = "Fehler beim Löschen der Anrufwarteschleife: {details}",
                         [UiTextKey.HolidaysVerifyAutoAttendantSuccess] = "Automatische Telefonzentrale '{name}' wurde erfolgreich geprüft und ist für die Feiertagskonfiguration bereit.",
                         [UiTextKey.HolidaysResetStateStatus] = "Feiertagsstatus zurückgesetzt. Sie können jetzt einen neuen Feiertag erstellen.",
                         [UiTextKey.HolidaysVariablesNotFoundError] = "Fehler: Variablen nicht gefunden",
@@ -166,6 +197,12 @@ namespace PhoneDesk.Tests.TestSupport
             DialogService.Setup(d => d.ShowConfirmationWithPreviewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
             DialogService.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
             DialogService.Setup(d => d.ShowMessageAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+            PageViewModelFactory.Setup(f => f.Create(It.IsAny<string>())).Returns((ViewModelBase)null!);
+            BundledModuleVersionService.SetupGet(s => s.TeamsModuleVersion).Returns("1.0.0");
+            BundledModuleVersionService.SetupGet(s => s.GraphModuleVersion).Returns("1.0.0");
+            BundledModuleVersionService.SetupGet(s => s.PowerShellSdkVersion).Returns("1.0.0");
+            LoggingService.SetupGet(l => l.LogEntries).Returns(new System.Collections.ObjectModel.ObservableCollection<string>());
+            UpdateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>())).ReturnsAsync((UpdateInfo?)null);
 
             // Default PowerShell execution: a benign SUCCESS payload, no errors.
             SetExecutionResult("SUCCESS");

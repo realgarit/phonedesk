@@ -44,6 +44,83 @@ public sealed class RuntimeLocalizationTests
     }
 
     [Fact]
+    public async Task SwitchingLanguage_LocalizesCallQueueLicenseStatus_AndDisplayedLogWrapper()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.SetExecutionResult("SUCCESS: license assigned");
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneDesk.Models.PhoneManagerVariables
+        {
+            Customer = "contoso",
+            CustomerGroupName = "tenant",
+            MsFallbackDomain = "@example",
+            SkuId = "sku-123"
+        });
+
+        var vm = new CallQueuesViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        await vm.AssignLicenseCommand.ExecuteAsync(null);
+        Assert.Equal(
+            "License assigned to resource account 'racq-contoso-tenant@example' successfully.",
+            vm.StatusMessage);
+        harness.LoggingService.Verify(
+            l => l.Log(
+                "License assigned to resource account 'racq-contoso-tenant@example'.",
+                LogLevel.Info),
+            Times.Once);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        await vm.AssignLicenseCommand.ExecuteAsync(null);
+        Assert.Equal(
+            "Lizenz wurde dem Ressourcenkonto 'racq-contoso-tenant@example' erfolgreich zugewiesen.",
+            vm.StatusMessage);
+        harness.LoggingService.Verify(
+            l => l.Log(
+                "Lizenz wurde dem Ressourcenkonto 'racq-contoso-tenant@example' zugewiesen.",
+                LogLevel.Info),
+            Times.Once);
+    }
+
+    [Fact]
+    public void SwitchingLanguage_LocalizesUpdateBanner_AndPreservesVersion()
+    {
+        var harness = new ViewModelTestHarness();
+        var vm = new MainWindowViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            harness.PageViewModelFactory.Object,
+            harness.UpdateCheckService.Object,
+            harness.UpdateInstallerService.Object,
+            harness.BundledModuleVersionService.Object,
+            translationService: harness.TranslationService);
+
+        SetUpdateBannerState(vm, "Available", "3.26.0");
+        vm.IsUpdateBannerVisible = true;
+        Assert.Equal("Version 3.26.0 is available.", vm.UpdateBannerMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        Assert.Equal("Version 3.26.0 ist verfügbar.", vm.UpdateBannerMessage);
+    }
+
+    [Fact]
     public async Task ErrorHandlingService_LocalizesTitlesAndWrappers_AndPreservesCommandAndError()
     {
         var harness = new ViewModelTestHarness();
@@ -119,11 +196,29 @@ public sealed class RuntimeLocalizationTests
             "Automatische Telefonzentrale '{name}' wurde erfolgreich geprüft und ist für die Feiertagskonfiguration bereit.",
             german[UiTextKey.HolidaysVerifyAutoAttendantSuccess]);
         Assert.Equal(
+            "License assigned to resource account '{upn}' successfully.",
+            english[UiTextKey.CallQueuesAssignLicenseSuccess]);
+        Assert.Equal(
+            "Lizenz wurde dem Ressourcenkonto '{upn}' erfolgreich zugewiesen.",
+            german[UiTextKey.CallQueuesAssignLicenseSuccess]);
+        Assert.Equal(
             "An error occurred while executing the PowerShell command.\n\n{error}",
             english[UiTextKey.ErrorPowerShellMessage]);
         Assert.Equal(
             "Beim Ausführen des PowerShell-Befehls ist ein Fehler aufgetreten.\n\n{error}",
             german[UiTextKey.ErrorPowerShellMessage]);
+    }
+
+    private static void SetUpdateBannerState(MainWindowViewModel viewModel, string stateName, string version)
+    {
+        var stateType = typeof(MainWindowViewModel).GetNestedType("UpdateBannerState", BindingFlags.NonPublic);
+        Assert.NotNull(stateType);
+        var method = typeof(MainWindowViewModel).GetMethod(
+            "SetUpdateBannerState",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        var state = Enum.Parse(stateType!, stateName);
+        method!.Invoke(viewModel, new object?[] { state, version, null });
     }
 
     private static InspectableDialogState InspectScriptPreviewDialog(DialogService service, string title, string script)

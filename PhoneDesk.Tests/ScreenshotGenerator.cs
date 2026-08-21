@@ -357,9 +357,12 @@ namespace PhoneDesk.Tests
                 var translation = provider.GetRequiredService<ITranslationService>();
                 var dialogService = provider.GetRequiredService<IDialogService>() as DialogService
                     ?? throw new InvalidOperationException("DialogService not registered.");
-                var title = translation.CurrentLanguage == AppLanguage.German
-                    ? "Vorschau: Anrufwarteschleife erstellen"
-                    : "Preview: Create Call Queue";
+                var title = translation.Get(
+                    UiTextKey.DialogPreviewTitle,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = translation.Get(UiTextKey.CallQueuesCreateAction)
+                    });
                 var createState = typeof(DialogService).GetMethod("CreateScriptPreviewDialogForTesting", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?? throw new InvalidOperationException("CreateScriptPreviewDialogForTesting not found.");
                 var state = createState.Invoke(dialogService, new object?[] { title, "Get-CsCallQueue -Identity cq-Contoso" })
@@ -375,12 +378,15 @@ namespace PhoneDesk.Tests
                 var translation = provider.GetRequiredService<ITranslationService>();
                 var dialogService = provider.GetRequiredService<IDialogService>() as DialogService
                     ?? throw new InvalidOperationException("DialogService not registered.");
-                var title = translation.CurrentLanguage == AppLanguage.German
-                    ? "Bestätigen: Anrufwarteschleife löschen"
-                    : "Confirm: Delete Call Queue";
-                var message = translation.CurrentLanguage == AppLanguage.German
-                    ? "Dies löscht die Anrufwarteschleife 'cq-Contoso' dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden."
-                    : "This permanently deletes the call queue 'cq-Contoso'. This action cannot be undone.";
+                var title = translation.Get(
+                    UiTextKey.DialogConfirmTitle,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = translation.Get(UiTextKey.CallQueuesDeleteAction)
+                    });
+                var message = translation.Get(
+                    UiTextKey.CallQueuesDeleteCallQueueConfirm,
+                    new Dictionary<string, object?> { ["name"] = "cq-Contoso" });
                 var createState = typeof(DialogService).GetMethod("CreateConfirmationWithPreviewDialogForTesting", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?? throw new InvalidOperationException("CreateConfirmationWithPreviewDialogForTesting not found.");
                 var state = createState.Invoke(dialogService, new object?[] { title, message, "Remove-CsCallQueue -Identity cq-Contoso" })

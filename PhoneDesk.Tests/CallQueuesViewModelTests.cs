@@ -290,7 +290,7 @@ namespace PhoneDesk.Tests
 
             await vm.AssignLicenseCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Variables not found", vm.StatusMessage);
+            Assert.Equal("Error: Configuration not found.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -306,7 +306,7 @@ namespace PhoneDesk.Tests
 
             await vm.AssignLicenseCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: SKU ID is not set. Please set the SKU ID variable first.", vm.StatusMessage);
+            Assert.Equal("Error: SKU ID is not set. Set the SKU ID in Configuration first.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -337,7 +337,7 @@ namespace PhoneDesk.Tests
 
             await vm.AssignLicenseCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error assigning license", vm.StatusMessage);
+            Assert.Contains("Error assigning the license", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
                 e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "AssignLicense"),
                 Times.Once);
@@ -720,9 +720,9 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveCallQueueCommand.ExecuteAsync("cq-Contoso");
 
-            Assert.Contains("Error removing call queue", vm.StatusMessage);
+            Assert.Contains("Error deleting the call queue", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Remove Call Queue"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Delete Call Queue"),
                 Times.Once);
         }
 

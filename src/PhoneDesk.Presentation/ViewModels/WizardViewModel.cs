@@ -419,7 +419,10 @@ namespace PhoneDesk.ViewModels
         private string BuildLicenseCqScript(PhoneManagerVariables vars)
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"# {GetText(UiTextKey.WizardScriptSetUsageLocationComment, "Step 1: Set usage location for call queue resource account")}");
+            sb.AppendLine($"# {GetText(
+                UiTextKey.WizardScriptSetUsageLocationComment,
+                "Step 1: Set usage location for {resource}",
+                new Dictionary<string, object?> { ["resource"] = "call queue resource account" })}");
             sb.AppendLine(_powerShellCommandService.GetUpdateResourceAccountUsageLocationCommand(vars.RacqUPN, vars.UsageLocation));
             sb.AppendLine();
             sb.AppendLine($"# {GetText(UiTextKey.WizardScriptAssignLicenseComment, "Step 2: Assign Teams Phone license")}");
@@ -430,7 +433,10 @@ namespace PhoneDesk.ViewModels
         private string BuildLicenseAaScript(PhoneManagerVariables vars)
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"# {GetText(UiTextKey.WizardScriptSetUsageLocationComment, "Step 1: Set usage location for automatic attendant resource account")}");
+            sb.AppendLine($"# {GetText(
+                UiTextKey.WizardScriptSetUsageLocationComment,
+                "Step 1: Set usage location for {resource}",
+                new Dictionary<string, object?> { ["resource"] = "automatic attendant resource account" })}");
             sb.AppendLine(_powerShellCommandService.GetUpdateAutoAttendantResourceAccountUsageLocationCommand(vars.RaaaUPN, vars.UsageLocation));
             sb.AppendLine();
             sb.AppendLine($"# {GetText(UiTextKey.WizardScriptAssignLicenseComment, "Step 2: Assign Teams Phone license")}");

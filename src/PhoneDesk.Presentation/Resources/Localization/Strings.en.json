@@ -852,7 +852,7 @@
   "WizardSetupCompleteScript": "🎉 Setup complete! All Teams Phone components have been created.",
   "WizardConfigurationReviewScript": "# ======================================\n# Configuration Review\n# ======================================\n\n# Customer:          {customer}\n# Customer Group:    {customerGroup}\n# Fallback Domain:   {fallbackDomain}\n# Language:           {language}\n# Time Zone:          {timeZone}\n# Usage Location:     {usageLocation}\n\n# --- Computed Names ---\n# M365 Group:         {m365Group}\n# Call queue resource UPN: {cqResourceUpn}\n# Call queue display name: {cqDisplayName}\n# Automatic attendant resource UPN: {aaResourceUpn}\n# Automatic attendant display name: {aaDisplayName}\n# Phone Number:       {phoneNumber}\n# Phone Number Type:  {phoneNumberType}\n\n# --- Licensing ---\n# SKU ID:             {skuId}\n# Call queue app ID:  {cqAppId}\n# Automatic attendant app ID: {aaAppId}\n\n# ======================================\n# Ensure all values are correct before\n# proceeding. Use the Variables page to\n# make changes.\n# ======================================",
   "WizardScriptPreviewError": "# Error generating script preview:\n# {details}",
-  "WizardScriptSetUsageLocationComment": "Step 1: Set usage location",
+  "WizardScriptSetUsageLocationComment": "Step 1: Set usage location for {resource}",
   "WizardScriptAssignLicenseComment": "Step 2: Assign Teams Phone license",
   "WizardScriptAssignPhoneNumberComment": "Step 3: Assign phone number",
   "WizardCompleteOrSkipCurrentStepError": "Complete or skip this step before moving on.",

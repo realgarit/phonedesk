@@ -45,6 +45,10 @@ public sealed class LocalizationServiceTests
         Assert.Contains(nameof(ITranslationService.Text), serviceNotifications);
         Assert.Contains("Item[]", catalogNotifications);
         Assert.Contains(string.Empty, catalogNotifications);
+        Assert.DoesNotContain(
+            catalogNotifications,
+            notification => notification is not "Item[]"
+                && notification?.StartsWith("Item[", StringComparison.Ordinal) == true);
     }
 
     [Fact]

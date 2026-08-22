@@ -276,6 +276,32 @@ namespace PhoneDesk.Tests
             Assert.Contains("empfang", vm.StepScript);
         }
 
+        [Fact]
+        public void LicenseStepScriptsKeepResourceSpecificTechnicalComments()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            vm.CurrentStep = 3;
+            Assert.Contains("# Step 1: Set usage location for call queue resource account", vm.StepScript);
+
+            vm.CurrentStep = 6;
+            Assert.Contains("# Step 1: Set usage location for automatic attendant resource account", vm.StepScript);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+            Assert.Contains("# Step 1: Set usage location for automatic attendant resource account", vm.StepScript);
+        }
+
         // ── Step execution: happy path, failure, retry, skip ───────────────
 
         [Fact]

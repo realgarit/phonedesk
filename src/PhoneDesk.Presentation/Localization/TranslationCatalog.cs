@@ -50,11 +50,6 @@ public sealed class TranslationCatalog : INotifyPropertyChanged
     internal void Update(IReadOnlyDictionary<UiTextKey, string> values)
     {
         _values = values;
-        foreach (var key in _values.Keys)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs($"Item[{key}]"));
-        }
-
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item"));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));

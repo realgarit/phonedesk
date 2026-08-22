@@ -164,6 +164,17 @@ namespace PhoneDesk.ViewModels
             IReadOnlyDictionary<string, object?>? parameters = null)
             => _loggingService.Log(GetText(key, fallback, parameters), level);
 
+        protected void LogException(string context, Exception ex)
+            => LogLocalized(
+                UiTextKey.RuntimeExceptionLog,
+                "Exception in {context}: {details}",
+                LogLevel.Error,
+                new Dictionary<string, object?>
+                {
+                    ["context"] = context,
+                    ["details"] = ex
+                });
+
         protected string FormatError(string error)
             => GetText(
                 UiTextKey.RuntimeErrorWithDetails,
@@ -350,7 +361,11 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Audit log write failed: {ex.Message}", LogLevel.Warning);
+                LogLocalized(
+                    UiTextKey.RuntimeAuditLogWriteFailedLog,
+                    "Audit log write failed: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -414,7 +429,7 @@ namespace PhoneDesk.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = FormatError(ex.Message);
-                _loggingService.Log($"Exception in {context}: {ex}", LogLevel.Error);
+                LogException(context, ex);
             }
             finally
             {

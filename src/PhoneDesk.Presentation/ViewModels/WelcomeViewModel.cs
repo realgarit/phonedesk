@@ -22,7 +22,7 @@ namespace PhoneDesk.ViewModels
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
-            _loggingService.Log("Welcome page loaded", LogLevel.Info);
+            LogLocalized(UiTextKey.WelcomePageLoadedLog, "Welcome page loaded", LogLevel.Info);
         }
 
         [ObservableProperty]
@@ -44,11 +44,15 @@ namespace PhoneDesk.ViewModels
                     FileName = "https://github.com/realgarit/phonedesk",
                     UseShellExecute = true
                 });
-                _loggingService.Log("Opening documentation in browser", LogLevel.Info);
+                LogLocalized(UiTextKey.WelcomeOpenDocumentationLog, "Opening documentation in browser", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Failed to open documentation: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.WelcomeOpenDocumentationFailedLog,
+                    "Failed to open documentation: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
     }

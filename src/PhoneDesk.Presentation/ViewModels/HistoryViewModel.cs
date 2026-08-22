@@ -69,7 +69,7 @@ namespace PhoneDesk.ViewModels
         {
             _auditLogService = auditLog;
             AuditLogDirectory = auditLog.LogDirectoryPath;
-            _loggingService.Log("History page loaded", LogLevel.Info);
+            LogLocalized(UiTextKey.HistoryPageLoadedLog, "History page loaded", LogLevel.Info);
             Load();
         }
 
@@ -82,7 +82,11 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Failed to read audit log: {ex.Message}", LogLevel.Warning);
+                LogLocalized(
+                    UiTextKey.HistoryReadAuditLogFailedLog,
+                    "Failed to read audit log: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
                 _all = Array.Empty<AuditRecord>();
             }
 
@@ -173,7 +177,11 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Could not open audit log folder: {ex.Message}", LogLevel.Warning);
+                LogLocalized(
+                    UiTextKey.HistoryOpenAuditLogFolderFailedLog,
+                    "Could not open audit log folder: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
     }

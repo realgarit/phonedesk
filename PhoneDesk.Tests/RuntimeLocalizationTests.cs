@@ -295,6 +295,73 @@ public sealed class RuntimeLocalizationTests
     }
 
     [Fact]
+    public void SwitchingLanguage_LocalizesVariablesHolidaySeriesSaveLog_AndPreservesCount()
+    {
+        var harness = new ViewModelTestHarness();
+        var variables = new PhoneManagerVariables();
+        variables.HolidaySeries.Add(new HolidayEntry(new DateTime(2026, 12, 24), TimeSpan.Zero, "Christmas Eve"));
+        variables.HolidaySeries.Add(new HolidayEntry(new DateTime(2026, 12, 25), TimeSpan.Zero, "Christmas Day"));
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
+
+        var vm = new VariablesViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        vm.SaveHolidaySeriesCommand.Execute(null);
+        harness.LoggingService.Verify(
+            l => l.Log("Saved holiday series with 2 holidays", LogLevel.Info),
+            Times.Once);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        vm.SaveHolidaySeriesCommand.Execute(null);
+        harness.LoggingService.Verify(
+            l => l.Log("Feiertagsserie mit 2 Feiertagen gespeichert", LogLevel.Info),
+            Times.Once);
+    }
+
+    [Fact]
+    public void SwitchingLanguage_LocalizesMainWindowSettingsToggleLog()
+    {
+        var harness = new ViewModelTestHarness();
+        var vm = new MainWindowViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            harness.PageViewModelFactory.Object,
+            harness.UpdateCheckService.Object,
+            harness.UpdateInstallerService.Object,
+            harness.BundledModuleVersionService.Object,
+            translationService: harness.TranslationService);
+
+        vm.ToggleSettingsCommand.Execute(null);
+        harness.LoggingService.Verify(
+            l => l.Log("Settings panel opened", LogLevel.Info),
+            Times.Once);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        vm.ToggleSettingsCommand.Execute(null);
+        harness.LoggingService.Verify(
+            l => l.Log("Einstellungsbereich geschlossen", LogLevel.Info),
+            Times.Once);
+    }
+
+    [Fact]
     public void SwitchingLanguage_LocalizesUpdateBanner_AndPreservesVersion()
     {
         var harness = new ViewModelTestHarness();
@@ -434,6 +501,18 @@ public sealed class RuntimeLocalizationTests
         Assert.Equal(
             "Schritt {step} abgeschlossen: {title}",
             german[UiTextKey.WizardStepCompletedStatus]);
+        Assert.Equal(
+            "Saved holiday series with {count} holidays",
+            english[UiTextKey.VariablesSaveHolidaySeriesLog]);
+        Assert.Equal(
+            "Feiertagsserie mit {count} Feiertagen gespeichert",
+            german[UiTextKey.VariablesSaveHolidaySeriesLog]);
+        Assert.Equal(
+            "Settings panel {state}",
+            english[UiTextKey.MainSettingsPanelStateLog]);
+        Assert.Equal(
+            "Einstellungsbereich {state}",
+            german[UiTextKey.MainSettingsPanelStateLog]);
     }
 
     private static Mock<IDocumentationScriptBuilder> CreateDocumentationBuilder()

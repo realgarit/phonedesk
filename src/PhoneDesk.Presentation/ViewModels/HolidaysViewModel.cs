@@ -49,7 +49,7 @@ namespace PhoneDesk.ViewModels
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("Holidays page loaded", LogLevel.Info);
+            LogLocalized(UiTextKey.HolidaysPageLoadedLog, "Holidays page loaded", LogLevel.Info);
         }
 
         [RelayCommand]
@@ -115,7 +115,15 @@ namespace PhoneDesk.ViewModels
                 var holidayEntries = variables.HolidaySeries.ToList();
                 var holidayName = variables.HolidayName;
                 
-                _loggingService.Log($"Creating holiday series: {holidayName} with {holidayEntries.Count} dates", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysCreateHolidaySeriesLog,
+                    "Creating holiday series '{name}' with {count} dates",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = holidayName,
+                        ["count"] = holidayEntries.Count
+                    });
 
                 var command = _powerShellCommandService.GetCreateHolidaySeriesFromEntriesCommand(holidayName, holidayEntries);
                 var result = await PreviewAndExecuteAsync(command, "Create Holiday Series");
@@ -138,7 +146,11 @@ namespace PhoneDesk.ViewModels
                             ["name"] = holidayName,
                             ["count"] = holidayEntries.Count
                         });
-                    _loggingService.Log($"Holiday series {holidayName} created successfully", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.HolidaysCreateHolidaySeriesSuccessLog,
+                        "Holiday series '{name}' created successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = holidayName });
                     IsHolidayCreated = true;
                 }
                 else
@@ -147,14 +159,22 @@ namespace PhoneDesk.ViewModels
                         UiTextKey.HolidaysCreateHolidaySeriesError,
                         "Error creating holiday series: {details}",
                         new Dictionary<string, object?> { ["details"] = result.Value });
-                    _loggingService.Log($"Error creating holiday series {holidayName}: {result.Value}", LogLevel.Error);
+                    LogLocalized(
+                        UiTextKey.HolidaysCreateHolidaySeriesErrorLog,
+                        "Error creating holiday series '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = holidayName,
+                            ["details"] = result.Value
+                        });
                     IsHolidayCreated = false;
                 }
             }
             catch (Exception ex)
             {
                 StatusMessage = FormatError(ex.Message);
-                _loggingService.Log($"Exception in CreateHolidayAsync: {ex}", LogLevel.Error);
+                LogException(nameof(CreateHolidayAsync), ex);
                 IsHolidayCreated = false;
             }
             finally
@@ -200,7 +220,11 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
                 ShowCheckAutoAttendantDialog = false;
 
-                _loggingService.Log($"Verifying auto attendant: {AutoAttendantName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysVerifyAutoAttendantLog,
+                    "Verifying auto attendant '{name}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = AutoAttendantName });
 
                 var command = _powerShellCommandService.GetVerifyAutoAttendantCommand(AutoAttendantName);
                 var result = await ExecutePowerShellCommandAsync(command, null, "VerifyAutoAttendant", allowThrottleRetry: true);
@@ -211,7 +235,11 @@ namespace PhoneDesk.ViewModels
                         UiTextKey.HolidaysVerifyAutoAttendantSuccess,
                         "Auto attendant '{name}' verified successfully and is ready for holiday configuration",
                         new Dictionary<string, object?> { ["name"] = AutoAttendantName });
-                    _loggingService.Log($"Auto attendant {AutoAttendantName} verified successfully", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.HolidaysVerifyAutoAttendantSuccessLog,
+                        "Auto attendant '{name}' verified successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = AutoAttendantName });
                 }
                 else
                 {
@@ -223,13 +251,21 @@ namespace PhoneDesk.ViewModels
                             ["name"] = AutoAttendantName,
                             ["details"] = result.Value
                         });
-                    _loggingService.Log($"Error verifying auto attendant {AutoAttendantName}: {result.Value}", LogLevel.Error);
+                    LogLocalized(
+                        UiTextKey.HolidaysVerifyAutoAttendantErrorLog,
+                        "Error verifying auto attendant '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = AutoAttendantName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
                 StatusMessage = FormatError(ex.Message);
-                _loggingService.Log($"Exception in VerifyAutoAttendantAsync: {ex}", LogLevel.Error);
+                LogException(nameof(VerifyAutoAttendantAsync), ex);
             }
             finally
             {
@@ -286,7 +322,15 @@ namespace PhoneDesk.ViewModels
                 }
 
                 var holidayName = HolidayName;
-                _loggingService.Log($"Attaching holiday {holidayName} to auto attendant {AutoAttendantName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysAttachHolidayLog,
+                    "Attaching holiday '{holidayName}' to auto attendant '{name}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["holidayName"] = holidayName,
+                        ["name"] = AutoAttendantName
+                    });
 
                 var command = _powerShellCommandService.GetAttachHolidayToAutoAttendantCommand(holidayName, AutoAttendantName, variables.HolidayGreetingPromptDE);
                 var result = await PreviewAndExecuteAsync(command, "Attach Holiday to Auto Attendant");
@@ -309,7 +353,15 @@ namespace PhoneDesk.ViewModels
                             ["holidayName"] = holidayName,
                             ["name"] = AutoAttendantName
                         });
-                    _loggingService.Log($"Successfully attached holiday {holidayName} to auto attendant {AutoAttendantName}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.HolidaysAttachHolidaySuccessLog,
+                        "Holiday '{holidayName}' attached to auto attendant '{name}' successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["holidayName"] = holidayName,
+                            ["name"] = AutoAttendantName
+                        });
                 }
                 else
                 {
@@ -317,13 +369,22 @@ namespace PhoneDesk.ViewModels
                         UiTextKey.HolidaysAttachHolidayError,
                         "Error attaching holiday to auto attendant: {details}",
                         new Dictionary<string, object?> { ["details"] = result.Value });
-                    _loggingService.Log($"Error attaching holiday {holidayName} to auto attendant {AutoAttendantName}: {result.Value}", LogLevel.Error);
+                    LogLocalized(
+                        UiTextKey.HolidaysAttachHolidayErrorLog,
+                        "Error attaching holiday '{holidayName}' to auto attendant '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["holidayName"] = holidayName,
+                            ["name"] = AutoAttendantName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
                 StatusMessage = FormatError(ex.Message);
-                _loggingService.Log($"Exception in AttachHolidayToAutoAttendantAsync: {ex}", LogLevel.Error);
+                LogException(nameof(AttachHolidayToAutoAttendantAsync), ex);
             }
             finally
             {

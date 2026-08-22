@@ -1,22 +1,25 @@
-## Task 6 report — Cluster B1
+## Task 6 report — Cluster B2
 
 Date: 2026-08-22
 
 ### Scope in this cluster
 
 - Localized the remaining fixed runtime sinks in:
-  - `CallQueuesViewModel`
-  - `GetStartedViewModel`
-  - `M365GroupsViewModel`
-- Finished the incomplete Call Queues runtime coverage from the earlier Task 6 pass.
+  - `WelcomeViewModel`
+  - `HistoryViewModel`
+  - `VariablesViewModel`
+  - `HolidaysViewModel`
+  - `MainWindowViewModel`
+  - `ViewModelBase`
 - Added typed `UiTextKey` entries and English/German catalog parity for:
-  - fixed load/create/delete/status messages
-  - fixed confirmation/preview context labels
-  - fixed setup guidance and step text in Get Started
-  - fixed displayed log wrappers
+  - fixed page-load and action log wrappers
+  - update/settings/log-viewer shell messages in the main window
+  - variables file load/save, holiday-manager, and audio-import messages
+  - holiday create/verify/attach log wrappers
+  - base audit-write and exception wrapper logs
 - Preserved inserted technical/runtime values exactly:
-  - M365 group IDs, group names, UPNs, usage locations, raw PowerShell output, error details, tenant/account values, and command results
-- Kept frozen infrastructure/auth/script builders, Domain/API contracts, XAML, and unrelated production files untouched.
+  - file paths, exception text, holiday names, counts, audio file IDs, raw import results, versions, log levels, and native output/details
+- Kept frozen infrastructure/auth/script builders, Domain/API contracts, XAML, screenshot code, and unrelated production files untouched.
 
 ### RED
 
@@ -26,8 +29,10 @@ Added the new focused runtime-localization coverage first, then ran:
 
 Initial RED evidence:
 
-- `SwitchingLanguage_LocalizesCallQueueGroupIdStatus_AndPreservesGroupId` failed because Call Queues still emitted the old fixed English `retrieved` text instead of the required localized `Load` wording.
-- `SwitchingLanguage_LocalizesM365GroupCreateStatus_AndPreservesName` initially exposed the create-status auto-refresh overwrite; the test was tightened to disable auto-refresh, then remained red until the create status/log wrappers were localized.
+- build failed because the new B2 runtime tests referenced missing typed keys:
+  - `UiTextKey.VariablesSaveHolidaySeriesLog`
+  - `UiTextKey.MainSettingsPanelStateLog`
+- that confirmed the remaining B2 wrappers were still hard-coded and not yet represented in the typed runtime catalog surface.
 
 ### GREEN
 
@@ -35,63 +40,78 @@ Focused runtime localization tests:
 
 `dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~RuntimeLocalizationTests`
 
-Result: Passed 12/12
+Result: Passed 14/14
 
-Focused affected ViewModel/runtime slice:
+Focused affected B2 ViewModel/runtime slice:
 
-`dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter "FullyQualifiedName~RuntimeLocalizationTests|FullyQualifiedName~CallQueuesViewModelTests|FullyQualifiedName~GetStartedViewModelTests|FullyQualifiedName~M365GroupsViewModelTests"`
+`dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter "FullyQualifiedName~RuntimeLocalizationTests|FullyQualifiedName~WelcomeViewModelTests|FullyQualifiedName~HistoryViewModelTests|FullyQualifiedName~VariablesViewModelTests|FullyQualifiedName~HolidaysViewModelTests|FullyQualifiedName~MainWindowViewModelTests"`
 
-Result: Passed 98/98
+Result: Passed 111/111
 
 Full solution:
 
 `dotnet test PhoneDesk.slnx --no-restore`
 
-Result: Passed 589/589
+Result: Passed 591/591
 
 ### Runtime sink coverage in this cluster
 
-- `CallQueuesViewModel`
+- `WelcomeViewModel`
   - page-load log
-  - load resource-account status/log/success/no-output wrappers
-  - load call-queue status/log/success/no-output wrappers
-  - assign-license error log wrapper
-  - load/save M365 group ID status/success/error/parse wrappers
-  - create resource-account validation/context/success/error/log wrappers
-  - update usage-location validation/context/success/error/log wrappers
-  - create call-queue validation/context/success/error/log wrappers
-  - associate resource-account validation/context/success/error/log wrappers
-  - delete call-queue context/success/error/log wrappers
-  - delete resource-account context/confirmation/success/error/log wrappers
-- `GetStartedViewModel`
-  - page-load and navigation-blocked logs
-  - module/Teams/Graph connect/disconnect log wrappers
-  - setup guidance and detail text
-  - step status text
-  - action button text
-  - live language refresh for the visible computed text on the current ViewModel instance
-- `M365GroupsViewModel`
+  - open-documentation log
+  - open-documentation failure log wrapper
+- `HistoryViewModel`
   - page-load log
-  - load-groups status/log/success/no-output wrappers
-  - create-group validation/context/success/already-exists/error/log wrappers
-  - delete-group validation/context/confirmation/success/error/log wrappers
-  - check-group configuration-missing/log/parse/status wrappers
+  - audit-read failure log wrapper
+  - open-audit-folder failure log wrapper
+- `VariablesViewModel`
+  - page-load log
+  - configuration save/load success and failure wrappers
+  - load-picker title and file-type labels
+  - holiday-time update log
+  - add-holiday / predefined-holidays / Aargau-reference open and failure logs
+  - predefined-holiday incomplete-region warning and per-holiday add logs
+  - edit/save/delete holiday logs and delete-all/save-series logs
+  - call-queue / auto-attendant configuration save logs
+  - audio-picker title and file-type labels
+  - audio file size/type/import/parse/import-failure wrappers and success messages
+  - operator-visible audio contexts without internal `AA` / `CQ` wording
+- `HolidaysViewModel`
+  - page-load log
+  - create holiday-series start/success/error logs
+  - verify auto-attendant start/success/error logs
+  - attach-holiday start/success/error logs
+  - exception wrapper logs through localized base helper
+- `MainWindowViewModel`
+  - application-start log
+  - update available / installer missing / installer start / download cancelled / installation failed logs
+  - open-release-page failure log
+  - skip-preview / skip-delete / auto-refresh / minimum-log-level logs
+  - open-audit-folder failure log
+  - theme-changed log
+  - settings-panel and log-viewer open/close logs
+  - log-cleared log
+  - live language refresh for the next emitted shell/runtime log message
+- `ViewModelBase`
+  - localized audit-log write failure wrapper
+  - localized exception wrapper helper used by B2 callers
 
 ### Runtime localization tests added in this cluster
 
-- `SwitchingLanguage_LocalizesCallQueueGroupIdStatus_AndPreservesGroupId`
-- `SwitchingLanguage_LocalizesM365GroupCreateStatus_AndPreservesName`
+- `SwitchingLanguage_LocalizesVariablesHolidaySeriesSaveLog_AndPreservesCount`
+- `SwitchingLanguage_LocalizesMainWindowSettingsToggleLog`
 
 ### Files changed in this cluster
 
 - `.superpowers/sdd/2026-08-21-i18n-german-plan/task-6-report.md`
-- `PhoneDesk.Tests/CallQueuesViewModelTests.cs`
-- `PhoneDesk.Tests/M365GroupsViewModelTests.cs`
+- `PhoneDesk.Tests/MainWindowViewModelTests.cs`
 - `PhoneDesk.Tests/RuntimeLocalizationTests.cs`
-- `PhoneDesk.Tests/TestSupport/ViewModelTestHarness.cs`
 - `src/PhoneDesk.Presentation/Localization/UiTextKey.cs`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.en.json`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.de.json`
-- `src/PhoneDesk.Presentation/ViewModels/CallQueuesViewModel.cs`
-- `src/PhoneDesk.Presentation/ViewModels/GetStartedViewModel.cs`
-- `src/PhoneDesk.Presentation/ViewModels/M365GroupsViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/HistoryViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/HolidaysViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/MainWindowViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/VariablesViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/ViewModelBase.cs`
+- `src/PhoneDesk.Presentation/ViewModels/WelcomeViewModel.cs`

@@ -29,4 +29,10 @@
     <AvaloniaResource Include="Resources\**" />
   </ItemGroup>
 
+  <Target Name="ValidateLocalization" BeforeTargets="CoreCompile">
+    <Exec
+      WorkingDirectory="$(MSBuildProjectDirectory)\..\.."
+      Command="dotnet run --project &quot;$(MSBuildProjectDirectory)\..\..\tools\PhoneDesk.LocalizationGuard\PhoneDesk.LocalizationGuard.csproj&quot; --configuration $(Configuration) --no-restore -- &quot;$(MSBuildProjectDirectory)\..\..&quot;" />
+  </Target>
+
 </Project>

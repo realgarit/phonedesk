@@ -452,56 +452,60 @@ namespace PhoneDesk.ViewModels
         {
             // ──── HEADER ────
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
-            doc.AppendLine("  TEAMS PHONE SYSTEM — COMPLETE TENANT DOCUMENTATION");
+            AppendReportLine(doc, UiTextKey.DocumentationReportTitle, "  TEAMS PHONE SYSTEM — COMPLETE TENANT DOCUMENTATION");
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
-            doc.AppendLine($"  Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            AppendReportLine(
+                doc,
+                UiTextKey.DocumentationReportGeneratedLabel,
+                "  Generated: {time}",
+                new Dictionary<string, object?> { ["time"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") });
             doc.AppendLine();
 
             // ──── 1. TENANT INFO ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  1. TENANT INFORMATION                                      │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportTenantInformationTitle, "│  1. TENANT INFORMATION                                      │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (!string.IsNullOrEmpty(tenantName))
             {
-                doc.AppendLine($"  Tenant Name:    {tenantName}");
-                doc.AppendLine($"  Tenant ID:      {tenantId}");
-                doc.AppendLine($"  Country:        {tenantCountry}");
-                doc.AppendLine($"  Language:       {tenantLang}");
+                AppendReportLine(doc, UiTextKey.DocumentationReportTenantNameLabel, "  Tenant Name:    {value}", new Dictionary<string, object?> { ["value"] = tenantName });
+                AppendReportLine(doc, UiTextKey.DocumentationReportTenantIdLabel, "  Tenant ID:      {value}", new Dictionary<string, object?> { ["value"] = tenantId });
+                AppendReportLine(doc, UiTextKey.DocumentationReportCountryLabel, "  Country:        {value}", new Dictionary<string, object?> { ["value"] = tenantCountry });
+                AppendReportLine(doc, UiTextKey.DocumentationReportLanguageLabel, "  Language:       {value}", new Dictionary<string, object?> { ["value"] = tenantLang });
             }
             else
             {
-                doc.AppendLine("  (Tenant information not available)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportTenantInfoUnavailable, "  (Tenant information not available)");
             }
             doc.AppendLine();
 
             // ──── 2. EXECUTIVE SUMMARY ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  2. EXECUTIVE SUMMARY                                       │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportExecutiveSummaryTitle, "│  2. EXECUTIVE SUMMARY                                       │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
-            doc.AppendLine($"  Auto Attendants:    {aaList.Count}");
-            doc.AppendLine($"  Call Queues:        {cqList.Count}");
-            doc.AppendLine($"  Resource Accounts:  {raList.Count}");
-            doc.AppendLine($"  Phone Numbers:      {phoneList.Count}");
-            doc.AppendLine($"  Voice Users:        {userList.Count}");
-            doc.AppendLine($"  Schedules:          {schedList.Count}");
+            AppendReportLine(doc, UiTextKey.DocumentationReportAutoAttendantsCount, "  Auto Attendants:    {count}", new Dictionary<string, object?> { ["count"] = aaList.Count });
+            AppendReportLine(doc, UiTextKey.DocumentationReportCallQueuesCount, "  Call Queues:        {count}", new Dictionary<string, object?> { ["count"] = cqList.Count });
+            AppendReportLine(doc, UiTextKey.DocumentationReportResourceAccountsCount, "  Resource Accounts:  {count}", new Dictionary<string, object?> { ["count"] = raList.Count });
+            AppendReportLine(doc, UiTextKey.DocumentationReportPhoneNumbersCount, "  Phone Numbers:      {count}", new Dictionary<string, object?> { ["count"] = phoneList.Count });
+            AppendReportLine(doc, UiTextKey.DocumentationReportVoiceUsersCount, "  Voice Users:        {count}", new Dictionary<string, object?> { ["count"] = userList.Count });
+            AppendReportLine(doc, UiTextKey.DocumentationReportSchedulesCount, "  Schedules:          {count}", new Dictionary<string, object?> { ["count"] = schedList.Count });
             var assignedNumbers = phoneList.Count(p => !string.IsNullOrEmpty(p.Status) && p.Status.Contains("Assign", StringComparison.OrdinalIgnoreCase));
             var unassigned = phoneList.Count - assignedNumbers;
-            doc.AppendLine($"  Numbers Assigned:   {assignedNumbers}");
-            doc.AppendLine($"  Numbers Unassigned: {unassigned}");
+            AppendReportLine(doc, UiTextKey.DocumentationReportNumbersAssigned, "  Numbers Assigned:   {count}", new Dictionary<string, object?> { ["count"] = assignedNumbers });
+            AppendReportLine(doc, UiTextKey.DocumentationReportNumbersUnassigned, "  Numbers Unassigned: {count}", new Dictionary<string, object?> { ["count"] = unassigned });
             doc.AppendLine();
 
             // ──── 3. CALL ROUTING TOPOLOGY ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  3. CALL ROUTING TOPOLOGY                                   │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportCallRoutingTopologyTitle, "│  3. CALL ROUTING TOPOLOGY                                   │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             BuildTopology(doc, raList, aaList, cqList, menuOptions, assocList, agentList, overflowList, timeoutList, operatorList);
 
             // ──── 4. PHONE NUMBER INVENTORY ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  4. PHONE NUMBER INVENTORY                                  │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportPhoneNumberInventoryTitle, "│  4. PHONE NUMBER INVENTORY                                  │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (phoneList.Count > 0)
@@ -510,7 +514,7 @@ namespace PhoneDesk.ViewModels
                 var raById = raList.ToDictionary(r => r.ObjectId, r => r, StringComparer.OrdinalIgnoreCase);
                 var userByUpn = userList.ToDictionary(u => u.Upn, u => u, StringComparer.OrdinalIgnoreCase);
 
-                doc.AppendLine("  Number               │ Type     │ Status     │ Assigned To               │ City");
+                AppendReportLine(doc, UiTextKey.DocumentationReportPhoneNumberTableHeader, "  Number               │ Type     │ Status     │ Assigned To               │ City");
                 doc.AppendLine("  ─────────────────────┼──────────┼────────────┼───────────────────────────┼────────────");
                 foreach (var p in phoneList.OrderBy(x => x.Number))
                 {
@@ -525,13 +529,13 @@ namespace PhoneDesk.ViewModels
             }
             else
             {
-                doc.AppendLine("  (No phone numbers found or insufficient permissions)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoPhoneNumbers, "  (No phone numbers found or insufficient permissions)");
             }
             doc.AppendLine();
 
             // ──── 5. RESOURCE ACCOUNTS ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  5. RESOURCE ACCOUNTS                                       │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportResourceAccountsTitle, "│  5. RESOURCE ACCOUNTS                                       │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (raList.Count > 0)
@@ -540,30 +544,32 @@ namespace PhoneDesk.ViewModels
                 {
                     var appType = ra.AppId switch
                     {
-                        "11cd3e2e-fccb-42ad-ad00-878b93575e07" => "Call Queue",
-                        "ce933385-9390-45d1-9512-c8d228074e07" => "Auto Attendant",
+                        "11cd3e2e-fccb-42ad-ad00-878b93575e07" => GetText(UiTextKey.DocumentationReportCallQueueType, "Call Queue"),
+                        "ce933385-9390-45d1-9512-c8d228074e07" => GetText(UiTextKey.DocumentationReportAutoAttendantType, "Auto Attendant"),
                         _ => ra.AppId
                     };
                     var assoc = assocList.FirstOrDefault(a => a.RaId.Equals(ra.ObjectId, StringComparison.OrdinalIgnoreCase));
-                    var assocTarget = assoc != null ? $"→ {assoc.ConfigType}: {assoc.ConfigId}" : "(not associated)";
+                    var assocTarget = assoc != null
+                        ? $"→ {assoc.ConfigType}: {assoc.ConfigId}"
+                        : GetText(UiTextKey.DocumentationReportNotAssociatedValue, "(not associated)");
 
                     doc.AppendLine($"  ● {ra.Name}");
-                    doc.AppendLine($"    UPN:         {ra.Upn}");
-                    doc.AppendLine($"    Type:        {appType}");
-                    doc.AppendLine($"    Phone:       {(string.IsNullOrEmpty(ra.Phone) ? "(none)" : ra.Phone)}");
-                    doc.AppendLine($"    Association: {assocTarget}");
+                    AppendReportLine(doc, UiTextKey.DocumentationReportUpnField, "    UPN:         {value}", new Dictionary<string, object?> { ["value"] = ra.Upn });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportTypeField, "    Type:        {value}", new Dictionary<string, object?> { ["value"] = appType });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportPhoneField, "    Phone:       {value}", new Dictionary<string, object?> { ["value"] = string.IsNullOrEmpty(ra.Phone) ? GetText(UiTextKey.DocumentationReportNoneValue, "(none)") : ra.Phone });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportAssociationField, "    Association: {value}", new Dictionary<string, object?> { ["value"] = assocTarget });
                     doc.AppendLine();
                 }
             }
             else
             {
-                doc.AppendLine("  (No resource accounts found)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoResourceAccounts, "  (No resource accounts found)");
                 doc.AppendLine();
             }
 
             // ──── 6. AUTO ATTENDANTS (DETAILED) ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  6. AUTO ATTENDANTS — DETAILED CONFIGURATION                │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportAutoAttendantsTitle, "│  6. AUTO ATTENDANTS — DETAILED CONFIGURATION                │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (aaList.Count > 0)
@@ -571,17 +577,17 @@ namespace PhoneDesk.ViewModels
                 foreach (var aa in aaList.OrderBy(a => a.Name))
                 {
                     doc.AppendLine($"  ╔═ {aa.Name} ═══════════════════════════════════════");
-                    doc.AppendLine($"  ║  Language:  {aa.Language}");
-                    doc.AppendLine($"  ║  TimeZone:  {aa.TimeZone}");
-                    doc.AppendLine($"  ║  Voice:     {aa.Voice}");
-                    doc.AppendLine($"  ║  Default:   {aa.DefaultFlow}");
+                    AppendReportLine(doc, UiTextKey.DocumentationReportLanguageField, "  ║  Language:  {value}", new Dictionary<string, object?> { ["value"] = aa.Language });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportTimeZoneField, "  ║  TimeZone:  {value}", new Dictionary<string, object?> { ["value"] = aa.TimeZone });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportVoiceField, "  ║  Voice:     {value}", new Dictionary<string, object?> { ["value"] = aa.Voice });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportDefaultField, "  ║  Default:   {value}", new Dictionary<string, object?> { ["value"] = aa.DefaultFlow });
 
                     // Operator
                     var op = operatorList.FirstOrDefault(o => o.AaName == aa.Name);
                     if (!string.IsNullOrEmpty(op.AaName))
                     {
                         var opName = ResolveTargetName(op.OpId, raList, aaList, cqList);
-                        doc.AppendLine($"  ║  Operator:  {opName} ({op.OpType})");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportOperatorField, "  ║  Operator:  {name} ({type})", new Dictionary<string, object?> { ["name"] = opName, ["type"] = op.OpType });
                     }
 
                     // Call Flows
@@ -589,15 +595,15 @@ namespace PhoneDesk.ViewModels
                     if (flows.Count > 0)
                     {
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Call Flows:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportCallFlowsLabel, "  ║  Call Flows:");
                         foreach (var cf in flows)
                         {
-                            doc.AppendLine($"  ║    ├─ {cf.FlowName} (Menu: {cf.MenuName})");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportCallFlowEntry, "  ║    ├─ {flow} (Menu: {menu})", new Dictionary<string, object?> { ["flow"] = cf.FlowName, ["menu"] = cf.MenuName });
                             var opts = menuOptions.Where(m => m.AaName == aa.Name && m.FlowName == cf.FlowName).ToList();
                             foreach (var opt in opts)
                             {
                                 var targetName = ResolveTargetName(opt.TargetId, raList, aaList, cqList);
-                                doc.AppendLine($"  ║    │    Key {opt.Key} → {opt.Action}: {targetName}");
+                                AppendReportLine(doc, UiTextKey.DocumentationReportKeyActionEntry, "  ║    │    Key {key} → {action}: {target}", new Dictionary<string, object?> { ["key"] = opt.Key, ["action"] = opt.Action, ["target"] = targetName });
                             }
                         }
                     }
@@ -607,11 +613,11 @@ namespace PhoneDesk.ViewModels
                     if (defaultOpts.Count > 0)
                     {
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Default Menu Options:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportDefaultMenuOptionsLabel, "  ║  Default Menu Options:");
                         foreach (var opt in defaultOpts)
                         {
                             var targetName = ResolveTargetName(opt.TargetId, raList, aaList, cqList);
-                            doc.AppendLine($"  ║    Key {opt.Key} → {opt.Action}: {targetName}");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportKeyActionEntry, "  ║    │    Key {key} → {action}: {target}", new Dictionary<string, object?> { ["key"] = opt.Key, ["action"] = opt.Action, ["target"] = targetName });
                         }
                     }
 
@@ -620,10 +626,10 @@ namespace PhoneDesk.ViewModels
                     if (chas.Count > 0)
                     {
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Schedule Associations:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportScheduleAssociationsLabel, "  ║  Schedule Associations:");
                         foreach (var cha in chas)
                         {
-                            doc.AppendLine($"  ║    {cha.Type}: Schedule={cha.ScheduleId}, CallFlow={cha.CallFlowId}");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportScheduleAssociationEntry, "  ║    {type}: Schedule={schedule}, CallFlow={callFlow}", new Dictionary<string, object?> { ["type"] = cha.Type, ["schedule"] = cha.ScheduleId, ["callFlow"] = cha.CallFlowId });
                         }
                     }
 
@@ -633,13 +639,13 @@ namespace PhoneDesk.ViewModels
             }
             else
             {
-                doc.AppendLine("  (No auto attendants found)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoAutoAttendants, "  (No auto attendants found)");
                 doc.AppendLine();
             }
 
             // ──── 7. CALL QUEUES (DETAILED) ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  7. CALL QUEUES — DETAILED CONFIGURATION                    │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportCallQueuesTitle, "│  7. CALL QUEUES — DETAILED CONFIGURATION                    │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (cqList.Count > 0)
@@ -647,17 +653,17 @@ namespace PhoneDesk.ViewModels
                 foreach (var cq in cqList.OrderBy(c => c.Name))
                 {
                     doc.AppendLine($"  ╔═ {cq.Name} ═══════════════════════════════════════");
-                    doc.AppendLine($"  ║  Routing:      {cq.Routing}");
-                    doc.AppendLine($"  ║  Alert Time:   {cq.AlertTime}s");
-                    doc.AppendLine($"  ║  Language:     {cq.Language}");
-                    doc.AppendLine($"  ║  Agents:       {cq.AgentCount}");
+                    AppendReportLine(doc, UiTextKey.DocumentationReportRoutingField, "  ║  Routing:      {value}", new Dictionary<string, object?> { ["value"] = cq.Routing });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportAlertTimeField, "  ║  Alert Time:   {value}s", new Dictionary<string, object?> { ["value"] = cq.AlertTime });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportLanguageField, "  ║  Language:  {value}", new Dictionary<string, object?> { ["value"] = cq.Language });
+                    AppendReportLine(doc, UiTextKey.DocumentationReportAgentsField, "  ║  Agents:       {count}", new Dictionary<string, object?> { ["count"] = cq.AgentCount });
 
                     // Agent IDs
                     var agents = agentList.Where(a => a.CqName == cq.Name).ToList();
                     if (agents.Count > 0)
                     {
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Agent List (✓ = opted in, ✗ = opted out):");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportAgentListLabel, "  ║  Agent List (✓ = opted in, ✗ = opted out):");
                         foreach (var agent in agents)
                         {
                             var optIn = agent.OptIn.Equals("True", StringComparison.OrdinalIgnoreCase) ? "✓" : "✗";
@@ -675,7 +681,7 @@ namespace PhoneDesk.ViewModels
                     if (dls.Count > 0)
                     {
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Distribution Lists:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportDistributionListsLabel, "  ║  Distribution Lists:");
                         foreach (var dl in dls)
                             doc.AppendLine($"  ║    • {dl.DlId}");
                     }
@@ -686,11 +692,11 @@ namespace PhoneDesk.ViewModels
                     {
                         var targetName = ResolveTargetName(of.TargetId, raList, aaList, cqList);
                         doc.AppendLine($"  ║");
-                        doc.AppendLine($"  ║  Overflow:     {of.Action} (threshold >{of.Threshold}) → {targetName}");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportOverflowLine, "  ║  Overflow:     {action} (threshold >{threshold}) → {target}", new Dictionary<string, object?> { ["action"] = of.Action, ["threshold"] = of.Threshold, ["target"] = targetName });
                     }
                     else
                     {
-                        doc.AppendLine($"  ║  Overflow:     {cq.OverflowAction} (threshold >{cq.OverflowThreshold})");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportOverflowLineNoTarget, "  ║  Overflow:     {action} (threshold >{threshold})", new Dictionary<string, object?> { ["action"] = cq.OverflowAction, ["threshold"] = cq.OverflowThreshold });
                     }
 
                     // Timeout
@@ -698,11 +704,11 @@ namespace PhoneDesk.ViewModels
                     if (to != null)
                     {
                         var targetName = ResolveTargetName(to.TargetId, raList, aaList, cqList);
-                        doc.AppendLine($"  ║  Timeout:      {to.Action} (threshold >{to.Threshold}s) → {targetName}");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportTimeoutLine, "  ║  Timeout:      {action} (threshold >{threshold}s) → {target}", new Dictionary<string, object?> { ["action"] = to.Action, ["threshold"] = to.Threshold, ["target"] = targetName });
                     }
                     else
                     {
-                        doc.AppendLine($"  ║  Timeout:      {cq.TimeoutAction} (threshold >{cq.TimeoutThreshold}s)");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportTimeoutLineNoTarget, "  ║  Timeout:      {action} (threshold >{threshold}s)", new Dictionary<string, object?> { ["action"] = cq.TimeoutAction, ["threshold"] = cq.TimeoutThreshold });
                     }
 
                     doc.AppendLine($"  ╚═══════════════════════════════════════════════════════");
@@ -711,13 +717,13 @@ namespace PhoneDesk.ViewModels
             }
             else
             {
-                doc.AppendLine("  (No call queues found)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoCallQueues, "  (No call queues found)");
                 doc.AppendLine();
             }
 
             // ──── 8. SCHEDULES ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  8. SCHEDULES (HOLIDAYS & BUSINESS HOURS)                   │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportSchedulesTitle, "│  8. SCHEDULES (HOLIDAYS & BUSINESS HOURS)                   │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (schedList.Count > 0)
@@ -730,7 +736,7 @@ namespace PhoneDesk.ViewModels
                     var ranges = schedDateRanges.Where(d => d.ScheduleName == sched.Name).ToList();
                     if (ranges.Count > 0)
                     {
-                        doc.AppendLine($"    Holiday Dates:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportHolidayDatesLabel, "    Holiday Dates:");
                         foreach (var r in ranges)
                             doc.AppendLine($"      {r.Start}  →  {r.End}");
                     }
@@ -739,7 +745,7 @@ namespace PhoneDesk.ViewModels
                     var weekly = schedWeekly.Where(w => w.ScheduleName == sched.Name).ToList();
                     if (weekly.Count > 0)
                     {
-                        doc.AppendLine($"    Weekly Hours:");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportWeeklyHoursLabel, "    Weekly Hours:");
                         foreach (var w in weekly)
                             doc.AppendLine($"      {w.Day,-10}  {w.Start} - {w.End}");
                     }
@@ -748,18 +754,18 @@ namespace PhoneDesk.ViewModels
             }
             else
             {
-                doc.AppendLine("  (No schedules found)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoSchedules, "  (No schedules found)");
                 doc.AppendLine();
             }
 
             // ──── 9. VOICE-ENABLED USERS ────
             doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-            doc.AppendLine("│  9. VOICE-ENABLED USERS                                     │");
+            AppendReportLine(doc, UiTextKey.DocumentationReportVoiceEnabledUsersTitle, "│  9. VOICE-ENABLED USERS                                     │");
             doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
             doc.AppendLine();
             if (userList.Count > 0)
             {
-                doc.AppendLine("  Name                        │ UPN                          │ Phone          │ VRP        │ Calling Policy");
+                AppendReportLine(doc, UiTextKey.DocumentationReportVoiceUsersTableHeader, "  Name                        │ UPN                          │ Phone          │ VRP        │ Calling Policy");
                 doc.AppendLine("  ────────────────────────────┼──────────────────────────────┼────────────────┼────────────┼──────────────");
                 foreach (var u in userList.OrderBy(x => x.Name))
                 {
@@ -768,7 +774,7 @@ namespace PhoneDesk.ViewModels
             }
             else
             {
-                doc.AppendLine("  (No voice-enabled users found or insufficient permissions)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoVoiceUsers, "  (No voice-enabled users found or insufficient permissions)");
             }
             doc.AppendLine();
 
@@ -777,25 +783,25 @@ namespace PhoneDesk.ViewModels
             if (variables != null && !string.IsNullOrEmpty(variables.Customer))
             {
                 doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
-                doc.AppendLine("│  10. CURRENT PHONE MANAGER CONFIGURATION                    │");
+                AppendReportLine(doc, UiTextKey.DocumentationReportCurrentConfigurationTitle, "│  10. CURRENT PHONE MANAGER CONFIGURATION                    │");
                 doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
                 doc.AppendLine();
-                doc.AppendLine($"  Customer:        {variables.Customer}");
-                doc.AppendLine($"  Customer Group:  {variables.CustomerGroupName}");
-                doc.AppendLine($"  Language:        {variables.LanguageId}");
-                doc.AppendLine($"  Time Zone:       {variables.TimeZoneId}");
-                doc.AppendLine($"  Usage Location:  {variables.UsageLocation}");
-                doc.AppendLine($"  M365 Group:      {variables.M365Group}");
-                doc.AppendLine($"  CQ Display Name: {variables.CqDisplayName}");
-                doc.AppendLine($"  AA Display Name: {variables.AaDisplayName}");
-                doc.AppendLine($"  CQ Resource UPN: {variables.RacqUPN}");
-                doc.AppendLine($"  AA Resource UPN: {variables.RaaaUPN}");
-                doc.AppendLine($"  Phone Number:    {variables.RaaAnr}");
+                AppendReportLine(doc, UiTextKey.DocumentationReportCustomerLabel, "  Customer:        {value}", new Dictionary<string, object?> { ["value"] = variables.Customer });
+                AppendReportLine(doc, UiTextKey.DocumentationReportCustomerGroupLabel, "  Customer Group:  {value}", new Dictionary<string, object?> { ["value"] = variables.CustomerGroupName });
+                AppendReportLine(doc, UiTextKey.DocumentationReportLanguageLabel, "  Language:       {value}", new Dictionary<string, object?> { ["value"] = variables.LanguageId });
+                AppendReportLine(doc, UiTextKey.DocumentationReportTimeZoneLabel, "  Time Zone:       {value}", new Dictionary<string, object?> { ["value"] = variables.TimeZoneId });
+                AppendReportLine(doc, UiTextKey.DocumentationReportUsageLocationLabel, "  Usage Location:  {value}", new Dictionary<string, object?> { ["value"] = variables.UsageLocation });
+                AppendReportLine(doc, UiTextKey.DocumentationReportM365GroupLabel, "  M365 Group:      {value}", new Dictionary<string, object?> { ["value"] = variables.M365Group });
+                AppendReportLine(doc, UiTextKey.DocumentationReportCallQueueDisplayNameLabel, "  CQ Display Name: {value}", new Dictionary<string, object?> { ["value"] = variables.CqDisplayName });
+                AppendReportLine(doc, UiTextKey.DocumentationReportAutoAttendantDisplayNameLabel, "  AA Display Name: {value}", new Dictionary<string, object?> { ["value"] = variables.AaDisplayName });
+                AppendReportLine(doc, UiTextKey.DocumentationReportCallQueueResourceUpnLabel, "  CQ Resource UPN: {value}", new Dictionary<string, object?> { ["value"] = variables.RacqUPN });
+                AppendReportLine(doc, UiTextKey.DocumentationReportAutoAttendantResourceUpnLabel, "  AA Resource UPN: {value}", new Dictionary<string, object?> { ["value"] = variables.RaaaUPN });
+                AppendReportLine(doc, UiTextKey.DocumentationReportPhoneNumberLabel, "  Phone Number:    {value}", new Dictionary<string, object?> { ["value"] = variables.RaaAnr });
                 doc.AppendLine();
             }
 
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
-            doc.AppendLine("  END OF DOCUMENTATION");
+            AppendReportLine(doc, UiTextKey.DocumentationReportEndTitle, "  END OF DOCUMENTATION");
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
         }
 
@@ -808,8 +814,8 @@ namespace PhoneDesk.ViewModels
             List<OverflowTimeout> overflowList, List<OverflowTimeout> timeoutList,
             List<(string AaName, string OpType, string OpId)> operatorList)
         {
-            doc.AppendLine("  This section shows the complete call routing chain from");
-            doc.AppendLine("  phone numbers through to final destinations.");
+            AppendReportLine(doc, UiTextKey.DocumentationReportTopologyIntro, "  This section shows the complete call routing chain from");
+            AppendReportLine(doc, UiTextKey.DocumentationReportTopologyIntroContinuation, "  phone numbers through to final destinations.");
             doc.AppendLine();
 
             // Build lookup: RA → associated AA/CQ
@@ -821,17 +827,19 @@ namespace PhoneDesk.ViewModels
 
             if (entryPoints.Count == 0 && raList.Count > 0)
             {
-                doc.AppendLine("  ⚠ No resource accounts have phone numbers assigned.");
-                doc.AppendLine("  Showing all resource account associations instead:");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoAssignedNumbersWarning, "  ⚠ No resource accounts have phone numbers assigned.");
+                AppendReportLine(doc, UiTextKey.DocumentationReportShowAssociations, "  Showing all resource account associations instead:");
                 doc.AppendLine();
                 entryPoints = raList.OrderBy(r => r.Name).ToList();
             }
 
             foreach (var entry in entryPoints)
             {
-                var phone = !string.IsNullOrEmpty(entry.Phone) ? entry.Phone : "(no number)";
+                var phone = !string.IsNullOrEmpty(entry.Phone)
+                    ? entry.Phone
+                    : GetText(UiTextKey.DocumentationReportNoNumberValue, "(no number)");
                 doc.AppendLine($"  ☎ {phone}");
-                doc.AppendLine($"  └─► Resource Account: {entry.Name}");
+                AppendReportLine(doc, UiTextKey.DocumentationReportResourceAccountNode, "  └─► Resource Account: {name}", new Dictionary<string, object?> { ["name"] = entry.Name });
 
                 if (assocByRaId.TryGetValue(entry.ObjectId, out var assoc))
                 {
@@ -839,7 +847,7 @@ namespace PhoneDesk.ViewModels
                     {
                         var aa = aaList.FirstOrDefault(a => a.Identity.Contains(assoc.ConfigId, StringComparison.OrdinalIgnoreCase));
                         var aaName = aa?.Name ?? assoc.ConfigId;
-                        doc.AppendLine($"      └─► Auto Attendant: {aaName}");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportAutoAttendantNode, "      └─► Auto Attendant: {name}", new Dictionary<string, object?> { ["name"] = aaName });
 
                         // Show default menu routing
                         var opts = menuOptions.Where(m => m.AaName == aaName && m.FlowName == "DefaultCallFlow").ToList();
@@ -848,7 +856,7 @@ namespace PhoneDesk.ViewModels
                             foreach (var opt in opts)
                             {
                                 var targetName = ResolveTargetName(opt.TargetId, raList, aaList, cqList);
-                                doc.AppendLine($"          ├─ Key {opt.Key} → {opt.Action}: {targetName}");
+                                AppendReportLine(doc, UiTextKey.DocumentationReportKeyActionNode, "          ├─ Key {key} → {action}: {target}", new Dictionary<string, object?> { ["key"] = opt.Key, ["action"] = opt.Action, ["target"] = targetName });
 
                                 // If target is a CQ, show agents
                                 ShowCqAgentsIfMatch(doc, opt.TargetId, cqList, agentList, raByObjId, "              ");
@@ -860,23 +868,23 @@ namespace PhoneDesk.ViewModels
                         if (!string.IsNullOrEmpty(op.AaName))
                         {
                             var opName = ResolveTargetName(op.OpId, raList, aaList, cqList);
-                            doc.AppendLine($"          └─ Operator → {opName}");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportOperatorNode, "          └─ Operator → {name}", new Dictionary<string, object?> { ["name"] = opName });
                         }
                     }
                     else if (assoc.ConfigType.Contains("CallQueue", StringComparison.OrdinalIgnoreCase))
                     {
                         var cq = cqList.FirstOrDefault(c => c.Identity.Contains(assoc.ConfigId, StringComparison.OrdinalIgnoreCase));
                         var cqName = cq?.Name ?? assoc.ConfigId;
-                        doc.AppendLine($"      └─► Call Queue: {cqName} [{cq?.Routing ?? "?"}]");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportCallQueueNode, "      └─► Call Queue: {name} [{routing}]", new Dictionary<string, object?> { ["name"] = cqName, ["routing"] = cq?.Routing ?? "?" });
 
                         var agents = agentList.Where(a => a.CqName == cqName).ToList();
                         if (agents.Count > 0)
                         {
-                            doc.AppendLine($"          Agents ({agents.Count}):");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportAgentsCount, "          Agents ({count}):", new Dictionary<string, object?> { ["count"] = agents.Count });
                             foreach (var agent in agents.Take(10))
                                 doc.AppendLine($"            • {agent.ObjectId}");
                             if (agents.Count > 10)
-                                doc.AppendLine($"            ... and {agents.Count - 10} more");
+                                AppendReportLine(doc, UiTextKey.DocumentationReportMoreAgents, "            ... and {count} more", new Dictionary<string, object?> { ["count"] = agents.Count - 10 });
                         }
 
                         // Overflow/Timeout
@@ -884,26 +892,26 @@ namespace PhoneDesk.ViewModels
                         if (of != null)
                         {
                             var ofTarget = ResolveTargetName(of.TargetId, raList, aaList, cqList);
-                            doc.AppendLine($"          Overflow → {ofTarget}");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportOverflowNode, "          Overflow → {target}", new Dictionary<string, object?> { ["target"] = ofTarget });
                         }
                         var to = timeoutList.FirstOrDefault(t => t.CqName == cqName);
                         if (to != null)
                         {
                             var toTarget = ResolveTargetName(to.TargetId, raList, aaList, cqList);
-                            doc.AppendLine($"          Timeout  → {toTarget}");
+                            AppendReportLine(doc, UiTextKey.DocumentationReportTimeoutNode, "          Timeout  → {target}", new Dictionary<string, object?> { ["target"] = toTarget });
                         }
                     }
                 }
                 else
                 {
-                    doc.AppendLine($"      └─ (not associated with any AA or CQ)");
+                    AppendReportLine(doc, UiTextKey.DocumentationReportNotAssociatedNode, "      └─ (not associated with any AA or CQ)");
                 }
                 doc.AppendLine();
             }
 
             if (entryPoints.Count == 0)
             {
-                doc.AppendLine("  (No routing topology available — no resource accounts found)");
+                AppendReportLine(doc, UiTextKey.DocumentationReportNoTopology, "  (No routing topology available — no resource accounts found)");
                 doc.AppendLine();
             }
         }
@@ -924,32 +932,58 @@ namespace PhoneDesk.ViewModels
                 var agents = agentList.Where(a => a.CqName == matchedCq.Name).ToList();
                 if (agents.Count > 0)
                 {
-                    doc.AppendLine($"{indent}Agents ({agents.Count}):");
+                    AppendReportLine(doc, UiTextKey.DocumentationReportAgentsCount, $"{indent}Agents ({{count}}):", new Dictionary<string, object?> { ["count"] = agents.Count });
                     foreach (var agent in agents.Take(5))
                         doc.AppendLine($"{indent}  • {agent.ObjectId}");
                     if (agents.Count > 5)
-                        doc.AppendLine($"{indent}  ... and {agents.Count - 5} more");
+                        AppendReportLine(doc, UiTextKey.DocumentationReportMoreAgents, $"{indent}  ... and {{count}} more", new Dictionary<string, object?> { ["count"] = agents.Count - 5 });
                 }
             }
         }
 
         private string ResolveTargetName(string targetId, List<RaInfo> raList, List<AaInfo> aaList, List<CqInfo> cqList)
         {
-            if (string.IsNullOrEmpty(targetId)) return "(none)";
+            if (string.IsNullOrEmpty(targetId))
+                return GetText(UiTextKey.DocumentationReportNoneValue, "(none)");
 
             // Try RA first
             var ra = raList.FirstOrDefault(r => r.ObjectId.Equals(targetId, StringComparison.OrdinalIgnoreCase));
-            if (ra != null) return $"{ra.Name} (RA)";
+            if (ra != null)
+            {
+                return GetText(
+                    UiTextKey.DocumentationReportResolvedResourceAccount,
+                    "{name} (Resource Account)",
+                    new Dictionary<string, object?> { ["name"] = ra.Name });
+            }
 
             // Try AA
             var aa = aaList.FirstOrDefault(a => a.Identity.Contains(targetId, StringComparison.OrdinalIgnoreCase));
-            if (aa != null) return $"{aa.Name} (AA)";
+            if (aa != null)
+            {
+                return GetText(
+                    UiTextKey.DocumentationReportResolvedAutoAttendant,
+                    "{name} (Auto Attendant)",
+                    new Dictionary<string, object?> { ["name"] = aa.Name });
+            }
 
             // Try CQ
             var cq = cqList.FirstOrDefault(c => c.Identity.Contains(targetId, StringComparison.OrdinalIgnoreCase));
-            if (cq != null) return $"{cq.Name} (CQ)";
+            if (cq != null)
+            {
+                return GetText(
+                    UiTextKey.DocumentationReportResolvedCallQueue,
+                    "{name} (Call Queue)",
+                    new Dictionary<string, object?> { ["name"] = cq.Name });
+            }
 
             return targetId;
         }
+
+        private void AppendReportLine(
+            StringBuilder doc,
+            UiTextKey key,
+            string fallback,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+            => doc.AppendLine(GetText(key, fallback, parameters));
     }
 }

@@ -22,11 +22,13 @@ namespace PhoneDesk.ViewModels
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
+            WelcomeMessage = translationService?.Get(UiTextKey.WelcomeMessage)
+                ?? "Welcome to PhoneDesk. Use this page to start the guided setup.";
             LogLocalized(UiTextKey.WelcomePageLoadedLog, "Welcome page loaded", LogLevel.Info);
         }
 
         [ObservableProperty]
-        private string _welcomeMessage = "Welcome to PhoneDesk! This application will help you manage your Microsoft Teams phone system configuration.";
+        private string _welcomeMessage = string.Empty;
 
         [RelayCommand]
         private new void NavigateToGetStarted()

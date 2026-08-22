@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
+using PhoneDesk.Localization;
 
 namespace PhoneDesk.Helpers
 {
@@ -13,7 +14,11 @@ namespace PhoneDesk.Helpers
     /// </summary>
     internal static class DryRunPlanExportHelper
     {
-        public static async Task<string?> SavePlanAsync(string content, string suggestedFileName, string extension)
+        public static async Task<string?> SavePlanAsync(
+            string content,
+            string suggestedFileName,
+            string extension,
+            ITranslationService? translationService = null)
         {
             var topLevel = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
                 ? desktop.MainWindow
@@ -23,12 +28,14 @@ namespace PhoneDesk.Helpers
                 return null;
 
             var isJson = string.Equals(extension, "json", StringComparison.OrdinalIgnoreCase);
-            var typeName = isJson ? "JSON Files" : "CSV Files";
+            var typeName = isJson
+                ? translationService?.Get(UiTextKey.DryRunPlanJsonFiles) ?? "JSON files"
+                : translationService?.Get(UiTextKey.DryRunPlanCsvFiles) ?? "CSV files";
             var pattern = isJson ? "*.json" : "*.csv";
 
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Export Dry-Run Plan",
+                Title = translationService?.Get(UiTextKey.DryRunPlanExportTitle) ?? "Export dry-run plan",
                 DefaultExtension = extension,
                 SuggestedFileName = suggestedFileName,
                 FileTypeChoices = new[]

@@ -117,12 +117,12 @@ namespace PhoneDesk.ViewModels
 
                 var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
                 {
-                    Title = "Import CSV File",
+                    Title = GetText(UiTextKey.BulkOperationsImportFilePickerTitle, "Import CSV file"),
                     AllowMultiple = false,
                     FileTypeFilter = new[]
                     {
-                        new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = new[] { "*.csv" } },
-                        new Avalonia.Platform.Storage.FilePickerFileType("All Files") { Patterns = new[] { "*" } }
+                        new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.BulkOperationsCsvFiles, "CSV files")) { Patterns = new[] { "*.csv" } },
+                        new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesAllFiles, "All files")) { Patterns = new[] { "*" } }
                     }
                 });
 
@@ -322,7 +322,7 @@ namespace PhoneDesk.ViewModels
 
             var content = asJson ? _planExporter.ToJson(Plan) : _planExporter.ToCsv(Plan);
             var extension = asJson ? "json" : "csv";
-            var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"bulk-dry-run-plan.{extension}", extension);
+            var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"bulk-dry-run-plan.{extension}", extension, _translationService);
             if (saved != null)
             {
                 StatusMessage = GetText(
@@ -526,12 +526,12 @@ namespace PhoneDesk.ViewModels
 
                 var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
                 {
-                    Title = "Export CSV Template",
+                    Title = GetText(UiTextKey.BulkOperationsExportTemplatePickerTitle, "Export CSV template"),
                     DefaultExtension = "csv",
                     SuggestedFileName = "teams-phone-bulk-template.csv",
                     FileTypeChoices = new[]
                     {
-                        new Avalonia.Platform.Storage.FilePickerFileType("CSV Files") { Patterns = new[] { "*.csv" } }
+                        new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.BulkOperationsCsvFiles, "CSV files")) { Patterns = new[] { "*.csv" } }
                     }
                 });
 

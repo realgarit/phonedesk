@@ -60,6 +60,11 @@
     <None Remove="PhoneDesk.Tests\**" />
     <EmbeddedResource Remove="PhoneDesk.Tests\**" />
 
+    <!-- Exclude standalone repository tools from the application project. -->
+    <Compile Remove="tools\**\*.cs" />
+    <None Remove="tools\**" />
+    <EmbeddedResource Remove="tools\**" />
+
     <!-- Exclude Clean Architecture layer libraries: they are built as their own projects
          under src\, but the app project (rooted at the repo root) would otherwise glob and
          double-compile their sources. -->

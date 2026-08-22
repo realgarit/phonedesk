@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
+relevant_pattern='^(src/PhoneDesk\.Presentation/|PhoneDesk\.Tests/(LocalizationGuardTests\.cs|LocalizationCoverageTests\.cs|RuntimeLocalizationTests\.cs)|tools/PhoneDesk\.LocalizationGuard/|scripts/check-localization\.ps1$|PhoneDesk\.slnx$|\.github/workflows/build\.yml$)'
+
+if ! printf '%s\n' "$staged_files" | grep -Eq "$relevant_pattern"; then
+    exit 0
+fi
+
+unstaged_files=$(git diff --name-only --diff-filter=ACMR)
+if printf '%s\n' "$unstaged_files" | grep -Eq "$relevant_pattern"; then
+    echo 'Localization guard cannot validate a partially staged change.' >&2
+    echo 'Stage or stash the unstaged changes in the affected localization files, then commit again.' >&2
+    exit 1
+fi
+
+if ! command -v pwsh >/dev/null 2>&1; then
+    echo 'Localization hook requires PowerShell 7 (pwsh).' >&2
+    exit 1
+fi
+
+pwsh -NoProfile -File "$repo_root/scripts/check-localization.ps1" -RepositoryRoot "$repo_root"

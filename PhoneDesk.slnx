@@ -5,6 +5,9 @@
     <Project Path="src/PhoneDesk.Infrastructure/PhoneDesk.Infrastructure.csproj" />
     <Project Path="src/PhoneDesk.Presentation/PhoneDesk.Presentation.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/PhoneDesk.LocalizationGuard/PhoneDesk.LocalizationGuard.csproj" />
+  </Folder>
   <Project Path="phonedesk.csproj" />
   <Project Path="PhoneDesk.Tests/PhoneDesk.Tests.csproj" />
 </Solution>

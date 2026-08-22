@@ -698,7 +698,7 @@ namespace PhoneDesk.ViewModels
 
             var content = asJson ? _planExporter.ToJson(Plan) : _planExporter.ToCsv(Plan);
             var extension = asJson ? "json" : "csv";
-            var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"wizard-dry-run-plan.{extension}", extension);
+            var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"wizard-dry-run-plan.{extension}", extension, _translationService);
             if (saved != null)
             {
                 StatusMessage = GetText(

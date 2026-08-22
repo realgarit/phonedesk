@@ -34,6 +34,7 @@
   <ItemGroup>
     <ProjectReference Include="..\phonedesk.csproj" />
     <ProjectReference Include="..\src\PhoneDesk.Domain\PhoneDesk.Domain.csproj" />
+    <ProjectReference Include="..\tools\PhoneDesk.LocalizationGuard\PhoneDesk.LocalizationGuard.csproj" />
   </ItemGroup>
 
 </Project>

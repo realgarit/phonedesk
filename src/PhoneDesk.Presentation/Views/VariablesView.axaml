@@ -49,21 +49,20 @@
                 <!-- Page Header -->
                 <StackPanel Grid.Row="0" Margin="24,24,24,8">
                     <StackPanel Orientation="Horizontal" Spacing="14">
-                    <Border Classes="icon-badge">
-                        <fi:SymbolIcon Symbol="Code"/>
-                    </Border>
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Text="{loc:Translate Key=VariablesTitle}" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="{loc:Translate Key=VariablesSubtitle}"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             TextWrapping="Wrap"/>
+                        <Border Classes="icon-badge">
+                            <fi:SymbolIcon Symbol="Code"/>
+                        </Border>
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Key=VariablesTitle}" Classes="page-title" Margin="0"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesSubtitle}"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-                    <TextBlock Text="{Binding WelcomeMessage}"
-                             FontSize="13"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             TextWrapping="Wrap"
-                             IsVisible="{Binding WelcomeMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{loc:Translate Key=VariablesWelcomeMessage}"
+                               FontSize="13"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Tab Control -->

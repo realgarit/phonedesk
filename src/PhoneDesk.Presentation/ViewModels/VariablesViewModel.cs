@@ -20,9 +20,6 @@ namespace PhoneDesk.ViewModels
     {
         private PhoneManagerVariables? _subscribedVariables;
 
-        [ObservableProperty]
-        private string _welcomeMessage = "Start on General: enter the customer identity and locale first. Examples appear below each field; generated IDs stay read-only.";
-
         // Removed TeamsConnected and GraphConnected - no longer needed since lock was removed
 
         [ObservableProperty]

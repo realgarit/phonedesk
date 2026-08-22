@@ -90,10 +90,10 @@ public sealed class LocalizationServiceTests
         Assert.Equal("Install update", englishCatalog[UiTextKey.UpdateInstallAction]);
         Assert.Equal("View release", englishCatalog[UiTextKey.UpdateViewReleaseAction]);
 
-        Assert.Equal("Bereitschaftscheck", germanCatalog[UiTextKey.MainNavigationReadinessCheck]);
+        Assert.Equal("Bereitschaftsprüfung", germanCatalog[UiTextKey.MainNavigationReadinessCheck]);
         Assert.Equal("Konfiguration", germanCatalog[UiTextKey.MainNavigationConfiguration]);
         Assert.Equal("Mandantenbericht", germanCatalog[UiTextKey.MainNavigationTenantReport]);
-        Assert.Equal("Prüfprotokoll", germanCatalog[UiTextKey.MainNavigationAuditLog]);
+        Assert.Equal("Audit-Protokoll", germanCatalog[UiTextKey.MainNavigationAuditLog]);
         Assert.Equal("Geführte Einrichtung", germanCatalog[UiTextKey.MainNavigationGuidedSetup]);
         Assert.Equal("Sprache", germanCatalog[UiTextKey.SettingsLanguageSectionTitle]);
         Assert.Equal("English", germanCatalog[UiTextKey.SettingsLanguageEnglish]);

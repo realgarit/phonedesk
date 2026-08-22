@@ -28,6 +28,7 @@ bash "$MODEL_DISPATCHER" < prompt.txt > ai-review.txt 2> ai-review-stderr.txt
 MODEL_EXIT=$?
 set -e
 
+printf 'model_exit=%s\n' "$MODEL_EXIT" > ai-review-status.txt
 echo "invoke-model ($AI_MODEL) exited with code $MODEL_EXIT"
 if [ -s ai-review-stderr.txt ]; then
   echo "--- model stderr ---"

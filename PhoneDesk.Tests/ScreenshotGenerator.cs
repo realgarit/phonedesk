@@ -88,6 +88,9 @@ namespace PhoneDesk.Tests
             new("Holidays", true, "task5-holidays-dialog-en.png", "task5-holidays-dialog-en"),
             new("Holidays", true, "task5-holidays-dialog-de.png", "task5-holidays-dialog-de"),
             new("Wizard", true, "setup-wizard.png"),
+            new("Wizard", true, "setup-wizard-invalid-de.png", "invalid-de"),
+            new("Wizard", true, "setup-wizard-validation-details.png", "validation-details"),
+            new("Wizard", true, "setup-wizard-validation-details-de.png", "validation-details-de"),
             new("Wizard", true, "setup-wizard-ready.png", "ready"),
             new("Wizard", true, "setup-wizard-ready-de.png", "ready-de"),
             new("Wizard", true, "setup-wizard-failed.png", "failed"),
@@ -347,6 +350,15 @@ namespace PhoneDesk.Tests
                 mainWindowViewModel.IsUpdateAvailable = true;
                 mainWindowViewModel.IsUpdateBannerVisible = true;
                 mainWindowViewModel.CanInstallUpdate = true;
+                return;
+            }
+
+            if ((string.Equals(scenario, "validation-details", StringComparison.Ordinal)
+                    || string.Equals(scenario, "validation-details-de", StringComparison.Ordinal))
+                && mainWindowViewModel.CurrentViewModel is WizardViewModel validationWizard)
+            {
+                validationWizard.ToggleValidationDetailsCommand.Execute(null);
+                PumpRender();
                 return;
             }
 

@@ -23,7 +23,13 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentHairlineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Padding" Value="10,8"/>
+        </Style>
+        <Style Selector="Border.wizard-guidance Button.validation-details">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
     </UserControl.Styles>
 
@@ -145,23 +151,60 @@
                         <Grid RowDefinitions="Auto,*">
                             <Border Grid.Row="0"
                                     Classes="wizard-guidance"
-                                    Margin="12,12,12,0">
-                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                    Margin="12,10,12,0">
+                                <Grid RowDefinitions="Auto,Auto"
+                                      ColumnDefinitions="Auto,*,Auto"
+                                      ColumnSpacing="10"
+                                      RowSpacing="0">
                                     <fi:SymbolIcon Grid.Column="0"
+                                                   Grid.RowSpan="2"
                                                    Symbol="Info"
                                                    FontSize="20"
                                                    Foreground="{DynamicResource TeamsPrimaryBrush}"
                                                    VerticalAlignment="Top"/>
-                                    <StackPanel Grid.Column="1" Spacing="3">
+                                    <StackPanel Grid.Column="1" Spacing="2">
                                         <TextBlock Text="{Binding ReadinessMessage}"
                                                    FontWeight="SemiBold"
                                                    TextWrapping="Wrap"/>
-                                        <TextBlock Text="{Binding ValidationSummary}"
-                                                   IsVisible="{Binding ValidationSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        <TextBlock Text="{Binding ValidationIssueSummary}"
+                                                   IsVisible="{Binding HasValidationIssues}"
                                                    FontSize="12"
                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                    TextWrapping="Wrap"/>
                                     </StackPanel>
+
+                                    <Button Grid.Row="0"
+                                            Grid.Column="2"
+                                            Classes="validation-details"
+                                            IsVisible="{Binding HasValidationIssues}"
+                                            Command="{Binding ToggleValidationDetailsCommand}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding ValidationDetailsAction}"/>
+                                    </Button>
+
+                                    <Border Grid.Row="1"
+                                            Grid.Column="1"
+                                            Grid.ColumnSpan="2"
+                                            Classes="sunken"
+                                            Margin="0,7,0,0"
+                                            Padding="8"
+                                            MaxHeight="116"
+                                            IsVisible="{Binding IsValidationDetailsExpanded}">
+                                        <ScrollViewer MaxHeight="98"
+                                                      VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding ValidationIssues}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}"
+                                                                   FontSize="12"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,1"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
                                 </Grid>
                             </Border>
 

@@ -5,14 +5,24 @@
 # compute-diff.sh) and a working docker daemon.
 set -euo pipefail
 
-EXISTING_FILES=$(while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done < changed-files.txt)
+mapfile -t EXISTING_FILES < <(
+  while IFS= read -r f; do
+    [ -f "$f" ] && printf '%s\n' "$f"
+  done < changed-files.txt
+)
 
-if [ -z "$EXISTING_FILES" ]; then
+if [ "${#EXISTING_FILES[@]}" -eq 0 ]; then
   echo '{"results": []}' > semgrep.json
 else
+  rm -f semgrep.json
+  set +e
   docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep \
     semgrep scan --config=p/security-audit --config=p/secrets \
     --config=p/owasp-top-ten --json --output=semgrep.json \
-    --error $EXISTING_FILES || true
-  test -f semgrep.json || echo '{"results": []}' > semgrep.json
+    --error "${EXISTING_FILES[@]}"
+  SEMGREP_EXIT=$?
+  set -e
+  python3 scripts/validate-semgrep-run.py \
+    --exit-code "$SEMGREP_EXIT" \
+    --output semgrep.json
 fi

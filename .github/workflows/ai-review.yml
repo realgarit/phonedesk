@@ -21,9 +21,14 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+
+      - name: Test review validators
+        run: |
+          python3 scripts/test_validate_ai_review.py
+          python3 scripts/test_validate_semgrep_run.py
 
       - name: Compute PR diff
         env:
@@ -68,25 +73,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
 
-      - name: Fail check if findings exist
+      - name: Validate review contract
         run: |
-          # Count findings from the sources, not by grepping the combined
-          # comment with an allow-list - the AI reviewer legitimately writes
-          # a summary sentence around its "No findings." line, and any such
-          # prose line tripped the old grep into a false-positive exit 1.
-          # Findings are machine-detectable: Semgrep's JSON results array,
-          # and the AI review's `- **file:line**` bullet lines.
-          if ! SEMGREP_COUNT=$(python3 -c 'import json; print(len(json.load(open("semgrep.json")).get("results", [])))' 2>/dev/null); then
-            echo "Could not parse semgrep.json - failing check so it gets looked at."
-            exit 1
-          fi
-          AI_COUNT=$(grep -c '^- \*\*' ai-review.txt || true)
-          echo "Semgrep findings: $SEMGREP_COUNT, AI review findings: $AI_COUNT"
-          if [ "$AI_COUNT" -eq 0 ] && ! grep -q "No findings." ai-review.txt; then
-            echo "AI review output has neither findings nor a 'No findings.' marker - review likely failed, see PR comment."
-            exit 1
-          fi
-          if [ "$SEMGREP_COUNT" -gt 0 ] || [ "$AI_COUNT" -gt 0 ]; then
-            echo "Findings reported - see PR comment. This check does not block merge by default (no branch protection on a free-plan personal repo); treat it as a strong signal to look before merging."
-            exit 1
-          fi
+          python3 scripts/validate-ai-review.py \
+            --semgrep semgrep.json \
+            --review ai-review.txt \
+            --status ai-review-status.txt \
+            --stderr ai-review-stderr.txt

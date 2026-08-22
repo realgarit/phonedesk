@@ -99,7 +99,7 @@ public sealed class LocalizationServiceTests
         Assert.Equal("English", germanCatalog[UiTextKey.SettingsLanguageEnglish]);
         Assert.Equal("Deutsch", germanCatalog[UiTextKey.SettingsLanguageGerman]);
         Assert.Equal("Öffnen", germanCatalog[UiTextKey.MainActionOpenAuditLogFolder]);
-        Assert.Equal("Update installieren", germanCatalog[UiTextKey.UpdateInstallAction]);
+        Assert.Equal("Aktualisierung installieren", germanCatalog[UiTextKey.UpdateInstallAction]);
         Assert.Equal("Release öffnen", germanCatalog[UiTextKey.UpdateViewReleaseAction]);
     }
 

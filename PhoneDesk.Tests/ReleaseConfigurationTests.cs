@@ -7,7 +7,7 @@ namespace PhoneDesk.Tests;
 public sealed class ReleaseConfigurationTests
 {
     [Fact]
-    public void AppManifest_UsesTargetedXmlUpdater_AndMatchesCurrentVersion()
+    public void AppManifest_UsesFourPartVersion_AndIsNotRewrittenByReleasePlease()
     {
         var root = FindRepositoryRoot();
         var configPath = Path.Combine(root, "release-please-config.json");
@@ -19,16 +19,17 @@ public sealed class ReleaseConfigurationTests
             .GetProperty("packages")
             .GetProperty(".")
             .GetProperty("extra-files");
-        var manifestEntry = extraFiles.EnumerateArray()
-            .Single(entry => entry.GetProperty("path").GetString() == "app.manifest");
-
-        Assert.Equal("xml", manifestEntry.GetProperty("type").GetString());
-        var xpath = manifestEntry.GetProperty("xpath").GetString();
-        Assert.False(string.IsNullOrWhiteSpace(xpath));
+        var managedPaths = extraFiles.EnumerateArray()
+            .Select(entry => entry.ValueKind == JsonValueKind.String
+                ? entry.GetString()
+                : entry.GetProperty("path").GetString())
+            .ToArray();
+        Assert.DoesNotContain("app.manifest", managedPaths);
 
         var manifest = new XmlDocument { PreserveWhitespace = true };
         manifest.Load(manifestPath);
-        var versionAttribute = manifest.SelectSingleNode(xpath!) as XmlAttribute;
+        var versionAttribute = manifest.SelectSingleNode(
+            "//*[local-name()=\"assemblyIdentity\"]/@version") as XmlAttribute;
         Assert.NotNull(versionAttribute);
 
         var expectedVersion = File.ReadAllText(versionPath).Trim();

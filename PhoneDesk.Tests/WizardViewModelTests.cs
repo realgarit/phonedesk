@@ -78,6 +78,102 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void InvalidConfiguration_ReadinessDetailsStartCollapsedAndExposeCompactSummary()
+        {
+            var validation = new ValidationResult();
+            validation.AddError("Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+
+            var vm = CreateViewModel(harness);
+
+            Assert.True(vm.HasValidationIssues);
+            Assert.Equal(1, vm.ValidationIssueCount);
+            Assert.Equal("Open checks: 1", vm.ValidationIssueSummary);
+            Assert.False(vm.IsValidationDetailsExpanded);
+            Assert.Equal("Show details", vm.ValidationDetailsAction);
+            Assert.Contains("Customer name is required.", vm.ValidationIssues);
+        }
+
+        [Fact]
+        public void ToggleValidationDetails_ChangesActionWithoutChangingValidationIssues()
+        {
+            var validation = new ValidationResult();
+            validation.AddError("Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+
+            var vm = CreateViewModel(harness);
+
+            vm.ToggleValidationDetailsCommand.Execute(null);
+
+            Assert.True(vm.IsValidationDetailsExpanded);
+            Assert.Equal("Hide details", vm.ValidationDetailsAction);
+            Assert.Contains("Customer name is required.", vm.ValidationIssues);
+        }
+
+        [Fact]
+        public void SwitchingLanguage_LocalizesValidationSummaryAndDetailsAction()
+        {
+            var validation = new ValidationResult();
+            validation.AddError("Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal("Offene Prüfungen: 1", vm.ValidationIssueSummary);
+            Assert.Equal("Details anzeigen", vm.ValidationDetailsAction);
+
+            vm.ToggleValidationDetailsCommand.Execute(null);
+
+            Assert.Equal("Details ausblenden", vm.ValidationDetailsAction);
+        }
+
+        [Fact]
+        public void SwitchingLanguage_LocalizesValidationMessagesInReadinessDetails()
+        {
+            var validation = new ValidationResult();
+            validation.AddError(ValidationErrorCode.CustomerNameRequired, "Customer name is required.");
+            var harness = new ViewModelTestHarness();
+            harness.ValidationService
+                .Setup(v => v.ValidateVariables(It.IsAny<IPhoneManagerVariables>()))
+                .Returns(validation);
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+            Assert.Contains("Kundenname ist erforderlich.", vm.ValidationIssues);
+        }
+
+        [Fact]
         public async Task InvalidConfiguration_ReviewCommandDoesNotCompleteStep()
         {
             var validation = new ValidationResult();

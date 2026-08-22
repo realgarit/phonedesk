@@ -65,6 +65,7 @@ namespace PhoneDesk.Tests
             var result = _validationService.ValidateVariables(vars);
             Assert.False(result.IsValid);
             Assert.Contains(result.Errors, e => e.Contains("Customer name"));
+            Assert.Contains(result.Issues, issue => issue.Code == ValidationErrorCode.CustomerNameRequired);
         }
 
         [Fact]

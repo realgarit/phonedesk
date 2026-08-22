@@ -34,6 +34,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.swp
+__pycache__/
 
 # Coverage reports
 coverage/

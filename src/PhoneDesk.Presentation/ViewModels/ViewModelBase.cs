@@ -376,12 +376,88 @@ namespace PhoneDesk.ViewModels
             return value[..maxLength] + "…";
         }
 
+        protected string GetValidationErrorMessage(ValidationResult result)
+        {
+            var messages = new List<string>(result.Issues.Count);
+            foreach (var issue in result.Issues)
+            {
+                messages.Add(GetValidationErrorMessage(issue));
+            }
+
+            return string.Join(Environment.NewLine, messages);
+        }
+
+        protected string GetValidationErrorMessage(ValidationIssue issue)
+            => issue.Code switch
+            {
+                ValidationErrorCode.ModulesNotChecked => GetText(
+                    UiTextKey.ValidationModulesNotChecked,
+                    "PowerShell modules have not been checked. Please check modules first."),
+                ValidationErrorCode.TeamsNotConnected => GetText(
+                    UiTextKey.ValidationTeamsNotConnected,
+                    "Not connected to Microsoft Teams. Please connect to Teams first."),
+                ValidationErrorCode.GraphNotConnected => GetText(
+                    UiTextKey.ValidationGraphNotConnected,
+                    "Not connected to Microsoft Graph. Please connect to Graph first."),
+                ValidationErrorCode.CustomerNameRequired => GetText(
+                    UiTextKey.ValidationCustomerNameRequired,
+                    "Customer name is required."),
+                ValidationErrorCode.CustomerGroupNameRequired => GetText(
+                    UiTextKey.ValidationCustomerGroupNameRequired,
+                    "Customer group name is required."),
+                ValidationErrorCode.MicrosoftFallbackDomainRequired => GetText(
+                    UiTextKey.ValidationMicrosoftFallbackDomainRequired,
+                    "Microsoft fallback domain is required."),
+                ValidationErrorCode.CustomerLegalNameRequired => GetText(
+                    UiTextKey.ValidationCustomerLegalNameRequired,
+                    "Customer legal name is required."),
+                ValidationErrorCode.LanguageIdRequired => GetText(
+                    UiTextKey.ValidationLanguageIdRequired,
+                    "Language ID is required."),
+                ValidationErrorCode.TimeZoneIdRequired => GetText(
+                    UiTextKey.ValidationTimeZoneIdRequired,
+                    "Time zone ID is required."),
+                ValidationErrorCode.UsageLocationRequired => GetText(
+                    UiTextKey.ValidationUsageLocationRequired,
+                    "Usage location is required."),
+                ValidationErrorCode.ResourceAccountPhoneNumberRequired => GetText(
+                    UiTextKey.ValidationResourceAccountPhoneNumberRequired,
+                    "Resource account phone number is required."),
+                ValidationErrorCode.PhoneNumberTypeRequired => GetText(
+                    UiTextKey.ValidationPhoneNumberTypeRequired,
+                    "Phone number type is required."),
+                ValidationErrorCode.DefaultCallFlowGreetingTextRequired => GetText(
+                    UiTextKey.ValidationDefaultCallFlowGreetingTextRequired,
+                    "Default call flow greeting text is required when using Text-to-Speech."),
+                ValidationErrorCode.DefaultCallFlowAudioFileRequired => GetText(
+                    UiTextKey.ValidationDefaultCallFlowAudioFileRequired,
+                    "Default call flow audio file is required when using Audio File."),
+                ValidationErrorCode.AfterHoursCallFlowGreetingTextRequired => GetText(
+                    UiTextKey.ValidationAfterHoursCallFlowGreetingTextRequired,
+                    "After hours call flow greeting text is required when using Text-to-Speech."),
+                ValidationErrorCode.AfterHoursCallFlowAudioFileRequired => GetText(
+                    UiTextKey.ValidationAfterHoursCallFlowAudioFileRequired,
+                    "After hours call flow audio file is required when using Audio File."),
+                ValidationErrorCode.HolidayNameSuffixRequired => GetText(
+                    UiTextKey.ValidationHolidayNameSuffixRequired,
+                    "Holiday name suffix is required."),
+                ValidationErrorCode.HolidayGreetingPromptRequired => GetText(
+                    UiTextKey.ValidationHolidayGreetingPromptRequired,
+                    "Holiday greeting prompt is required."),
+                ValidationErrorCode.HolidayDateInPast => GetText(
+                    UiTextKey.ValidationHolidayDateInPast,
+                    "Holiday date cannot be in the past."),
+                _ => issue.Message
+            };
+
         protected async Task<bool> ValidatePrerequisites()
         {
             var validationResult = _validationService.ValidatePrerequisites();
             if (!validationResult.IsValid)
             {
-                await _errorHandlingService.HandleValidationError(validationResult.GetErrorMessage(), GetType().Name);
+                await _errorHandlingService.HandleValidationError(
+                    GetValidationErrorMessage(validationResult),
+                    GetType().Name);
                 return false;
             }
             return true;
@@ -392,7 +468,9 @@ namespace PhoneDesk.ViewModels
             var validationResult = _validationService.ValidateVariables(variables);
             if (!validationResult.IsValid)
             {
-                await _errorHandlingService.HandleValidationError(validationResult.GetErrorMessage(), GetType().Name);
+                await _errorHandlingService.HandleValidationError(
+                    GetValidationErrorMessage(validationResult),
+                    GetType().Name);
                 return false;
             }
             return true;

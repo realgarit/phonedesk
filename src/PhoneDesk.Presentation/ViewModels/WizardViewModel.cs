@@ -43,6 +43,9 @@ namespace PhoneDesk.ViewModels
         private string _stepResult = string.Empty;
 
         [ObservableProperty]
+        private bool _isValidationDetailsExpanded;
+
+        [ObservableProperty]
         private ObservableCollection<WizardStepInfo> _steps = new();
 
         private readonly IDryRunPlanBuilder? _planBuilder;
@@ -57,6 +60,7 @@ namespace PhoneDesk.ViewModels
 
         private ValidationResult _configurationValidation = new();
         private ValidationResult _prerequisiteValidation = new();
+        private IReadOnlyList<string> _validationIssues = Array.Empty<string>();
         private UiTextKey? _stepResultKey;
         private string? _stepResultFallback;
 
@@ -79,6 +83,16 @@ namespace PhoneDesk.ViewModels
                 : GetText(UiTextKey.WizardExecuteStepAction, "Execute step");
         public bool ConfigurationReady => _configurationValidation.IsValid;
         public bool PrerequisitesReady => _prerequisiteValidation.IsValid;
+        public IReadOnlyList<string> ValidationIssues => _validationIssues;
+        public bool HasValidationIssues => _validationIssues.Count > 0;
+        public int ValidationIssueCount => _validationIssues.Count;
+        public string ValidationIssueSummary => GetText(
+            UiTextKey.WizardValidationIssueSummary,
+            "Open checks: {count}",
+            new Dictionary<string, object?> { ["count"] = ValidationIssueCount });
+        public string ValidationDetailsAction => IsValidationDetailsExpanded
+            ? GetText(UiTextKey.WizardHideValidationDetails, "Hide details")
+            : GetText(UiTextKey.WizardShowValidationDetails, "Show details");
         public string ReviewSummary
         {
             get
@@ -112,20 +126,7 @@ namespace PhoneDesk.ViewModels
         }
 
         public string ValidationSummary
-        {
-            get
-            {
-                var messages = new List<string>(_configurationValidation.Errors);
-                if (!PrerequisitesReady)
-                {
-                    messages.Add(GetText(
-                        UiTextKey.WizardValidationConnectionsIncomplete,
-                        "Connection checks are incomplete. Open Get Started to connect to Teams and Microsoft Graph."));
-                }
-
-                return string.Join(Environment.NewLine, messages);
-            }
-        }
+            => string.Join(Environment.NewLine, _validationIssues);
 
         public string ReadinessMessage
         {
@@ -251,14 +252,41 @@ namespace PhoneDesk.ViewModels
         {
             _configurationValidation = _validationService.ValidateVariables(Variables);
             _prerequisiteValidation = _validationService.ValidatePrerequisites();
+            RebuildValidationIssues();
 
             OnPropertyChanged(nameof(ConfigurationReady));
             OnPropertyChanged(nameof(PrerequisitesReady));
-            OnPropertyChanged(nameof(ValidationSummary));
             OnPropertyChanged(nameof(ReadinessMessage));
             OnPropertyChanged(nameof(CanGoNext));
             OnPropertyChanged(nameof(CanExecuteStep));
             GoToNextStepCommand.NotifyCanExecuteChanged();
+        }
+
+        private void RebuildValidationIssues()
+        {
+            var issues = new List<string>(_configurationValidation.Issues.Count + 1);
+            foreach (var issue in _configurationValidation.Issues)
+            {
+                issues.Add(GetValidationErrorMessage(issue));
+            }
+            if (!PrerequisitesReady)
+            {
+                issues.Add(GetText(
+                    UiTextKey.WizardValidationConnectionsIncomplete,
+                    "Connection checks are incomplete. Open Get Started to connect to Teams and Microsoft Graph."));
+            }
+
+            _validationIssues = issues;
+            if (!HasValidationIssues && IsValidationDetailsExpanded)
+            {
+                IsValidationDetailsExpanded = false;
+            }
+
+            OnPropertyChanged(nameof(ValidationIssues));
+            OnPropertyChanged(nameof(HasValidationIssues));
+            OnPropertyChanged(nameof(ValidationIssueCount));
+            OnPropertyChanged(nameof(ValidationIssueSummary));
+            OnPropertyChanged(nameof(ValidationSummary));
         }
 
         private bool EnsureConfigurationReady()
@@ -642,6 +670,12 @@ namespace PhoneDesk.ViewModels
         }
 
         [RelayCommand]
+        private void ToggleValidationDetails()
+        {
+            IsValidationDetailsExpanded = !IsValidationDetailsExpanded;
+        }
+
+        [RelayCommand]
         private void GoToHolidaysPage()
         {
             NavigateToHolidays();
@@ -767,11 +801,18 @@ namespace PhoneDesk.ViewModels
                 }
             }
 
+            RebuildValidationIssues();
+
             OnPropertyChanged(nameof(StepNumberText));
             OnPropertyChanged(nameof(ExecuteButtonText));
             OnPropertyChanged(nameof(ReviewSummary));
-            OnPropertyChanged(nameof(ValidationSummary));
+            OnPropertyChanged(nameof(ValidationDetailsAction));
             OnPropertyChanged(nameof(ReadinessMessage));
+        }
+
+        partial void OnIsValidationDetailsExpandedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ValidationDetailsAction));
         }
 
         private void SetLocalizedStepResult(UiTextKey key, string fallback)

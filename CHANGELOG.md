@@ -1,5 +1,41 @@
 # Changelog
 
+## [3.26.0](https://github.com/realgarit/phonedesk/compare/v3.25.0...v3.26.0) (2026-08-22)
+
+
+### Features
+
+* add German localization and localization guard ([0ca38f4](https://github.com/realgarit/phonedesk/commit/0ca38f46a2133c2f794e096fae0f27e637f2b482))
+* add typed localization service ([e90e041](https://github.com/realgarit/phonedesk/commit/e90e041a2294189951729b43dc6bb5d777c48cf8))
+* complete German localization and guard ([c4adfc2](https://github.com/realgarit/phonedesk/commit/c4adfc229b1670d39837d7e6afd8937a1598411c))
+* localize onboarding and reporting pages ([951ca13](https://github.com/realgarit/phonedesk/commit/951ca13d1c0b471396dd44252e92f1eec78170ae))
+* localize provisioning pages ([95a1d03](https://github.com/realgarit/phonedesk/commit/95a1d038f5ea11bc036c5dabafa975f5247ed10b))
+* localize runtime messages and dialogs ([503f1ab](https://github.com/realgarit/phonedesk/commit/503f1ab36bced706ad0843c43db36dc5e892b9e0))
+* localize shell and settings ([dd79c8f](https://github.com/realgarit/phonedesk/commit/dd79c8f6f2708106a65e46d962e57ee8dd101ec5))
+* wire live localization resources ([f06398c](https://github.com/realgarit/phonedesk/commit/f06398c22ae13352cd854a79863771ed7e993aef))
+
+
+### Bug Fixes
+
+* address localization review findings ([eb499b4](https://github.com/realgarit/phonedesk/commit/eb499b497f46126e2a53f403b171c3a87b63f5a8))
+* address task 1 review findings ([b68ab6e](https://github.com/realgarit/phonedesk/commit/b68ab6e946da02255f56198544c2c753f370bc90))
+* address Task 4 localization review ([b2daa1b](https://github.com/realgarit/phonedesk/commit/b2daa1b7dede36e998d464a3ca634415fb8690a3))
+* address Task 5 screenshot review ([a93a5ec](https://github.com/realgarit/phonedesk/commit/a93a5ec6c955a185db61f3fd4aa741810a3cb15f))
+* complete German catalog wording ([e3b976e](https://github.com/realgarit/phonedesk/commit/e3b976ea1b5977cbeed3e7dd1fda162ed9ff850c))
+* complete runtime localization coverage ([91b7c32](https://github.com/realgarit/phonedesk/commit/91b7c323d9128de355b249ca105ef6c26795464a))
+* complete runtime localization review ([a2692b3](https://github.com/realgarit/phonedesk/commit/a2692b34031dcb1ff60ae48c682d82adcf1bce6e))
+* localize runtime messages cluster A ([66444d9](https://github.com/realgarit/phonedesk/commit/66444d9c1036c9ba2e1fdefb00e22ba32c991be8))
+* localize runtime messages cluster B1 ([837a4ff](https://github.com/realgarit/phonedesk/commit/837a4ff8a9c9d954826c29ebadc1b7c3f30ecc8e))
+* localize runtime messages cluster B2 ([6cdc139](https://github.com/realgarit/phonedesk/commit/6cdc1392249b5295173eb6022e9e852fd0da42d6))
+* localize toggle state labels ([ede07b3](https://github.com/realgarit/phonedesk/commit/ede07b3b2c42b991c734a333784c22c4d6cb90ad))
+* localize wizard runtime surface ([9865b32](https://github.com/realgarit/phonedesk/commit/9865b3299db73c0f310f343aecbcbb01d4b82c8d))
+* locate solution on case-sensitive filesystems ([c51219b](https://github.com/realgarit/phonedesk/commit/c51219bd7f8319d2adeb4117aefe9fc6501f043c))
+* preserve four-part release manifest version ([46beeeb](https://github.com/realgarit/phonedesk/commit/46beeeb2f77f396afe701cba99ed98e74b0f9148))
+* preserve four-part release manifest version ([#172](https://github.com/realgarit/phonedesk/issues/172)) ([aacc8a9](https://github.com/realgarit/phonedesk/commit/aacc8a94949c8b900f0686701c532d285e0e276d))
+* preserve wizard technical preview labels ([5f47884](https://github.com/realgarit/phonedesk/commit/5f4788430325912ca4ee157183e87ba3fd1d860f))
+* refine German terminology ([8001d21](https://github.com/realgarit/phonedesk/commit/8001d2169ca1e7ce6348f172a43e242cee90dec0))
+* refresh localized update banner ([77cfc57](https://github.com/realgarit/phonedesk/commit/77cfc57774325badf4a649ae0265187431b53be8))
+
 ## [3.25.0](https://github.com/realgarit/phonedesk/compare/v3.24.2...v3.25.0) (2026-08-21)
 
 

@@ -170,7 +170,7 @@ public sealed class LocalizationServiceTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "phonedesk.slnx")))
+            if (File.Exists(Path.Combine(directory.FullName, "PhoneDesk.slnx")))
             {
                 return directory.FullName;
             }

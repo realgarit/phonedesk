@@ -126,7 +126,9 @@ namespace PhoneDesk.ViewModels
                     });
 
                 var command = _powerShellCommandService.GetCreateHolidaySeriesFromEntriesCommand(holidayName, holidayEntries);
-                var result = await PreviewAndExecuteAsync(command, "Create Holiday Series");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.HolidaysCreateHolidayScheduleAction, "Create Holiday Schedule"));
                 
                 if (result == null)
                 {
@@ -333,7 +335,9 @@ namespace PhoneDesk.ViewModels
                     });
 
                 var command = _powerShellCommandService.GetAttachHolidayToAutoAttendantCommand(holidayName, AutoAttendantName, variables.HolidayGreetingPromptDE);
-                var result = await PreviewAndExecuteAsync(command, "Attach Holiday to Auto Attendant");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.HolidaysLinkHolidayAction, "Link Holiday to Auto Attendant"));
                 
                 if (result == null)
                 {

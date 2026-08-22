@@ -1,10 +1,15 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 
 namespace PhoneDesk.Localization;
 
 public sealed class TranslationCatalog : INotifyPropertyChanged
 {
+    private static readonly Regex PlaceholderRegex = new(
+        @"\{(?<name>[^{}]+)\}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private IReadOnlyDictionary<UiTextKey, string> _values;
 
     public TranslationCatalog(IReadOnlyDictionary<UiTextKey, string> values)
@@ -23,20 +28,23 @@ public sealed class TranslationCatalog : INotifyPropertyChanged
             throw new KeyNotFoundException($"Missing translation for key '{key}'.");
         }
 
+        return FormatTemplate(value, parameters);
+    }
+
+    internal static string FormatTemplate(
+        string template,
+        IReadOnlyDictionary<string, object?>? parameters)
+    {
         if (parameters is null || parameters.Count == 0)
         {
-            return value;
+            return template;
         }
 
-        foreach (var parameter in parameters)
-        {
-            value = value.Replace(
-                "{" + parameter.Key + "}",
-                parameter.Value?.ToString() ?? string.Empty,
-                StringComparison.Ordinal);
-        }
-
-        return value;
+        return PlaceholderRegex.Replace(
+            template,
+            match => parameters.TryGetValue(match.Groups["name"].Value, out var parameter)
+                ? parameter?.ToString() ?? string.Empty
+                : match.Value);
     }
 
     internal void Update(IReadOnlyDictionary<UiTextKey, string> values)

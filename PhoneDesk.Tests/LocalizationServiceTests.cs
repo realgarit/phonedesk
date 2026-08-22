@@ -60,6 +60,25 @@ public sealed class LocalizationServiceTests
     }
 
     [Fact]
+    public void PlaceholderValuesAreNotReprocessed()
+    {
+        var catalog = new TranslationCatalog(new Dictionary<UiTextKey, string>
+        {
+            [UiTextKey.UpdateAvailable] = "{version} / {status}"
+        });
+
+        var message = catalog.Get(
+            UiTextKey.UpdateAvailable,
+            new Dictionary<string, object?>
+            {
+                ["version"] = "{status}",
+                ["status"] = "Ready"
+            });
+
+        Assert.Equal("{status} / Ready", message);
+    }
+
+    [Fact]
     public void ShellCatalogContainsRequiredSemanticEnglishAndGermanEntries()
     {
         var repositoryRoot = FindRepositoryRoot();

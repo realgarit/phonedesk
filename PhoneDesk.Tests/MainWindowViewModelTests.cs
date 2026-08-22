@@ -243,6 +243,31 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void CurrentPageChanged_DisposesPreviousPageViewModel()
+        {
+            var harness = new ViewModelTestHarness();
+            var first = new DisposableTestViewModel(harness);
+            var second = new DisposableTestViewModel(harness);
+            _pageViewModelFactory.Reset();
+            _pageViewModelFactory
+                .SetupSequence(f => f.Create(It.IsAny<string>()))
+                .Returns(first)
+                .Returns(second);
+
+            var vm = CreateViewModel(harness);
+
+            vm.CurrentPage = ConstantsService.Pages.Holidays;
+
+            Assert.True(first.IsDisposed);
+            Assert.Same(second, vm.CurrentViewModel);
+            Assert.False(second.IsDisposed);
+
+            vm.Dispose();
+
+            Assert.True(second.IsDisposed);
+        }
+
+        [Fact]
         public void ToggleSettingsCommand_TogglesIsSettingsOpen()
         {
             var harness = new ViewModelTestHarness();
@@ -430,6 +455,28 @@ namespace PhoneDesk.Tests
                     [AppLanguage.German] = TranslationCatalogLoader.Load(
                         new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.de.json"))
                 });
+
+        private sealed class DisposableTestViewModel : ViewModelBase, IDisposable
+        {
+            public DisposableTestViewModel(ViewModelTestHarness harness)
+                : base(
+                    harness.PowerShellContextService.Object,
+                    harness.PowerShellCommandService.Object,
+                    harness.LoggingService.Object,
+                    harness.SessionManager.Object,
+                    harness.NavigationService.Object,
+                    harness.ErrorHandlingService.Object,
+                    harness.ValidationService.Object,
+                    harness.SharedStateService.Object,
+                    harness.DialogService.Object,
+                    translationService: harness.TranslationService)
+            {
+            }
+
+            public bool IsDisposed { get; private set; }
+
+            public void Dispose() => IsDisposed = true;
+        }
 
         private sealed class TrackingUserPreferencesStore : IUserPreferencesStore
         {

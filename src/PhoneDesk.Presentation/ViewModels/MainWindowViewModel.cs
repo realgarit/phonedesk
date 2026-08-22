@@ -92,56 +92,28 @@ namespace PhoneDesk.ViewModels
             UpdateBannerMessage = _updateBannerState switch
             {
                 UpdateBannerState.Available when !string.IsNullOrEmpty(_updateBannerVersion)
-                    => GetUpdateBannerText(
+                    => GetText(
                         UiTextKey.UpdateAvailable,
                         "Version {version} is available.",
                         new Dictionary<string, object?> { ["version"] = _updateBannerVersion }),
                 UpdateBannerState.Downloading when !string.IsNullOrEmpty(_updateBannerVersion)
-                    => GetUpdateBannerText(
+                    => GetText(
                         UiTextKey.UpdateDownloading,
                         "Downloading version {version}...",
                         new Dictionary<string, object?> { ["version"] = _updateBannerVersion }),
                 UpdateBannerState.DownloadingProgress when !string.IsNullOrEmpty(_updateBannerVersion) && _updateBannerProgress is { } progress
-                    => GetUpdateBannerText(
+                    => GetText(
                         UiTextKey.UpdateDownloadingProgress,
                         "Downloading version {version}... {progress}%",
                         new Dictionary<string, object?> { ["version"] = _updateBannerVersion, ["progress"] = progress }),
                 UpdateBannerState.StartingInstaller
-                    => GetUpdateBannerText(
+                    => GetText(
                         UiTextKey.UpdateStartingInstaller,
                         "Starting the verified installer...",
                         parameters: null),
                 _ => string.Empty
             };
         }
-
-        private string GetUpdateBannerText(
-            UiTextKey key,
-            string fallback,
-            IReadOnlyDictionary<string, object?>? parameters)
-            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
-
-        private static string FormatFallback(string template, IReadOnlyDictionary<string, object?>? parameters)
-        {
-            if (parameters is null || parameters.Count == 0)
-            {
-                return template;
-            }
-
-            var value = template;
-            foreach (var parameter in parameters)
-            {
-                value = value.Replace(
-                    "{" + parameter.Key + "}",
-                    parameter.Value?.ToString() ?? string.Empty,
-                    StringComparison.Ordinal);
-            }
-
-            return value;
-        }
-
-        private void LogMain(UiTextKey key, string fallback, LogLevel level, IReadOnlyDictionary<string, object?>? parameters = null)
-            => _loggingService.Log(GetText(key, fallback, parameters), level);
 
         private string GetStateLabel(bool value)
             => GetText(value ? UiTextKey.CommonEnabled : UiTextKey.CommonDisabled, value ? "enabled" : "disabled");
@@ -174,7 +146,7 @@ namespace PhoneDesk.ViewModels
             CanInstallUpdate = _updateInstallerService.IsSupported && update.WindowsInstaller is not null;
             IsUpdateAvailable = true;
             IsUpdateBannerVisible = true;
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainUpdateAvailableLog,
                 "Update available: {version}",
                 LogLevel.Info,
@@ -200,7 +172,7 @@ namespace PhoneDesk.ViewModels
             var update = _availableUpdate;
             if (update?.WindowsInstaller is not { } installer)
             {
-                LogMain(UiTextKey.MainNoVerifiedInstallerLog, "No verified Windows update installer is available.", LogLevel.Warning);
+                LogLocalized(UiTextKey.MainNoVerifiedInstallerLog, "No verified Windows update installer is available.", LogLevel.Warning);
                 return;
             }
 
@@ -241,7 +213,7 @@ namespace PhoneDesk.ViewModels
 
                 SetUpdateBannerState(UpdateBannerState.StartingInstaller, update.LatestVersion);
                 _updateInstallerService.LaunchInstaller(installerPath);
-                LogMain(
+                LogLocalized(
                     UiTextKey.MainStartingInstallerLog,
                     "Starting installer for version {version}",
                     LogLevel.Info,
@@ -256,12 +228,12 @@ namespace PhoneDesk.ViewModels
             catch (OperationCanceledException)
             {
                 SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
-                LogMain(UiTextKey.MainUpdateDownloadCancelledLog, "Update download cancelled.", LogLevel.Info);
+                LogLocalized(UiTextKey.MainUpdateDownloadCancelledLog, "Update download cancelled.", LogLevel.Info);
             }
             catch (UpdateInstallationException ex)
             {
                 SetUpdateBannerState(UpdateBannerState.Available, update.LatestVersion);
-                LogMain(
+                LogLocalized(
                     UiTextKey.MainUpdateInstallationFailedLog,
                     "Update installation failed: {error}",
                     LogLevel.Error,
@@ -305,7 +277,7 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                LogMain(
+                LogLocalized(
                     UiTextKey.MainOpenReleasePageFailedLog,
                     "Could not open release page: {error}",
                     LogLevel.Warning,
@@ -360,7 +332,7 @@ namespace PhoneDesk.ViewModels
                 {
                     _sharedStateService.SkipScriptPreview = value;
                     OnPropertyChanged();
-                    LogMain(
+                    LogLocalized(
                         UiTextKey.MainSkipScriptPreviewLog,
                         "Skip script preview: {state}",
                         LogLevel.Info,
@@ -378,7 +350,7 @@ namespace PhoneDesk.ViewModels
                 {
                     _sharedStateService.SkipDeleteConfirmation = value;
                     OnPropertyChanged();
-                    LogMain(
+                    LogLocalized(
                         UiTextKey.MainSkipDeleteConfirmationLog,
                         "Skip delete confirmation: {state}",
                         LogLevel.Info,
@@ -396,7 +368,7 @@ namespace PhoneDesk.ViewModels
                 {
                     _sharedStateService.AutoRefreshAfterOperations = value;
                     OnPropertyChanged();
-                    LogMain(
+                    LogLocalized(
                         UiTextKey.MainAutoRefreshAfterOperationsLog,
                         "Auto-refresh after operations: {state}",
                         LogLevel.Info,
@@ -419,7 +391,7 @@ namespace PhoneDesk.ViewModels
                     // Invalidate log cache so filtered view updates
                     _logCacheDirty = true;
                     OnPropertyChanged(nameof(AllLogEntriesText));
-                    LogMain(
+                    LogLocalized(
                         UiTextKey.MainMinimumLogLevelLog,
                         "Minimum log level: {level}",
                         LogLevel.Info,
@@ -472,7 +444,7 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                LogMain(
+                LogLocalized(
                     UiTextKey.MainOpenAuditLogFolderFailedLog,
                     "Could not open audit log folder: {error}",
                     LogLevel.Warning,
@@ -492,7 +464,15 @@ namespace PhoneDesk.ViewModels
 
         partial void OnCurrentPageChanged(string value)
         {
-            CurrentViewModel = _pageViewModelFactory.Create(value);
+            var previousViewModel = CurrentViewModel;
+            var nextViewModel = _pageViewModelFactory.Create(value);
+            CurrentViewModel = nextViewModel;
+
+            if (!ReferenceEquals(previousViewModel, nextViewModel)
+                && previousViewModel is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
 
         [ObservableProperty]
@@ -576,7 +556,7 @@ namespace PhoneDesk.ViewModels
             BundledGraphModuleVersion = _bundledModuleVersionService.GraphModuleVersion;
             BundledPowerShellSdkVersion = _bundledModuleVersionService.PowerShellSdkVersion;
 
-            LogMain(UiTextKey.MainApplicationStartedLog, "Application started", LogLevel.Info);
+            LogLocalized(UiTextKey.MainApplicationStartedLog, "Application started", LogLevel.Info);
 
             _ = CheckForUpdateAsync();
 
@@ -640,7 +620,7 @@ namespace PhoneDesk.ViewModels
                 var faTheme = app.RequestedThemeVariant;
                 app.RequestedThemeVariant = value ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
             }
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainThemeChangedLog,
                 "Theme changed to {theme}",
                 LogLevel.Info,
@@ -664,7 +644,7 @@ namespace PhoneDesk.ViewModels
         private void ToggleSettings()
         {
             IsSettingsOpen = !IsSettingsOpen;
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainSettingsPanelStateLog,
                 "Settings panel {state}",
                 LogLevel.Info,
@@ -675,7 +655,7 @@ namespace PhoneDesk.ViewModels
         private void CloseSettings()
         {
             IsSettingsOpen = false;
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainSettingsPanelStateLog,
                 "Settings panel {state}",
                 LogLevel.Info,
@@ -686,14 +666,14 @@ namespace PhoneDesk.ViewModels
         private void ClearLog()
         {
             _loggingService.Clear();
-            LogMain(UiTextKey.MainLogClearedLog, "Log cleared", LogLevel.Info);
+            LogLocalized(UiTextKey.MainLogClearedLog, "Log cleared", LogLevel.Info);
         }
 
         [RelayCommand]
         private void ToggleLogDialog()
         {
             IsLogDialogOpen = !IsLogDialogOpen;
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainLogViewerStateLog,
                 "Log viewer {state}",
                 LogLevel.Info,
@@ -704,18 +684,12 @@ namespace PhoneDesk.ViewModels
         private void CloseLogDialog()
         {
             IsLogDialogOpen = false;
-            LogMain(
+            LogLocalized(
                 UiTextKey.MainLogViewerStateLog,
                 "Log viewer {state}",
                 LogLevel.Info,
                 new Dictionary<string, object?> { ["state"] = GetOpenClosedLabel(false) });
         }
-
-        private new string GetText(
-            UiTextKey key,
-            string fallback,
-            IReadOnlyDictionary<string, object?>? parameters = null)
-            => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
 
         public sealed record LanguageOption(AppLanguage Language, string Label);
 
@@ -734,6 +708,11 @@ namespace PhoneDesk.ViewModels
 
                 if (_translationPropertyHandler != null && _translationService != null)
                     _translationService.PropertyChanged -= _translationPropertyHandler;
+
+                if (CurrentViewModel is IDisposable disposable)
+                    disposable.Dispose();
+
+                _updateCancellation?.Dispose();
 
                 _disposed = true;
             }

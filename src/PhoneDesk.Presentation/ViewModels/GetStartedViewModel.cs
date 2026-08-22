@@ -11,6 +11,8 @@ namespace PhoneDesk.ViewModels
 {
     public partial class GetStartedViewModel : ViewModelBase, IDisposable
     {
+        private bool _disposed;
+
         [ObservableProperty]
         private bool _modulesChecked;
 
@@ -570,10 +572,17 @@ namespace PhoneDesk.ViewModels
 
         public void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             if (_translationService is not null)
             {
                 _translationService.PropertyChanged -= OnTranslationServicePropertyChanged;
             }
+
+            _disposed = true;
         }
     }
 }

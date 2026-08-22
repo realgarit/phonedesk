@@ -14,8 +14,10 @@ using System.Threading.Tasks;
 
 namespace PhoneDesk.ViewModels
 {
-    public partial class WizardViewModel : ViewModelBase
+    public partial class WizardViewModel : ViewModelBase, IDisposable
     {
+        private bool _disposed;
+
         [ObservableProperty]
         private int _currentStep = 0;
 
@@ -775,10 +777,17 @@ namespace PhoneDesk.ViewModels
 
         public void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             if (_translationService is not null)
             {
                 _translationService.PropertyChanged -= OnTranslationServicePropertyChanged;
             }
+
+            _disposed = true;
         }
     }
 

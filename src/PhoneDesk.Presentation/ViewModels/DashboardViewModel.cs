@@ -20,10 +20,11 @@ namespace PhoneDesk.ViewModels
     /// <see cref="ITenantTopologyCache"/>, and exposes search + relationship drill-down + orphans.
     /// This page never mutates tenant state.
     /// </summary>
-    public partial class DashboardViewModel : ViewModelBase
+    public partial class DashboardViewModel : ViewModelBase, IDisposable
     {
         private readonly ITenantTopologyAssembler _assembler;
         private readonly ITenantTopologyCache _cache;
+        private bool _disposed;
 
         [ObservableProperty]
         private ObservableCollection<TopologyAutoAttendant> _autoAttendants = new();
@@ -314,5 +315,20 @@ namespace PhoneDesk.ViewModels
 
         private static bool Contains(string? value, string query)
             => !string.IsNullOrEmpty(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_translationService is not null)
+            {
+                _translationService.PropertyChanged -= OnTranslationServicePropertyChanged;
+            }
+
+            _disposed = true;
+        }
     }
 }

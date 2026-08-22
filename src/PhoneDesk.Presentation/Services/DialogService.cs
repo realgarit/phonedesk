@@ -25,23 +25,7 @@ namespace PhoneDesk.Services
             => _translationService?.Get(key, parameters) ?? FormatFallback(fallback, parameters);
 
         private static string FormatFallback(string template, IReadOnlyDictionary<string, object?>? parameters)
-        {
-            if (parameters is null || parameters.Count == 0)
-            {
-                return template;
-            }
-
-            var value = template;
-            foreach (var parameter in parameters)
-            {
-                value = value.Replace(
-                    "{" + parameter.Key + "}",
-                    parameter.Value?.ToString() ?? string.Empty,
-                    StringComparison.Ordinal);
-            }
-
-            return value;
-        }
+            => TranslationCatalog.FormatTemplate(template, parameters);
 
         private Window? GetMainWindow()
         {

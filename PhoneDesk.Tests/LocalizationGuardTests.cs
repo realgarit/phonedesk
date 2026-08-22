@@ -252,9 +252,17 @@ public sealed class LocalizationGuardTests
         }
 
         public void WriteCatalog(string name, string content)
-            => File.WriteAllText(
-                Path.Combine(Root, "src", "PhoneDesk.Presentation", "Resources", "Localization", name),
+        {
+            var safeName = Path.GetFileName(name);
+            if (!string.Equals(safeName, name, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Catalog name must be a file name.", nameof(name));
+            }
+
+            File.WriteAllText(
+                Path.Combine(Root, "src", "PhoneDesk.Presentation", "Resources", "Localization", safeName),
                 content);
+        }
 
         public void WriteView(string content)
             => File.WriteAllText(

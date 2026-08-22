@@ -66,7 +66,9 @@ def validate_paths(
         stderr_text = stderr_path.read_text(encoding="utf-8").strip()
     except OSError:
         return False, "AI review is inconclusive: provider stderr cannot be read."
-    if INCONCLUSIVE_PATTERN.search(f"{review_text}\n{stderr_text}"):
+    if stderr_text:
+        return False, "AI review is inconclusive: provider wrote to stderr."
+    if INCONCLUSIVE_PATTERN.search(review_text):
         return False, "AI review is inconclusive: provider reported a limit or runtime failure."
 
     try:
@@ -82,6 +84,8 @@ def validate_paths(
         return False, "Semgrep output is invalid; review cannot be considered clean."
 
     semgrep_errors = semgrep_output.get("errors", [])
+    if not isinstance(semgrep_errors, list):
+        return False, "Semgrep output is invalid; review cannot be considered clean."
     if semgrep_errors:
         return False, "Semgrep output reports scanner errors; review cannot be considered clean."
 

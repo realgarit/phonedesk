@@ -62,6 +62,17 @@ class ValidateAiReviewTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertIn("inconclusive", message.lower())
 
+    def test_any_provider_stderr_is_inconclusive_even_when_stdout_is_clean(self):
+        valid, message = self.run_validation(
+            {"results": []},
+            "No findings.\n",
+            "model_exit=0\n",
+            "fatal: transient provider failure\n",
+        )
+
+        self.assertFalse(valid)
+        self.assertIn("inconclusive", message.lower())
+
     def test_provider_failure_is_inconclusive_even_if_output_says_no_findings(self):
         valid, message = self.run_validation(
             {"results": []},
@@ -93,7 +104,12 @@ class ValidateAiReviewTests(unittest.TestCase):
         self.assertIn("semgrep", message.lower())
 
     def test_semgrep_requires_results_array_and_rejects_scanner_errors(self):
-        for payload in ({}, {"results": None}, {"errors": ["scanner failed"]}):
+        for payload in (
+            {},
+            {"results": None},
+            {"errors": ["scanner failed"]},
+            {"results": [], "errors": None},
+        ):
             valid, message = self.run_validation(
                 payload,
                 "No findings.\n",

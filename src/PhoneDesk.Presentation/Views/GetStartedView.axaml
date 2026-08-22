@@ -31,11 +31,11 @@
         <StackPanel Margin="32" MaxWidth="850" HorizontalAlignment="Center" Spacing="24">
 
             <!-- Header Section -->
-            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,0,0,16">
-                <Border Classes="icon-badge">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,0,0,16">
+                <Border Grid.Column="0" Classes="icon-badge" VerticalAlignment="Top">
                     <fi:SymbolIcon Symbol="Rocket"/>
                 </Border>
-                <StackPanel Spacing="4" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="{loc:Translate Key=GetStartedTitle}"
                              Classes="page-title"
                              Margin="0"/>
@@ -43,7 +43,7 @@
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                 </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <Border Classes="setup-guidance">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">

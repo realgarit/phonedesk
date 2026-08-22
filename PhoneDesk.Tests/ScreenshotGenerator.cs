@@ -414,13 +414,15 @@ namespace PhoneDesk.Tests
                 && mainWindowViewModel.CurrentViewModel is WizardViewModel wizard)
             {
                 var translation = provider.GetRequiredService<ITranslationService>();
+                const string nativeErrorOutput = "ERROR: Microsoft 365 group could not be created.";
                 wizard.Steps[1].IsFailed = true;
-                wizard.Steps[1].Result = translation.Get(
-                    UiTextKey.WizardStepFailedStatus,
-                    new Dictionary<string, object?> { ["step"] = 2 });
+                wizard.Steps[1].Result = nativeErrorOutput;
                 wizard.CurrentStep = 1;
                 wizard.StepFailed = true;
-                wizard.StepResult = wizard.Steps[1].Result;
+                wizard.StepResult = nativeErrorOutput;
+                wizard.StatusMessage = translation.Get(
+                    UiTextKey.WizardStepFailedStatus,
+                    new Dictionary<string, object?> { ["step"] = 2 });
                 return;
             }
 
@@ -506,7 +508,7 @@ namespace PhoneDesk.Tests
                     bulkOperations.ParsedEntries.Clear();
                     bulkOperations.CsvContent = "Customer,CustomerGroupName\ncontoso";
                     bulkOperations.ScriptPreview = string.Empty;
-                    const string errorDetails = "Missing required CSV columns.";
+                    var errorDetails = translation.Get(UiTextKey.BulkOperationsMissingRequiredColumnsError);
                     bulkOperations.ExecutionLog = translation.Get(
                         UiTextKey.BulkOperationsParseErrorLog,
                         new Dictionary<string, object?> { ["error"] = errorDetails });
@@ -645,8 +647,8 @@ namespace PhoneDesk.Tests
 
             return new Border
             {
-                Width = 1400,
-                MaxWidth = 1400,
+                Width = 1120,
+                MaxWidth = 1120,
                 Padding = new Thickness(48),
                 CornerRadius = new CornerRadius(28),
                 Background = new SolidColorBrush(Color.Parse("#2B2942")),

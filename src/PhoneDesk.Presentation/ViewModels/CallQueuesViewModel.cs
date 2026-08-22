@@ -158,7 +158,7 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 CallQueues.Clear();
                 StatusMessage = GetText(
@@ -377,7 +377,7 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 StatusMessage = GetText(
                     UiTextKey.CallQueuesLoadM365GroupIdStatus,
@@ -461,7 +461,7 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowCreateResourceAccountDialog = false;
 
@@ -595,7 +595,7 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowUpdateUsageLocationDialog = false;
 
@@ -704,7 +704,7 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowCreateCallQueueDialog = false;
 
@@ -817,7 +817,7 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowAssociateDialog = false;
 

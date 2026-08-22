@@ -736,6 +736,7 @@
   "BulkOperationsParsedEntriesStatus": "Parsed {count} entries. Click 'Preview Script' to review, then 'Execute All'.",
   "BulkOperationsParsedEntriesLog": "Bulk CSV parsed: {count} entries",
   "BulkOperationsNoValidEntriesError": "No valid entries found in the CSV. Check the format.",
+  "BulkOperationsMissingRequiredColumnsError": "Required CSV columns are missing.",
   "BulkOperationsParseErrorStatus": "Parse error: {error}",
   "BulkOperationsParseErrorLog": "Bulk CSV parse error: {error}",
   "BulkOperationsNoEntriesToPreviewError": "No entries to preview. Parse CSV first.",

@@ -530,12 +530,12 @@ namespace PhoneDesk.ViewModels
                 StatusMessage = GetText(
                     UiTextKey.WizardStepFailedStatus,
                     "Step {step} failed. Review the output and retry or skip.",
-                    new Dictionary<string, object?> { ["step"] = CurrentStep });
+                    new Dictionary<string, object?> { ["step"] = CurrentStep + 1 });
                 LogLocalized(
                     UiTextKey.WizardStepFailedLog,
                     "Wizard step {step} ({title}) failed: {details}",
                     LogLevel.Error,
-                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title, ["details"] = output });
+                    new Dictionary<string, object?> { ["step"] = CurrentStep + 1, ["title"] = step.Title, ["details"] = output });
             }
             else
             {
@@ -555,12 +555,12 @@ namespace PhoneDesk.ViewModels
                 StatusMessage = GetText(
                     UiTextKey.WizardStepCompletedStatus,
                     "Step {step} completed: {title}",
-                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
+                    new Dictionary<string, object?> { ["step"] = CurrentStep + 1, ["title"] = step.Title });
                 LogLocalized(
                     UiTextKey.WizardStepCompletedLog,
                     "Wizard step {step} ({title}) completed successfully",
                     LogLevel.Info,
-                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
+                    new Dictionary<string, object?> { ["step"] = CurrentStep + 1, ["title"] = step.Title });
             }
 
             OnPropertyChanged(nameof(CanExecuteStep));
@@ -603,7 +603,7 @@ namespace PhoneDesk.ViewModels
                     UiTextKey.WizardStepSkippedLog,
                     "Wizard step {step} ({title}) skipped",
                     LogLevel.Warning,
-                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
+                    new Dictionary<string, object?> { ["step"] = CurrentStep + 1, ["title"] = step.Title });
                 CurrentStep++;
                 UpdateCurrentStep();
             }

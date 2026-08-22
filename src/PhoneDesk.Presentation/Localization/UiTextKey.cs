@@ -739,6 +739,7 @@ public enum UiTextKey
     BulkOperationsParsedEntriesStatus,
     BulkOperationsParsedEntriesLog,
     BulkOperationsNoValidEntriesError,
+    BulkOperationsMissingRequiredColumnsError,
     BulkOperationsParseErrorStatus,
     BulkOperationsParseErrorLog,
     BulkOperationsNoEntriesToPreviewError,

@@ -171,13 +171,36 @@ public sealed class RuntimeLocalizationTests
         harness.SetExecutionResult("SUCCESS: created");
 
         await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
-        Assert.Equal("Step 1 completed: Create M365 Group", vm.StatusMessage);
+        Assert.Equal("Step 2 completed: Create M365 Group", vm.StatusMessage);
 
         harness.TranslationService.CurrentLanguage = AppLanguage.German;
         vm.RetryStepCommand.Execute(null);
 
         await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
-        Assert.Equal("Schritt 1 abgeschlossen: Create M365 Group", vm.StatusMessage);
+        Assert.Equal("Schritt 2 abgeschlossen: M365-Gruppe erstellen", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void SwitchingLanguage_PreservesWizardTechnicalScriptPreview()
+    {
+        var harness = new ViewModelTestHarness();
+        var vm = new WizardViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        var englishScript = vm.StepScript;
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        Assert.Equal(englishScript, vm.StepScript);
     }
 
     [Fact]

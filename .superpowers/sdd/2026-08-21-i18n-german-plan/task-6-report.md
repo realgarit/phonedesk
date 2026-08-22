@@ -129,17 +129,23 @@ Date: 2026-08-22
 
 ### Catalog checks
 
-- `Strings.en.json`: 963 keys
-- `Strings.de.json`: 963 keys
+- `Strings.en.json`: 964 keys
+- `Strings.de.json`: 964 keys
 - Missing English keys: 0
 - Missing German keys: 0
 
-### Verification
+### Follow-up verification
 
-- `dotnet build src/PhoneDesk.Presentation/PhoneDesk.Presentation.csproj --no-restore`: passed, 0 warnings, 0 errors.
-- Focused test execution was attempted, but the shared tree contains incomplete unrelated Task 7 guard scaffolding. The root application glob currently compiles that untracked scaffold and fails with duplicate generated-attribute errors; the guard project also has no valid build entry point. No guard files were changed or removed.
-- Screenshot generation was not executable for the same shared-tree build blocker. Screenshot harness code was reviewed to use typed production translation paths; fresh PNG inspection remains deferred until Task 7 scaffolding is buildable.
+- Preserved the exact English technical script text when switching the Wizard language; only the surrounding UI and comments are localized.
+- Kept native PowerShell command/error output visible as technical output while translating the surrounding Wizard status and guidance.
+- Corrected Wizard failure and skipped-step screenshot states to use the visible one-based step number.
+- Replaced the copied CSV fixture error detail with the typed `BulkOperationsMissingRequiredColumnsError` catalog entry.
+- Resized the screenshot dialog fixture to fit the 1280x720 logical frame; refreshed German preview, confirmation, and error states now show complete titles with no clipping.
+- Applied the independent terminology review: use `Audit-Protokoll`, `Bereitschaftsprüfung`, `nicht zugeordnete Objekte`, `Auflegen-Option`, `Microsoft-Teams-Modul`, `Datumsangaben`, and the complete no-agent Voicemail sentence.
+- Changed the Get Started header to a constrained grid so the longer German readiness subtitle wraps instead of clipping at the right edge.
+- `dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter "FullyQualifiedName~RuntimeLocalizationTests|FullyQualifiedName~WizardViewModelTests|FullyQualifiedName~LocalizationGuardTests"`: passed 48/48.
+- `pwsh -NoProfile -File scripts/check-localization.ps1`: passed with `No findings.`
+- `dotnet build src/PhoneDesk.Presentation/PhoneDesk.Presentation.csproj --no-restore`: passed with 0 warnings and 0 errors.
+- `GENERATE_SCREENSHOTS=1 SCREENSHOT_FRAMELESS=1 SCREENSHOT_OUT=C:\Users\realgar\.codex\visualizations\2026\08\22\phonedesk-i18n dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~ScreenshotGenerator`: passed 1/1 after terminology fixes and again after the constrained Get Started header; fresh PNGs were visually inspected for readiness, dashboard, audit log, Settings, Task 5 populated/error states, and Task 6 dialog states.
 
-### Deferred boundary
-
-The full solution test/build matrix remains blocked by the pre-existing Task 7 guard scaffold. This follow-up does not modify Infrastructure, authentication, script-builder behavior, or any guard scaffold.
+The frozen Infrastructure, authentication, and script-builder surfaces remain unchanged.

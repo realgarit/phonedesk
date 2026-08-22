@@ -63,7 +63,7 @@ namespace PhoneDesk.Tests
             await vm.RetrieveM365GroupsCommand.ExecuteAsync(null);
 
             Assert.Equal(2, vm.Groups.Count);
-            Assert.Contains("Found 2 groups", vm.GroupStatus);
+            Assert.Contains("Loaded 2 groups", vm.GroupStatus);
         }
 
         [Fact]
@@ -75,7 +75,7 @@ namespace PhoneDesk.Tests
 
             await vm.RetrieveM365GroupsCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: No output from PowerShell command", vm.GroupStatus);
+            Assert.Equal("Error: No output from the PowerShell command.", vm.GroupStatus);
         }
 
         [Fact]
@@ -122,7 +122,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateNewGroupCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Group name cannot be empty", vm.GroupStatus);
+            Assert.Equal("Error: Group name cannot be empty.", vm.GroupStatus);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -192,7 +192,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveM365GroupCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Please select a group to remove", vm.GroupStatus);
+            Assert.Equal("Error: Select a group to delete.", vm.GroupStatus);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -216,7 +216,7 @@ namespace PhoneDesk.Tests
             // GroupStatus reflects the auto-refresh (RetrieveM365GroupsAsync) that runs immediately after
             // a successful remove, so the final status is the retrieve's, not the remove's. The remove
             // success is still observable via the log entry and the refreshed Groups collection.
-            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("removed successfully")), It.IsAny<LogLevel>()), Times.Once);
+            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("deleted successfully")), It.IsAny<LogLevel>()), Times.Once);
             Assert.Single(vm.Groups);
         }
 
@@ -246,7 +246,7 @@ namespace PhoneDesk.Tests
 
             await vm.CheckM365GroupCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Variables not found. Please set variables first.", vm.GroupStatus);
+            Assert.Equal("Error: Configuration not found. Set the configuration first.", vm.GroupStatus);
         }
 
         [Fact]
@@ -277,7 +277,7 @@ namespace PhoneDesk.Tests
 
             Assert.True(vm.IsGroupChecked);
             Assert.Equal("group-id-123", vm.GroupId);
-            Assert.Equal("Group created successfully", vm.GroupStatus);
+            Assert.Equal("Group created successfully.", vm.GroupStatus);
         }
     }
 }

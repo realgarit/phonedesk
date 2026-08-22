@@ -229,6 +229,72 @@ public sealed class RuntimeLocalizationTests
     }
 
     [Fact]
+    public async Task SwitchingLanguage_LocalizesCallQueueGroupIdStatus_AndPreservesGroupId()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+        {
+            Customer = "contoso",
+            CustomerGroupName = "tenant"
+        });
+        harness.SetExecutionResult("SUCCESS\nM365GROUPID:11111111-2222-3333-4444-555555555555");
+
+        var vm = new CallQueuesViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        await vm.GetM365GroupIdCommand.ExecuteAsync(null);
+        Assert.Equal(
+            "M365 Group ID loaded and saved: 11111111-2222-3333-4444-555555555555",
+            vm.StatusMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        await vm.GetM365GroupIdCommand.ExecuteAsync(null);
+        Assert.Equal(
+            "M365-Gruppen-ID geladen und gespeichert: 11111111-2222-3333-4444-555555555555",
+            vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task SwitchingLanguage_LocalizesM365GroupCreateStatus_AndPreservesName()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.SetExecutionResult("Group created successfully");
+        harness.SharedStateService.SetupGet(s => s.AutoRefreshAfterOperations).Returns(false);
+
+        var vm = new M365GroupsViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        vm.NewGroupName = "ttgrp-contoso";
+
+        await vm.CreateNewGroupCommand.ExecuteAsync(null);
+        Assert.Equal("Group 'ttgrp-contoso' created successfully.", vm.GroupStatus);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        await vm.CreateNewGroupCommand.ExecuteAsync(null);
+        Assert.Equal("Gruppe 'ttgrp-contoso' wurde erfolgreich erstellt.", vm.GroupStatus);
+    }
+
+    [Fact]
     public void SwitchingLanguage_LocalizesUpdateBanner_AndPreservesVersion()
     {
         var harness = new ViewModelTestHarness();

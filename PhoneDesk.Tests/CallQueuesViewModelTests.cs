@@ -27,7 +27,7 @@ namespace PhoneDesk.Tests
 
             CreateViewModel(harness);
 
-            harness.LoggingService.Verify(l => l.Log("Call Queues page loaded", LogLevel.Info), Times.Once);
+            harness.LoggingService.Verify(l => l.Log("Call queues page loaded", LogLevel.Info), Times.Once);
         }
 
         // ---- RetrieveResourceAccountsAsync ----
@@ -47,7 +47,7 @@ namespace PhoneDesk.Tests
             Assert.Equal("racq-upn@contoso.com", account.UserPrincipalName);
             Assert.Equal("Identity1", account.Identity);
             Assert.Equal("Switzerland", account.UsageLocation);
-            Assert.Equal("Found 1 resource accounts starting with 'racq-'", vm.StatusMessage);
+            Assert.Equal("Loaded 1 resource accounts starting with 'racq-'.", vm.StatusMessage);
             Assert.False(vm.IsBusy);
         }
 
@@ -76,7 +76,7 @@ namespace PhoneDesk.Tests
             await vm.RetrieveResourceAccountsCommand.ExecuteAsync(null);
 
             Assert.Empty(vm.ResourceAccounts);
-            Assert.Equal("Error: No output from PowerShell command", vm.StatusMessage);
+            Assert.Equal("Error: No output from the PowerShell command.", vm.StatusMessage);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace PhoneDesk.Tests
             Assert.Equal("Identity1", queue.Identity);
             Assert.Equal("Longest Idle", queue.RoutingMethod);
             Assert.Equal(30, queue.AgentAlertTime);
-            Assert.Equal("Found 1 call queues containing 'cq-'", vm.StatusMessage);
+            Assert.Equal("Loaded 1 call queues containing 'cq-'.", vm.StatusMessage);
         }
 
         [Fact]
@@ -359,7 +359,7 @@ namespace PhoneDesk.Tests
 
             await vm.GetM365GroupIdCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Variables not found", vm.StatusMessage);
+            Assert.Equal("Error: Configuration not found.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -377,7 +377,7 @@ namespace PhoneDesk.Tests
             await vm.GetM365GroupIdCommand.ExecuteAsync(null);
 
             Assert.Equal("11111111-2222-3333-4444-555555555555", variables.M365GroupId);
-            Assert.Contains("M365 Group ID retrieved and saved", vm.StatusMessage);
+            Assert.Contains("M365 Group ID loaded and saved", vm.StatusMessage);
         }
 
         [Fact]
@@ -391,7 +391,7 @@ namespace PhoneDesk.Tests
 
             await vm.GetM365GroupIdCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Could not parse M365 Group ID from result", vm.StatusMessage);
+            Assert.Equal("Error: Could not parse the M365 Group ID from the result.", vm.StatusMessage);
         }
 
         [Fact]
@@ -405,7 +405,7 @@ namespace PhoneDesk.Tests
 
             await vm.GetM365GroupIdCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error retrieving M365 Group ID", vm.StatusMessage);
+            Assert.Contains("Error loading the M365 Group ID", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
                 e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "GetM365GroupId"),
                 Times.Once);
@@ -437,7 +437,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN and display name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN and display name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -455,7 +455,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Call Queue Application ID not found in variables", vm.StatusMessage);
+            Assert.Equal("Error: Call queue application ID was not found in Configuration.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -473,7 +473,7 @@ namespace PhoneDesk.Tests
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
             Assert.Equal(
-                "Error: MS Fallback Domain is not set or invalid. Please set a valid domain (e.g., @yourdomain.com) in Variables.",
+                "Error: Microsoft fallback domain is not set or is invalid. Set a valid domain such as @yourdomain.com in Configuration.",
                 vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
@@ -532,7 +532,7 @@ namespace PhoneDesk.Tests
 
             await vm.UpdateUsageLocationCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -566,9 +566,9 @@ namespace PhoneDesk.Tests
 
             await vm.UpdateUsageLocationCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error updating usage location", vm.StatusMessage);
+            Assert.Contains("Error updating the usage location", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "UpdateUsageLocation"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Update usage location"),
                 Times.Once);
         }
 
@@ -583,7 +583,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Call queue name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Call queue name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -620,9 +620,9 @@ namespace PhoneDesk.Tests
 
             await vm.CreateCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error creating call queue", vm.StatusMessage);
+            Assert.Contains("Error creating the call queue", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create Call Queue"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create call queue"),
                 Times.Once);
         }
 
@@ -638,7 +638,7 @@ namespace PhoneDesk.Tests
 
             await vm.AssociateResourceAccountWithCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN and call queue name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN and call queue name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -655,7 +655,7 @@ namespace PhoneDesk.Tests
 
             await vm.AssociateResourceAccountWithCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Contains("Successfully associated", vm.StatusMessage);
+            Assert.Contains("was associated with call queue", vm.StatusMessage);
             Assert.False(vm.ShowAssociateDialog);
         }
 
@@ -670,9 +670,9 @@ namespace PhoneDesk.Tests
 
             await vm.AssociateResourceAccountWithCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error associating resource account with call queue", vm.StatusMessage);
+            Assert.Contains("Error associating the resource account with the call queue", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Associate Resource Account"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Associate resource account"),
                 Times.Once);
         }
 
@@ -687,7 +687,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveCallQueueCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Call queue name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Call queue name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -705,7 +705,7 @@ namespace PhoneDesk.Tests
             // StatusMessage reflects the auto-refresh that runs immediately after a successful remove, so
             // the final message is the retrieve's, not the remove's. The remove success is still
             // observable via the log entry.
-            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("removed successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("deleted successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.AtLeast(2));
@@ -722,7 +722,7 @@ namespace PhoneDesk.Tests
 
             Assert.Contains("Error deleting the call queue", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Delete Call Queue"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Delete call queue"),
                 Times.Once);
         }
 
@@ -753,7 +753,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -771,7 +771,7 @@ namespace PhoneDesk.Tests
             // StatusMessage reflects the auto-refresh that runs immediately after a successful remove, so
             // the final message is the retrieve's, not the remove's. The remove success is still
             // observable via the log entry.
-            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("removed successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("deleted successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.AtLeast(2));

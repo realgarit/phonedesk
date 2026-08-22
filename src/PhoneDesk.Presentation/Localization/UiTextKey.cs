@@ -61,6 +61,8 @@ public enum UiTextKey
     CommonEnterVoicemailGreetingMessage,
     CommonShown,
     CommonHidden,
+    CommonOn,
+    CommonOff,
     CommonOutcomeAll,
     CommonOutcomeSuccess,
     CommonOutcomeFailure,

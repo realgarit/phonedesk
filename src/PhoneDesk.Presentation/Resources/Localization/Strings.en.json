@@ -58,6 +58,8 @@
   "CommonEnterVoicemailGreetingMessage": "Enter voicemail greeting message",
   "CommonShown": "Shown",
   "CommonHidden": "Hidden",
+  "CommonOn": "On",
+  "CommonOff": "Off",
   "CommonOutcomeAll": "All",
   "CommonOutcomeSuccess": "Success",
   "CommonOutcomeFailure": "Failure",

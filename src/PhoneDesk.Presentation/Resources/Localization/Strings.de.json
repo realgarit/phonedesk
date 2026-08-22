@@ -58,6 +58,8 @@
   "CommonEnterVoicemailGreetingMessage": "Voicemail-Ansagetext eingeben",
   "CommonShown": "Angezeigt",
   "CommonHidden": "Ausgeblendet",
+  "CommonOn": "Ein",
+  "CommonOff": "Aus",
   "CommonOutcomeAll": "Alle",
   "CommonOutcomeSuccess": "Erfolg",
   "CommonOutcomeFailure": "Fehler",

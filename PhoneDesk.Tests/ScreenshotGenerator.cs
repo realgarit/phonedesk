@@ -336,8 +336,6 @@ namespace PhoneDesk.Tests
             }
 
             mainWindowViewModel.IsSettingsOpen = false;
-            var isGerman = scenario.EndsWith("-de", StringComparison.Ordinal);
-
             if (scenario.StartsWith("task6-update-banner", StringComparison.Ordinal))
             {
                 var stateType = typeof(MainWindowViewModel).GetNestedType("UpdateBannerState", BindingFlags.NonPublic)
@@ -415,8 +413,11 @@ namespace PhoneDesk.Tests
                     || string.Equals(scenario, "failed-de", StringComparison.Ordinal))
                 && mainWindowViewModel.CurrentViewModel is WizardViewModel wizard)
             {
+                var translation = provider.GetRequiredService<ITranslationService>();
                 wizard.Steps[1].IsFailed = true;
-                wizard.Steps[1].Result = "Microsoft 365 group could not be created. Retry the step or skip it after checking the output.";
+                wizard.Steps[1].Result = translation.Get(
+                    UiTextKey.WizardStepFailedStatus,
+                    new Dictionary<string, object?> { ["step"] = 2 });
                 wizard.CurrentStep = 1;
                 wizard.StepFailed = true;
                 wizard.StepResult = wizard.Steps[1].Result;
@@ -436,6 +437,8 @@ namespace PhoneDesk.Tests
                     break;
 
                 case CallQueuesViewModel callQueues when scenario.StartsWith("task5-callqueues-populated", StringComparison.Ordinal):
+                    {
+                    var translation = provider.GetRequiredService<ITranslationService>();
                     callQueues.ResourceAccounts.Clear();
                     callQueues.CallQueues.Clear();
                     callQueues.SearchResourceAccountsText = string.Empty;
@@ -444,15 +447,18 @@ namespace PhoneDesk.Tests
                     callQueues.ShowCreateCallQueueDialog = false;
                     callQueues.ShowAssociateDialog = false;
                     callQueues.ShowUpdateUsageLocationDialog = false;
-                    callQueues.StatusMessage = isGerman
-                        ? "2 Ressourcenkonten mit dem Präfix „racq-“ gefunden"
-                        : "Found 2 resource accounts starting with 'racq-'";
+                    callQueues.StatusMessage = translation.Get(
+                        UiTextKey.CallQueuesLoadResourceAccountsSuccess,
+                        new Dictionary<string, object?> { ["count"] = 2, ["prefix"] = "racq-" });
                     callQueues.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "racq-zurich@contoso.com", "Identity-RACQ-001", "CH"));
                     callQueues.ResourceAccounts.Add(new ResourceAccount("Service Bern", "racq-bern@contoso.com", "Identity-RACQ-002", "CH"));
                     callQueues.CallQueues.Add(new CallQueue("cq-Contoso Reception", "Identity-CQ-001", "Longest Idle", 30));
                     break;
+                    }
 
                 case AutoAttendantsViewModel autoAttendants when scenario.StartsWith("task5-autoattendants-filter", StringComparison.Ordinal):
+                    {
+                    var translation = provider.GetRequiredService<ITranslationService>();
                     autoAttendants.ResourceAccounts.Clear();
                     autoAttendants.AutoAttendants.Clear();
                     autoAttendants.SearchResourceAccountsText = string.Empty;
@@ -466,26 +472,32 @@ namespace PhoneDesk.Tests
                     autoAttendants.ShowCreateAfterHoursCallFlowDialog = false;
                     autoAttendants.ShowCreateAfterHoursScheduleDialog = false;
                     autoAttendants.ShowCreateCallHandlingAssociationDialog = false;
-                    autoAttendants.StatusMessage = isGerman
-                        ? "2 Ressourcenkonten mit dem Präfix „raaa-“ gefunden"
-                        : "Found 2 resource accounts starting with 'raaa-'";
+                    autoAttendants.StatusMessage = translation.Get(
+                        UiTextKey.AutoAttendantsLoadResourceAccountsSuccess,
+                        new Dictionary<string, object?> { ["count"] = 2, ["prefix"] = "raaa-" });
                     autoAttendants.ResourceAccounts.Add(new ResourceAccount("Reception Zurich", "raaa-zurich@contoso.com", "Identity-RAAA-001", "CH"));
                     autoAttendants.ResourceAccounts.Add(new ResourceAccount("Support Basel", "raaa-basel@contoso.com", "Identity-RAAA-002", "CH"));
                     autoAttendants.SearchResourceAccountsText = "Basel";
                     break;
+                    }
 
                 case HolidaysViewModel holidays when scenario.StartsWith("task5-holidays-dialog", StringComparison.Ordinal):
+                    {
+                    var translation = provider.GetRequiredService<ITranslationService>();
                     holidays.ShowCreateHolidayDialog = false;
                     holidays.ShowCheckAutoAttendantDialog = false;
                     holidays.ShowAttachHolidayDialog = true;
                     holidays.HolidayName = "hd-contoso-nationalday";
                     holidays.AutoAttendantName = "aa-Contoso Reception";
-                    holidays.StatusMessage = isGerman
-                        ? "Feiertagsserie „hd-contoso-nationalday“ erfolgreich erstellt."
-                        : "Holiday series 'hd-contoso-nationalday' created successfully.";
+                    holidays.StatusMessage = translation.Get(
+                        UiTextKey.HolidaysCreateHolidaySeriesSuccessLog,
+                        new Dictionary<string, object?> { ["name"] = "hd-contoso-nationalday" });
                     break;
+                    }
 
                 case BulkOperationsViewModel bulkOperations when scenario.StartsWith("task5-bulk-error", StringComparison.Ordinal):
+                    {
+                    var translation = provider.GetRequiredService<ITranslationService>();
                     bulkOperations.IsExecuting = false;
                     bulkOperations.SkipInvalidRows = true;
                     bulkOperations.TotalCount = 0;
@@ -494,13 +506,15 @@ namespace PhoneDesk.Tests
                     bulkOperations.ParsedEntries.Clear();
                     bulkOperations.CsvContent = "Customer,CustomerGroupName\ncontoso";
                     bulkOperations.ScriptPreview = string.Empty;
-                    bulkOperations.ExecutionLog = isGerman
-                        ? "FEHLER: Erforderliche CSV-Spalten fehlen."
-                        : "ERROR: Missing required CSV columns.";
-                    bulkOperations.StatusMessage = isGerman
-                        ? "Analysefehler: Erforderliche CSV-Spalten fehlen."
-                        : "Parse error: Missing required CSV columns.";
+                    const string errorDetails = "Missing required CSV columns.";
+                    bulkOperations.ExecutionLog = translation.Get(
+                        UiTextKey.BulkOperationsParseErrorLog,
+                        new Dictionary<string, object?> { ["error"] = errorDetails });
+                    bulkOperations.StatusMessage = translation.Get(
+                        UiTextKey.BulkOperationsParseErrorStatus,
+                        new Dictionary<string, object?> { ["error"] = errorDetails });
                     break;
+                    }
             }
         }
 

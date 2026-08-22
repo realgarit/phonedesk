@@ -1,5 +1,6 @@
 using Moq;
 using PhoneDesk.Models;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Tests.TestSupport;
@@ -130,6 +131,43 @@ namespace PhoneDesk.Tests
             vm.GoToNextStepCommand.Execute(null);
 
             Assert.Equal("Step 2 of 10", vm.StepNumberText);
+        }
+
+        [Fact]
+        public void SwitchingLanguage_LocalizesWizardMetadataAndComputedSummary()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+            {
+                Customer = "contoso"
+            });
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            Assert.Equal("Step 1 of 10", vm.StepNumberText);
+            Assert.Equal("Review Configuration", vm.StepTitle);
+            Assert.Contains("Customer", vm.ReviewSummary, StringComparison.Ordinal);
+            Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal("Schritt 1 von 10", vm.StepNumberText);
+            Assert.Equal("Konfiguration prüfen", vm.StepTitle);
+            Assert.Contains("Kunde", vm.ReviewSummary, StringComparison.Ordinal);
+            Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+
+            vm.CurrentStep = 1;
+            Assert.Equal("M365-Gruppe erstellen", vm.StepTitle);
+            Assert.Contains("Prüfen Sie diesen Schritt", vm.ReadinessMessage, StringComparison.Ordinal);
         }
 
         // ── Forward/backward navigation and boundaries ─────────────────────

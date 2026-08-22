@@ -115,3 +115,31 @@ Result: Passed 591/591
 - `src/PhoneDesk.Presentation/ViewModels/VariablesViewModel.cs`
 - `src/PhoneDesk.Presentation/ViewModels/ViewModelBase.cs`
 - `src/PhoneDesk.Presentation/ViewModels/WelcomeViewModel.cs`
+
+## Task 6 follow-up — Wizard runtime surface and screenshot harness
+
+Date: 2026-08-22
+
+### Scope
+
+- Moved Wizard step metadata, step number, actions, review labels, readiness and validation guidance, placeholders, fixed results, and script-preview comments to typed `UiTextKey` entries.
+- Added live language refresh for Wizard step metadata, computed summaries, and localized fixed step results. Native PowerShell output, commands, identifiers, tenant values, and exception details remain unchanged.
+- Replaced copied English/German strings in the Task 5 and failed-Wizard screenshot scenarios with production `ITranslationService.Get` calls and named placeholders.
+- Added Wizard language-switch coverage to `WizardViewModelTests` and `RuntimeLocalizationTests`.
+
+### Catalog checks
+
+- `Strings.en.json`: 963 keys
+- `Strings.de.json`: 963 keys
+- Missing English keys: 0
+- Missing German keys: 0
+
+### Verification
+
+- `dotnet build src/PhoneDesk.Presentation/PhoneDesk.Presentation.csproj --no-restore`: passed, 0 warnings, 0 errors.
+- Focused test execution was attempted, but the shared tree contains incomplete unrelated Task 7 guard scaffolding. The root application glob currently compiles that untracked scaffold and fails with duplicate generated-attribute errors; the guard project also has no valid build entry point. No guard files were changed or removed.
+- Screenshot generation was not executable for the same shared-tree build blocker. Screenshot harness code was reviewed to use typed production translation paths; fresh PNG inspection remains deferred until Task 7 scaffolding is buildable.
+
+### Deferred boundary
+
+The full solution test/build matrix remains blocked by the pre-existing Task 7 guard scaffold. This follow-up does not modify Infrastructure, authentication, script-builder behavior, or any guard scaffold.

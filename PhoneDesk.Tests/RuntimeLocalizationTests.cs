@@ -14,6 +14,39 @@ namespace PhoneDesk.Tests;
 public sealed class RuntimeLocalizationTests
 {
     [Fact]
+    public void SwitchingLanguage_LocalizesWizardRuntimeSurface_AndPreservesCustomer()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+        {
+            Customer = "contoso"
+        });
+
+        var vm = new WizardViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        Assert.Equal("Review Configuration", vm.StepTitle);
+        Assert.Contains("Customer", vm.ReviewSummary, StringComparison.Ordinal);
+        Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        Assert.Equal("Konfiguration prüfen", vm.StepTitle);
+        Assert.Contains("Kunde", vm.ReviewSummary, StringComparison.Ordinal);
+        Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+        Assert.Equal("Konfiguration bestätigen", vm.ExecuteButtonText);
+    }
+
+    [Fact]
     public async Task SwitchingLanguage_LocalizesAutoAttendantCreateSuccess_AndPreservesName()
     {
         var harness = new ViewModelTestHarness();

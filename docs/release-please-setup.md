@@ -57,8 +57,11 @@ application sources while a release is waiting to be proposed, but
 `validate-release` requires it to match the release tag.
 
 The configured `simple` release type manages `version.txt` in the release PR. The
-additional `extra-files` entries update the project, manifest, and display-version
-sources listed above; the version-sync guard checks all of them before packaging.
+additional `extra-files` entries update the project and display-version sources.
+`app.manifest` is intentionally not an extra file: release-please writes SemVer's
+three-part value, while Windows requires the manifest's `assemblyIdentity` to stay
+four-part. The bump scripts update that manifest value, and the version-sync guard
+checks all sources before packaging.
 
 ## Key files
 

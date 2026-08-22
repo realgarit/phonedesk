@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.26.1](https://github.com/realgarit/phonedesk/compare/v3.26.0...v3.26.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* compact wizard readiness validation ([80985bb](https://github.com/realgarit/phonedesk/commit/80985bb132a9a4f5284ffd98911b46a31fcb3baa))
+* compact wizard readiness validation ([c472025](https://github.com/realgarit/phonedesk/commit/c4720252841cb78c25dd3eb5facdab5c9f283866))
+* fail closed on review transport errors ([b034564](https://github.com/realgarit/phonedesk/commit/b0345644855d772c67f1e695ac04c2a637157567))
+* pin review workflow dependencies ([496e0c8](https://github.com/realgarit/phonedesk/commit/496e0c8c81d5f2c437aa512ddddaa41bc2a264e7))
+
 ## [3.26.0](https://github.com/realgarit/phonedesk/compare/v3.25.0...v3.26.0) (2026-08-22)
 
 

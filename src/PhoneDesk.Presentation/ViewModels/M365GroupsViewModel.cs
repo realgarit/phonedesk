@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Models;
 using System;
@@ -56,11 +57,15 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("M365 Groups page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.M365GroupsPageLoadedLog,
+                "M365 Groups page loaded",
+                LogLevel.Info);
 
             // Initialize with auto-generated group name if variables are available
             UpdateNewGroupName();
@@ -90,9 +95,15 @@ namespace PhoneDesk.ViewModels
             {
                 IsBusy = true;
                 Groups.Clear();
-                GroupStatus = "Retrieving M365 groups...";
+                GroupStatus = GetText(
+                    UiTextKey.M365GroupsLoadGroupsStatus,
+                    "Loading M365 groups...");
 
-                _loggingService.Log("Retrieving M365 groups starting with 'ttgrp'", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.M365GroupsLoadGroupsLog,
+                    "Loading M365 groups starting with '{prefix}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["prefix"] = "ttgrp" });
 
                 var command = _powerShellCommandService.GetRetrieveM365GroupsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveM365Groups", allowThrottleRetry: true);
@@ -100,19 +111,47 @@ namespace PhoneDesk.ViewModels
                 if (!string.IsNullOrEmpty(result.Value))
                 {
                     ParseGroupsFromResult(result.Value);
-                    GroupStatus = $"Found {Groups.Count} groups starting with 'ttgrp'";
-                    _loggingService.Log($"Retrieved {Groups.Count} M365 groups", LogLevel.Info);
+                    GroupStatus = GetText(
+                        UiTextKey.M365GroupsLoadGroupsSuccess,
+                        "Loaded {count} groups starting with '{prefix}'.",
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = Groups.Count,
+                            ["prefix"] = "ttgrp"
+                        });
+                    LogLocalized(
+                        UiTextKey.M365GroupsLoadGroupsSuccess,
+                        "Loaded {count} groups starting with '{prefix}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = Groups.Count,
+                            ["prefix"] = "ttgrp"
+                        });
                 }
                 else
                 {
-                    GroupStatus = "Error: No output from PowerShell command";
-                    _loggingService.Log("Error retrieving M365 groups: No output from PowerShell command", LogLevel.Error);
+                    GroupStatus = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.M365GroupsLoadGroupsNoOutputLog,
+                        "Error loading M365 groups: no output from the PowerShell command.",
+                        LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                GroupStatus = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RetrieveM365GroupsAsync: {ex}", LogLevel.Error);
+                GroupStatus = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RetrieveM365GroupsAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -138,7 +177,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(NewGroupName))
             {
-                GroupStatus = "Error: Group name cannot be empty";
+                GroupStatus = GetText(
+                    UiTextKey.M365GroupsNameRequiredError,
+                    "Error: Group name cannot be empty.");
                 return;
             }
 
@@ -147,14 +188,24 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
                 ShowCreateGroupDialog = false;
 
-                _loggingService.Log($"Creating new M365 group: {NewGroupName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.M365GroupsCreateGroupLog,
+                    "Creating M365 group '{name}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = NewGroupName });
 
                 var command = _powerShellCommandService.GetCreateM365GroupCommand(NewGroupName);
-                var result = await PreviewAndExecuteAsync(command, "Create M365 Group");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.M365GroupsCreateGroupContext,
+                        "Create M365 group"));
                 
                 if (result == null)
                 {
-                    GroupStatus = "Operation cancelled by user";
+                    GroupStatus = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
@@ -163,8 +214,15 @@ namespace PhoneDesk.ViewModels
                     var output = result.Value.Trim();
                     if (output.Contains("created successfully"))
                     {
-                        GroupStatus = $"Group '{NewGroupName}' created successfully";
-                        _loggingService.Log($"M365 Group {NewGroupName} created successfully", LogLevel.Info);
+                        GroupStatus = GetText(
+                            UiTextKey.M365GroupsCreateGroupSuccess,
+                            "Group '{name}' created successfully.",
+                            new Dictionary<string, object?> { ["name"] = NewGroupName });
+                        LogLocalized(
+                            UiTextKey.M365GroupsCreateGroupSuccessLog,
+                            "M365 group '{name}' created successfully.",
+                            LogLevel.Info,
+                            new Dictionary<string, object?> { ["name"] = NewGroupName });
                         
                         // Refresh the groups list
                         if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
@@ -172,25 +230,57 @@ namespace PhoneDesk.ViewModels
                     }
                     else if (output.Contains("already exists"))
                     {
-                        GroupStatus = $"Group '{NewGroupName}' already exists";
-                        _loggingService.Log($"M365 Group {NewGroupName} already exists", LogLevel.Warning);
+                        GroupStatus = GetText(
+                            UiTextKey.M365GroupsCreateGroupAlreadyExists,
+                            "Group '{name}' already exists.",
+                            new Dictionary<string, object?> { ["name"] = NewGroupName });
+                        LogLocalized(
+                            UiTextKey.M365GroupsCreateGroupAlreadyExistsLog,
+                            "M365 group '{name}' already exists.",
+                            LogLevel.Warning,
+                            new Dictionary<string, object?> { ["name"] = NewGroupName });
                     }
                     else
                     {
-                        GroupStatus = $"Error creating group: {output}";
-                        _loggingService.Log($"Error creating M365 Group {NewGroupName}: {output}", LogLevel.Error);
+                        GroupStatus = GetText(
+                            UiTextKey.M365GroupsCreateGroupError,
+                            "Error creating the group: {details}",
+                            new Dictionary<string, object?> { ["details"] = output });
+                        LogLocalized(
+                            UiTextKey.M365GroupsCreateGroupErrorLog,
+                            "Error creating M365 group '{name}': {details}",
+                            LogLevel.Error,
+                            new Dictionary<string, object?>
+                            {
+                                ["name"] = NewGroupName,
+                                ["details"] = output
+                            });
                     }
                 }
                 else
                 {
-                    GroupStatus = "Error: No output from PowerShell command";
-                    _loggingService.Log($"Error creating M365 Group {NewGroupName}: No output from PowerShell command", LogLevel.Error);
+                    GroupStatus = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.M365GroupsCreateGroupNoOutputLog,
+                        "Error creating M365 group '{name}': no output from the PowerShell command.",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["name"] = NewGroupName });
                 }
             }
             catch (Exception ex)
             {
-                GroupStatus = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateNewGroupAsync for group {NewGroupName}: {ex}", LogLevel.Error);
+                GroupStatus = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(CreateNewGroupAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -203,7 +293,9 @@ namespace PhoneDesk.ViewModels
         {
             if (SelectedGroup == null)
             {
-                GroupStatus = "Error: Please select a group to remove";
+                GroupStatus = GetText(
+                    UiTextKey.M365GroupsDeleteSelectionRequiredError,
+                    "Error: Select a group to delete.");
                 return;
             }
 
@@ -213,32 +305,65 @@ namespace PhoneDesk.ViewModels
 
                 var command = _powerShellCommandService.GetRemoveM365GroupCommand(SelectedGroup.Id, SelectedGroup.DisplayName);
                 var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the M365 Group '{SelectedGroup.DisplayName}'. This action cannot be undone.",
-                    "Remove M365 Group");
+                    GetText(
+                        UiTextKey.M365GroupsDeleteGroupConfirm,
+                        "This permanently deletes the M365 group '{name}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["name"] = SelectedGroup.DisplayName }),
+                    GetText(
+                        UiTextKey.M365GroupsDeleteGroupContext,
+                        "Delete M365 group"));
 
                 if (result == null)
                 {
-                    GroupStatus = "Operation cancelled by user";
+                    GroupStatus = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    GroupStatus = $"Group '{SelectedGroup.DisplayName}' removed successfully";
-                    _loggingService.Log($"M365 Group {SelectedGroup.DisplayName} removed successfully", LogLevel.Info);
+                    GroupStatus = GetText(
+                        UiTextKey.M365GroupsDeleteGroupSuccess,
+                        "Group '{name}' deleted successfully.",
+                        new Dictionary<string, object?> { ["name"] = SelectedGroup.DisplayName });
+                    LogLocalized(
+                        UiTextKey.M365GroupsDeleteGroupSuccessLog,
+                        "M365 group '{name}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = SelectedGroup.DisplayName });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveM365GroupsAsync();
                 }
                 else
                 {
-                    GroupStatus = $"Error removing group: {result.Value}";
-                    _loggingService.Log($"Error removing M365 Group {SelectedGroup.DisplayName}: {result.Value}", LogLevel.Error);
+                    GroupStatus = GetText(
+                        UiTextKey.M365GroupsDeleteGroupError,
+                        "Error deleting the group: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.M365GroupsDeleteGroupErrorLog,
+                        "Error deleting M365 group '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = SelectedGroup.DisplayName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                GroupStatus = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveM365GroupAsync: {ex}", LogLevel.Error);
+                GroupStatus = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RemoveM365GroupAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -258,8 +383,13 @@ namespace PhoneDesk.ViewModels
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    _loggingService.Log("Variables not found. Please set variables first.", LogLevel.Error);
-                    GroupStatus = "Error: Variables not found. Please set variables first.";
+                    LogLocalized(
+                        UiTextKey.M365GroupsCheckVariablesMissingLog,
+                        "Configuration was not found. Set the configuration first.",
+                        LogLevel.Error);
+                    GroupStatus = GetText(
+                        UiTextKey.M365GroupsCheckVariablesMissingError,
+                        "Error: Configuration not found. Set the configuration first.");
                     return;
                 }
 
@@ -269,7 +399,11 @@ namespace PhoneDesk.ViewModels
                 }
 
                 m365group = variables.M365Group;
-                _loggingService.Log($"Checking M365 group: {m365group}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.M365GroupsCheckGroupLog,
+                    "Checking M365 group '{name}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = m365group });
 
                 var command = _powerShellCommandService.GetCreateM365GroupCommand(m365group);
                 var result = await ExecutePowerShellCommandAsync(command, "CheckM365Group");
@@ -285,22 +419,54 @@ namespace PhoneDesk.ViewModels
                     else
                     {
                         GroupId = string.Empty;
-                        _loggingService.Log($"Could not parse group ID from output: {output}", LogLevel.Warning);
+                        LogLocalized(
+                            UiTextKey.M365GroupsCheckGroupParseWarningLog,
+                            "Could not parse the group ID from the output: {details}",
+                            LogLevel.Warning,
+                            new Dictionary<string, object?> { ["details"] = output });
                     }
-                    GroupStatus = output.Contains("already exists") ? "Group already exists" : "Group created successfully";
+                    GroupStatus = output.Contains("already exists")
+                        ? GetText(
+                            UiTextKey.M365GroupsCheckGroupExistsStatus,
+                            "Group already exists.")
+                        : GetText(
+                            UiTextKey.M365GroupsCheckGroupCreatedStatus,
+                            "Group created successfully.");
                     IsGroupChecked = true;
-                    _loggingService.Log($"M365 Group {m365group} check completed: {GroupStatus}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.M365GroupsCheckGroupCompletedLog,
+                        "M365 group '{name}' check completed: {status}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = m365group,
+                            ["status"] = GroupStatus
+                        });
                 }
                 else
                 {
-                    GroupStatus = "Error: No output from PowerShell command";
-                    _loggingService.Log($"Error checking M365 Group {m365group}: No output from PowerShell command", LogLevel.Error);
+                    GroupStatus = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.M365GroupsCheckGroupNoOutputLog,
+                        "Error checking M365 group '{name}': no output from the PowerShell command.",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["name"] = m365group });
                 }
             }
             catch (Exception ex)
             {
-                GroupStatus = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CheckM365GroupAsync for group {m365group}: {ex}", LogLevel.Error);
+                GroupStatus = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(CheckM365GroupAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {

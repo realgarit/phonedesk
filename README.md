@@ -107,6 +107,26 @@ dotnet run
 
 Built with Avalonia, CommunityToolkit.Mvvm, Microsoft.PowerShell.SDK, and MSAL.
 
+### Localization
+
+English is the default language. Users can select German in **Settings**.
+
+When adding user-visible text:
+
+1. Add a key to [`UiTextKey.cs`](src/PhoneDesk.Presentation/Localization/UiTextKey.cs).
+2. Add the same key to both [`Strings.en.json`](src/PhoneDesk.Presentation/Resources/Localization/Strings.en.json) and [`Strings.de.json`](src/PhoneDesk.Presentation/Resources/Localization/Strings.de.json).
+3. Use `{loc:Translate Key=...}` in AXAML and `GetText` or `LogLocalized` in view models.
+4. Keep placeholders identical in both languages. Use clear operator language and preserve technical commands, identifiers, and native error details.
+
+The localization guard runs during the presentation build and in CI. Run it directly with:
+
+```powershell
+pwsh -NoProfile -File scripts/check-localization.ps1
+```
+
+An optional pre-commit hook checks affected localization files before commit. Install it explicitly with
+`pwsh -NoProfile -File scripts/install-git-hooks.ps1`.
+
 Releases use Conventional Commit PR titles. Release Please opens the version PR;
 merging it creates the tag, release notes, platform packages, and Homebrew update.
 

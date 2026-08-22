@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Models;
 using System;
@@ -85,11 +86,15 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("Auto Attendants page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.AutoAttendantsPageLoadedLog,
+                "Auto attendants page loaded",
+                LogLevel.Info);
 
             ResourceAccounts.CollectionChanged += (s, e) => OnPropertyChanged(nameof(ResourceAccountsView));
             AutoAttendants.CollectionChanged += (s, e) => OnPropertyChanged(nameof(AutoAttendantsView));
@@ -102,9 +107,15 @@ namespace PhoneDesk.ViewModels
             {
                 IsBusy = true;
                 ResourceAccounts.Clear();
-                StatusMessage = "Retrieving resource accounts...";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsLoadResourceAccountsStatus,
+                    "Loading resource accounts...");
 
-                _loggingService.Log("Retrieving resource accounts starting with 'raaa-'", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.AutoAttendantsLoadResourceAccountsLog,
+                    "Loading resource accounts starting with '{prefix}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["prefix"] = "raaa-" });
 
                 var command = _powerShellCommandService.GetRetrieveAutoAttendantResourceAccountsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveAutoAttendantResourceAccounts", allowThrottleRetry: true);
@@ -112,19 +123,35 @@ namespace PhoneDesk.ViewModels
                 if (!string.IsNullOrEmpty(result.Value))
                 {
                     ParseResourceAccountsFromResult(result.Value);
-                    StatusMessage = $"Found {ResourceAccounts.Count} resource accounts starting with 'raaa-'";
-                    _loggingService.Log($"Retrieved {ResourceAccounts.Count} resource accounts", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsLoadResourceAccountsSuccess,
+                        "Loaded {count} resource accounts starting with '{prefix}'.",
+                        new Dictionary<string, object?> { ["count"] = ResourceAccounts.Count, ["prefix"] = "raaa-" });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsLoadResourceAccountsSuccess,
+                        "Loaded {count} resource accounts starting with '{prefix}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["count"] = ResourceAccounts.Count, ["prefix"] = "raaa-" });
                 }
                 else
                 {
-                    StatusMessage = "Error: No output from PowerShell command";
-                    _loggingService.Log("Error retrieving resource accounts: No output from PowerShell command", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.",
+                        LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RetrieveResourceAccountsAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(RetrieveResourceAccountsAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -139,9 +166,15 @@ namespace PhoneDesk.ViewModels
             {
                 IsBusy = true;
                 AutoAttendants.Clear();
-                StatusMessage = "Retrieving auto attendants...";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsLoadAutoAttendantsStatus,
+                    "Loading auto attendants...");
 
-                _loggingService.Log("Retrieving auto attendants containing 'aa-'", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.AutoAttendantsLoadAutoAttendantsLog,
+                    "Loading auto attendants containing '{pattern}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["pattern"] = "aa-" });
 
                 var command = _powerShellCommandService.GetRetrieveAutoAttendantsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveAutoAttendants", allowThrottleRetry: true);
@@ -149,19 +182,35 @@ namespace PhoneDesk.ViewModels
                 if (!string.IsNullOrEmpty(result.Value))
                 {
                     ParseAutoAttendantsFromResult(result.Value);
-                    StatusMessage = $"Found {AutoAttendants.Count} auto attendants containing 'aa-'";
-                    _loggingService.Log($"Retrieved {AutoAttendants.Count} auto attendants", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsLoadAutoAttendantsSuccess,
+                        "Loaded {count} auto attendants containing '{pattern}'.",
+                        new Dictionary<string, object?> { ["count"] = AutoAttendants.Count, ["pattern"] = "aa-" });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsLoadAutoAttendantsSuccess,
+                        "Loaded {count} auto attendants containing '{pattern}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["count"] = AutoAttendants.Count, ["pattern"] = "aa-" });
                 }
                 else
                 {
-                    StatusMessage = "Error: No output from PowerShell command";
-                    _loggingService.Log("Error retrieving auto attendants: No output from PowerShell command", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.",
+                        LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RetrieveAutoAttendantsAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(RetrieveAutoAttendantsAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -297,7 +346,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(ResourceAccountUpn) || string.IsNullOrWhiteSpace(ResourceAccountDisplayName))
             {
-                StatusMessage = "Error: Resource account UPN and display name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsResourceAccountDetailsRequiredError,
+                    "Error: Resource account UPN and display name cannot be empty.");
                 return;
             }
 
@@ -309,19 +360,25 @@ namespace PhoneDesk.ViewModels
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeVariablesNotFoundError,
+                        "Error: Configuration not found.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(variables.CsAppAaId))
                 {
-                    StatusMessage = "Error: Auto Attendant Application ID not found in variables";
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsApplicationIdMissingError,
+                        "Error: Auto attendant application ID was not found in Configuration.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(variables.MsFallbackDomain) || !variables.MsFallbackDomain.StartsWith("@"))
                 {
-                    StatusMessage = "Error: MS Fallback Domain is not set or invalid. Please set a valid domain (e.g., @yourdomain.com) in Variables.";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeFallbackDomainInvalidError,
+                        "Error: Microsoft fallback domain is not set or is invalid. Set a valid domain such as @yourdomain.com in Configuration.");
                     return;
                 }
 
@@ -333,31 +390,55 @@ namespace PhoneDesk.ViewModels
                 }
 
                 var command = _powerShellCommandService.GetCreateAutoAttendantResourceAccountCommand(upn, ResourceAccountDisplayName, variables.CsAppAaId);
-                var result = await PreviewAndExecuteAsync(command, "Create AA Resource Account");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.AutoAttendantsCreateResourceAccountContext,
+                        "Create auto attendant resource account"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Resource account '{ResourceAccountUpn}' created successfully";
-                    _loggingService.Log($"Resource account {ResourceAccountUpn} created successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsCreateResourceAccountSuccess,
+                        "Resource account '{upn}' created successfully.",
+                        new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsCreateResourceAccountLog,
+                        "Resource account '{upn}' created successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveResourceAccountsAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error creating resource account: {result.Value}";
-                    _loggingService.Log($"Error creating resource account {ResourceAccountUpn}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsCreateResourceAccountError,
+                        "Error creating the resource account: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsCreateResourceAccountError,
+                        "Error creating the resource account: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateResourceAccountAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(CreateResourceAccountAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -400,7 +481,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(AutoAttendantName))
             {
-                StatusMessage = "Error: Auto attendant name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsNameRequiredError,
+                    "Error: Auto attendant name cannot be empty.");
                 return;
             }
 
@@ -412,38 +495,68 @@ namespace PhoneDesk.ViewModels
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeVariablesNotFoundError,
+                        "Error: Configuration not found.");
                     return;
                 }
 
-                _loggingService.Log($"Creating auto attendant: {AutoAttendantName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.AutoAttendantsCreateAutoAttendantLog,
+                    "Creating auto attendant '{name}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = AutoAttendantName });
 
                 var command = _powerShellCommandService.GetCreateSimpleAutoAttendantCommand(AutoAttendantName, variables.LanguageId, variables.TimeZoneId);
-                var result = await PreviewAndExecuteAsync(command, "Create Auto Attendant");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.AutoAttendantsCreateAutoAttendantContext,
+                        "Create auto attendant"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Auto attendant '{AutoAttendantName}' created successfully";
-                    _loggingService.Log($"Auto attendant {AutoAttendantName} created successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsCreateAutoAttendantSuccess,
+                        "Auto attendant '{name}' created successfully.",
+                        new Dictionary<string, object?> { ["name"] = AutoAttendantName });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsCreateAutoAttendantSuccessLog,
+                        "Auto attendant '{name}' created successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = AutoAttendantName });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveAutoAttendantsAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error creating auto attendant: {result.Value}";
-                    _loggingService.Log($"Error creating auto attendant {AutoAttendantName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsCreateAutoAttendantError,
+                        "Error creating the auto attendant: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsCreateAutoAttendantError,
+                        "Error creating the auto attendant: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateAutoAttendantAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(CreateAutoAttendantAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -474,7 +587,9 @@ namespace PhoneDesk.ViewModels
             var name = aaName ?? AutoAttendantName;
             if (string.IsNullOrWhiteSpace(name))
             {
-                StatusMessage = "Error: Auto attendant name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsNameRequiredError,
+                    "Error: Auto attendant name cannot be empty.");
                 return;
             }
 
@@ -483,33 +598,59 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
 
                 var command = _powerShellCommandService.GetRemoveAutoAttendantCommand(name);
-                var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the auto attendant '{name}'. This action cannot be undone.",
-                    "Remove Auto Attendant");
+                var result = await ConfirmAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantConfirm,
+                        "This permanently deletes the auto attendant '{name}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["name"] = name }),
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantContext,
+                        "Delete auto attendant"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Auto attendant '{name}' removed successfully";
-                    _loggingService.Log($"Auto attendant {name} removed successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantSuccess,
+                        "Auto attendant '{name}' deleted successfully.",
+                        new Dictionary<string, object?> { ["name"] = name });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantLog,
+                        "Auto attendant '{name}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = name });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveAutoAttendantsAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error removing auto attendant: {result.Value}";
-                    _loggingService.Log($"Error removing auto attendant {name}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantError,
+                        "Error deleting the auto attendant: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteAutoAttendantError,
+                        "Error deleting the auto attendant: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveAutoAttendantAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(RemoveAutoAttendantAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -522,7 +663,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(scheduleName))
             {
-                StatusMessage = "Error: Schedule name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsScheduleNameRequiredError,
+                    "Error: Schedule name cannot be empty.");
                 return;
             }
 
@@ -531,31 +674,57 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
 
                 var command = _powerShellCommandService.GetRemoveScheduleCommand(scheduleName);
-                var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the schedule '{scheduleName}'. This action cannot be undone.",
-                    "Remove Schedule");
+                var result = await ConfirmAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteScheduleConfirm,
+                        "This permanently deletes the schedule '{name}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["name"] = scheduleName }),
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteScheduleContext,
+                        "Delete schedule"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Schedule '{scheduleName}' removed successfully";
-                    _loggingService.Log($"Schedule {scheduleName} removed successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteScheduleSuccess,
+                        "Schedule '{name}' deleted successfully.",
+                        new Dictionary<string, object?> { ["name"] = scheduleName });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteScheduleLog,
+                        "Schedule '{name}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = scheduleName });
                 }
                 else
                 {
-                    StatusMessage = $"Error removing schedule: {result.Value}";
-                    _loggingService.Log($"Error removing schedule {scheduleName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteScheduleError,
+                        "Error deleting the schedule: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteScheduleError,
+                        "Error deleting the schedule: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveScheduleAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(RemoveScheduleAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -569,7 +738,9 @@ namespace PhoneDesk.ViewModels
             var accountUpn = upn ?? ResourceAccountUpn;
             if (string.IsNullOrWhiteSpace(accountUpn))
             {
-                StatusMessage = "Error: Resource account UPN cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsResourceAccountUpnRequiredError,
+                    "Error: Resource account UPN cannot be empty.");
                 return;
             }
 
@@ -578,33 +749,59 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
 
                 var command = _powerShellCommandService.GetRemoveResourceAccountCommand(accountUpn);
-                var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the resource account '{accountUpn}'. This action cannot be undone.",
-                    "Remove Resource Account");
+                var result = await ConfirmAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountConfirm,
+                        "This permanently deletes the resource account '{upn}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["upn"] = accountUpn }),
+                    GetText(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountContext,
+                        "Delete resource account"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Resource account '{accountUpn}' removed successfully";
-                    _loggingService.Log($"Resource account {accountUpn} removed successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountSuccess,
+                        "Resource account '{upn}' deleted successfully.",
+                        new Dictionary<string, object?> { ["upn"] = accountUpn });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountLog,
+                        "Resource account '{upn}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = accountUpn });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveResourceAccountsAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error removing resource account: {result.Value}";
-                    _loggingService.Log($"Error removing resource account {accountUpn}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountError,
+                        "Error deleting the resource account: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.AutoAttendantsDeleteResourceAccountError,
+                        "Error deleting the resource account: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveResourceAccountAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(RemoveResourceAccountAsync), ["details"] = ex.ToString() });
             }
             finally
             {

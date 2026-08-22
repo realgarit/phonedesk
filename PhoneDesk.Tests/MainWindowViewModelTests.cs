@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Moq;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Tests.TestSupport;
@@ -45,7 +47,8 @@ namespace PhoneDesk.Tests
                 _pageViewModelFactory.Object,
                 _updateCheckService.Object,
                 _updateInstallerService.Object,
-                _bundledModuleVersionService.Object);
+                _bundledModuleVersionService.Object,
+                translationService: harness.TranslationService);
         }
 
         [Fact]
@@ -81,6 +84,22 @@ namespace PhoneDesk.Tests
             Assert.True(vm.IsUpdateBannerVisible);
             Assert.True(vm.IsUpdateAvailable);
             Assert.Contains("2.0.0", vm.UpdateBannerMessage);
+        }
+
+        [Fact]
+        public void VisibleUpdateBanner_RefreshesWhenLanguageChangesToGerman()
+        {
+            var harness = new ViewModelTestHarness();
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release"));
+
+            var vm = CreateViewModel(harness);
+            Assert.Equal("Version 2.0.0 is available.", vm.UpdateBannerMessage);
+
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            Assert.True(vm.IsUpdateBannerVisible);
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
         }
 
         [Fact]
@@ -151,6 +170,56 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public async Task InstallUpdateCommand_CancelRecovery_UsesCurrentLanguage()
+        {
+            var harness = new ViewModelTestHarness();
+            var asset = new UpdateAsset(
+                "phonedesk-win-x64-setup.exe",
+                "https://github.com/realgarit/phonedesk/releases/download/v2.0.0/setup.exe",
+                new string('a', 64));
+            _updateInstallerService.SetupGet(u => u.IsSupported).Returns(true);
+            _updateInstallerService
+                .Setup(u => u.DownloadInstallerAsync(
+                    asset,
+                    It.IsAny<IProgress<UpdateDownloadProgress>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new OperationCanceledException());
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release", asset));
+            var vm = CreateViewModel(harness);
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            await vm.InstallUpdateCommand.ExecuteAsync(null);
+
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
+        }
+
+        [Fact]
+        public async Task InstallUpdateCommand_FailureRecovery_UsesCurrentLanguage()
+        {
+            var harness = new ViewModelTestHarness();
+            var asset = new UpdateAsset(
+                "phonedesk-win-x64-setup.exe",
+                "https://github.com/realgarit/phonedesk/releases/download/v2.0.0/setup.exe",
+                new string('a', 64));
+            _updateInstallerService.SetupGet(u => u.IsSupported).Returns(true);
+            _updateInstallerService
+                .Setup(u => u.DownloadInstallerAsync(
+                    asset,
+                    It.IsAny<IProgress<UpdateDownloadProgress>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new UpdateInstallationException("checksum mismatch"));
+            _updateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UpdateInfo("2.0.0", "https://example.com/release", asset));
+            var vm = CreateViewModel(harness);
+            harness.TranslationService.CurrentLanguage = Localization.AppLanguage.German;
+
+            await vm.InstallUpdateCommand.ExecuteAsync(null);
+
+            Assert.Equal("Version 2.0.0 ist verfügbar.", vm.UpdateBannerMessage);
+        }
+
+        [Fact]
         public void NavigateToCommand_DelegatesToNavigationService()
         {
             var harness = new ViewModelTestHarness();
@@ -174,6 +243,31 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void CurrentPageChanged_DisposesPreviousPageViewModel()
+        {
+            var harness = new ViewModelTestHarness();
+            var first = new DisposableTestViewModel(harness);
+            var second = new DisposableTestViewModel(harness);
+            _pageViewModelFactory.Reset();
+            _pageViewModelFactory
+                .SetupSequence(f => f.Create(It.IsAny<string>()))
+                .Returns(first)
+                .Returns(second);
+
+            var vm = CreateViewModel(harness);
+
+            vm.CurrentPage = ConstantsService.Pages.Holidays;
+
+            Assert.True(first.IsDisposed);
+            Assert.Same(second, vm.CurrentViewModel);
+            Assert.False(second.IsDisposed);
+
+            vm.Dispose();
+
+            Assert.True(second.IsDisposed);
+        }
+
+        [Fact]
         public void ToggleSettingsCommand_TogglesIsSettingsOpen()
         {
             var harness = new ViewModelTestHarness();
@@ -184,6 +278,48 @@ namespace PhoneDesk.Tests
 
             vm.ToggleSettingsCommand.Execute(null);
             Assert.False(vm.IsSettingsOpen);
+        }
+
+        [Fact]
+        public void CurrentLanguage_StartsInEnglish()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness);
+
+            Assert.Equal(AppLanguage.English, vm.CurrentLanguage);
+        }
+
+        [Fact]
+        public void CurrentLanguage_SettingGermanPersistsChoiceAndRaisesNotification()
+        {
+            var store = new TrackingUserPreferencesStore();
+            var translationService = CreateTranslationService(store);
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness, translationService);
+            var notifications = new List<string?>();
+            vm.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
+
+            vm.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal(AppLanguage.German, vm.CurrentLanguage);
+            Assert.Equal(AppLanguage.German, translationService.CurrentLanguage);
+            Assert.Equal(AppLanguage.German, store.SavedLanguage);
+            Assert.Equal(1, store.SaveCount);
+            Assert.Contains(nameof(MainWindowViewModel.CurrentLanguage), notifications);
+        }
+
+        [Fact]
+        public void CurrentLanguage_SettingSameLanguageTwiceDoesNotPersistRepeatedly()
+        {
+            var store = new TrackingUserPreferencesStore();
+            var translationService = CreateTranslationService(store);
+            var harness = new ViewModelTestHarness();
+            var vm = CreateViewModel(harness, translationService);
+
+            vm.CurrentLanguage = AppLanguage.German;
+            vm.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal(1, store.SaveCount);
         }
 
         [Fact]
@@ -286,6 +422,75 @@ namespace PhoneDesk.Tests
             var exception = Record.Exception(() => vm.Dispose());
 
             Assert.Null(exception);
+        }
+
+        private MainWindowViewModel CreateViewModel(ViewModelTestHarness harness, ITranslationService translationService)
+        {
+            harness.LoggingService.SetupGet(l => l.LogEntries).Returns(new ObservableCollection<string>());
+
+            return new MainWindowViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                _pageViewModelFactory.Object,
+                _updateCheckService.Object,
+                _updateInstallerService.Object,
+                _bundledModuleVersionService.Object,
+                translationService: translationService);
+        }
+
+        private static ITranslationService CreateTranslationService(TrackingUserPreferencesStore store)
+            => new TranslationService(
+                store,
+                new Dictionary<AppLanguage, IReadOnlyDictionary<UiTextKey, string>>
+                {
+                    [AppLanguage.English] = TranslationCatalogLoader.Load(
+                        new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.en.json")),
+                    [AppLanguage.German] = TranslationCatalogLoader.Load(
+                        new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.de.json"))
+                });
+
+        private sealed class DisposableTestViewModel : ViewModelBase, IDisposable
+        {
+            public DisposableTestViewModel(ViewModelTestHarness harness)
+                : base(
+                    harness.PowerShellContextService.Object,
+                    harness.PowerShellCommandService.Object,
+                    harness.LoggingService.Object,
+                    harness.SessionManager.Object,
+                    harness.NavigationService.Object,
+                    harness.ErrorHandlingService.Object,
+                    harness.ValidationService.Object,
+                    harness.SharedStateService.Object,
+                    harness.DialogService.Object,
+                    translationService: harness.TranslationService)
+            {
+            }
+
+            public bool IsDisposed { get; private set; }
+
+            public void Dispose() => IsDisposed = true;
+        }
+
+        private sealed class TrackingUserPreferencesStore : IUserPreferencesStore
+        {
+            public AppLanguage? SavedLanguage { get; private set; }
+
+            public int SaveCount { get; private set; }
+
+            public AppLanguage? LoadLanguage() => SavedLanguage;
+
+            public void SaveLanguage(AppLanguage language)
+            {
+                SavedLanguage = language;
+                SaveCount++;
+            }
         }
     }
 }

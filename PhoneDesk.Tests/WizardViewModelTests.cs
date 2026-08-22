@@ -1,5 +1,6 @@
 using Moq;
 using PhoneDesk.Models;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Tests.TestSupport;
@@ -132,6 +133,43 @@ namespace PhoneDesk.Tests
             Assert.Equal("Step 2 of 10", vm.StepNumberText);
         }
 
+        [Fact]
+        public void SwitchingLanguage_LocalizesWizardMetadataAndComputedSummary()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+            {
+                Customer = "contoso"
+            });
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            Assert.Equal("Step 1 of 10", vm.StepNumberText);
+            Assert.Equal("Review Configuration", vm.StepTitle);
+            Assert.Contains("Customer", vm.ReviewSummary, StringComparison.Ordinal);
+            Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+            Assert.Equal("Schritt 1 von 10", vm.StepNumberText);
+            Assert.Equal("Konfiguration prüfen", vm.StepTitle);
+            Assert.Contains("Kunde", vm.ReviewSummary, StringComparison.Ordinal);
+            Assert.Contains("contoso", vm.ReviewSummary, StringComparison.Ordinal);
+
+            vm.CurrentStep = 1;
+            Assert.Equal("M365-Gruppe erstellen", vm.StepTitle);
+            Assert.Contains("Prüfen Sie diesen Schritt", vm.ReadinessMessage, StringComparison.Ordinal);
+        }
+
         // ── Forward/backward navigation and boundaries ─────────────────────
 
         [Fact]
@@ -236,6 +274,32 @@ namespace PhoneDesk.Tests
 
             Assert.Contains("fabrikam", vm.StepScript);
             Assert.Contains("empfang", vm.StepScript);
+        }
+
+        [Fact]
+        public void LicenseStepScriptsKeepResourceSpecificTechnicalComments()
+        {
+            var harness = new ViewModelTestHarness();
+            var vm = new WizardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            vm.CurrentStep = 3;
+            Assert.Contains("# Step 1: Set usage location for call queue resource account", vm.StepScript);
+
+            vm.CurrentStep = 6;
+            Assert.Contains("# Step 1: Set usage location for automatic attendant resource account", vm.StepScript);
+
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+            Assert.Contains("# Step 1: Set usage location for automatic attendant resource account", vm.StepScript);
         }
 
         // ── Step execution: happy path, failure, retry, skip ───────────────

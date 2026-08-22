@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 
@@ -16,15 +17,18 @@ namespace PhoneDesk.ViewModels
             INavigationService navigationService,
             IErrorHandlingService errorHandlingService,
             IValidationService validationService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
-            _loggingService.Log("Welcome page loaded", LogLevel.Info);
+            WelcomeMessage = translationService?.Get(UiTextKey.WelcomeMessage)
+                ?? "Welcome to PhoneDesk. Use this page to start the guided setup.";
+            LogLocalized(UiTextKey.WelcomePageLoadedLog, "Welcome page loaded", LogLevel.Info);
         }
 
         [ObservableProperty]
-        private string _welcomeMessage = "Welcome to PhoneDesk! This application will help you manage your Microsoft Teams phone system configuration.";
+        private string _welcomeMessage = string.Empty;
 
         [RelayCommand]
         private new void NavigateToGetStarted()
@@ -42,11 +46,15 @@ namespace PhoneDesk.ViewModels
                     FileName = "https://github.com/realgarit/phonedesk",
                     UseShellExecute = true
                 });
-                _loggingService.Log("Opening documentation in browser", LogLevel.Info);
+                LogLocalized(UiTextKey.WelcomeOpenDocumentationLog, "Opening documentation in browser", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Failed to open documentation: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.WelcomeOpenDocumentationFailedLog,
+                    "Failed to open documentation: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
     }

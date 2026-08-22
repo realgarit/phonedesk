@@ -127,7 +127,7 @@ namespace PhoneDesk.Tests
 
             Assert.False(vm.IsHolidayCreated);
             Assert.Contains("Error creating holiday series", vm.StatusMessage);
-            harness.ErrorHandlingService.Verify(e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create Holiday Series"), Times.Once);
+            harness.ErrorHandlingService.Verify(e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create Holiday Schedule"), Times.Once);
         }
 
         [Fact]
@@ -247,7 +247,7 @@ namespace PhoneDesk.Tests
             await vm.AttachHolidayToAutoAttendantCommand.ExecuteAsync(null);
 
             Assert.Contains("Error attaching holiday to auto attendant", vm.StatusMessage);
-            harness.ErrorHandlingService.Verify(e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Attach Holiday to Auto Attendant"), Times.Once);
+            harness.ErrorHandlingService.Verify(e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Link Holiday to Auto Attendant"), Times.Once);
         }
     }
 }

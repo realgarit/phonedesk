@@ -1,4 +1,5 @@
 using Moq;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Tests.TestSupport;
@@ -21,7 +22,10 @@ namespace PhoneDesk.Tests
             return mock;
         }
 
-        private static DocumentationViewModel CreateViewModel(ViewModelTestHarness harness, Mock<IDocumentationScriptBuilder> docBuilder)
+        private static DocumentationViewModel CreateViewModel(
+            ViewModelTestHarness harness,
+            Mock<IDocumentationScriptBuilder> docBuilder,
+            ITranslationService? translationService = null)
             => new DocumentationViewModel(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
@@ -32,7 +36,8 @@ namespace PhoneDesk.Tests
                 harness.ValidationService.Object,
                 harness.SharedStateService.Object,
                 harness.DialogService.Object,
-                docBuilder.Object);
+                docBuilder.Object,
+                translationService: translationService);
 
         [Fact]
         public void Constructor_LogsPageLoaded()
@@ -140,6 +145,22 @@ namespace PhoneDesk.Tests
             Assert.Contains("(No phone numbers found or insufficient permissions)", vm.DocumentationOutput);
             Assert.Contains("(No voice-enabled users found or insufficient permissions)", vm.DocumentationOutput);
             Assert.Contains("(No routing topology available", vm.DocumentationOutput);
+        }
+
+        [Fact]
+        public async Task ExportDocumentationAsync_UsesGermanReportLabelsWhenGermanIsSelected()
+        {
+            var harness = new ViewModelTestHarness();
+            var docBuilder = CreateDocBuilderMock();
+            harness.SetExecutionResult("");
+            harness.TranslationService.CurrentLanguage = AppLanguage.German;
+            var vm = CreateViewModel(harness, docBuilder, harness.TranslationService);
+
+            await vm.ExportDocumentationCommand.ExecuteAsync(null);
+
+            Assert.Contains("VOLLSTÄNDIGE MANDANTENDOKUMENTATION", vm.DocumentationOutput);
+            Assert.Contains("Keine Ressourcenkonten gefunden", vm.DocumentationOutput);
+            Assert.DoesNotContain("COMPLETE TENANT DOCUMENTATION", vm.DocumentationOutput);
         }
 
         [Fact]

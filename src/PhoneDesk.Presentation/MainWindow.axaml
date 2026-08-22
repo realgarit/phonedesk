@@ -10,6 +10,7 @@
         xmlns:converters="clr-namespace:PhoneDesk.Converters"
         xmlns:views="clr-namespace:PhoneDesk.Views"
         xmlns:services="clr-namespace:PhoneDesk.Services"
+        xmlns:loc="clr-namespace:PhoneDesk.Localization"
         mc:Ignorable="d"
         x:Class="PhoneDesk.MainWindow"
         Title="PhoneDesk"
@@ -56,7 +57,7 @@
                                        FontSize="15"
                                        FontWeight="Bold"
                                        LetterSpacing="-0.2"/>
-                            <TextBlock Text="for Microsoft Teams"
+                            <TextBlock Text="{loc:Translate Key=MainBrandForMicrosoftTeams}"
                                        FontFamily="{StaticResource DisplayFontFamily}"
                                        FontSize="10"
                                        Foreground="{DynamicResource TeamsPrimaryBrush}"
@@ -66,7 +67,7 @@
                                            FontSize="10"
                                            VerticalAlignment="Center"
                                            Opacity="0.45"/>
-                                <Button Content="UPDATE"
+                                <Button Content="{loc:Translate Key=MainUpdateBadge}"
                                         Command="{Binding ShowUpdateBannerCommand}"
                                         IsVisible="{Binding IsUpdateAvailable}"
                                         ToolTip.Tip="{Binding UpdateBannerMessage}"
@@ -89,98 +90,98 @@
                                  SelectionChanged="NavigationListBox_SelectionChanged">
 
                             <ListBoxItem Classes="nav-header" IsEnabled="False" Focusable="False">
-                                <TextBlock Text="OVERVIEW"/>
+                                <TextBlock Text="{loc:Translate Key=MainNavigationGroupOverview}"/>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Welcome" Classes="nav" AutomationProperties.Name="Welcome">
+                            <ListBoxItem Tag="Welcome" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationWelcome}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Home"/>
-                                    <TextBlock Text="Welcome" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationWelcome}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Dashboard" Classes="nav" AutomationProperties.Name="Dashboard">
+                            <ListBoxItem Tag="Dashboard" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationDashboard}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="DataTrending"/>
-                                    <TextBlock Text="Dashboard" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationDashboard}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="GetStarted" Classes="nav" AutomationProperties.Name="Get Started">
+                            <ListBoxItem Tag="GetStarted" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationReadinessCheck}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Rocket"/>
-                                    <TextBlock Text="Get Started" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationReadinessCheck}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Variables" Classes="nav" AutomationProperties.Name="Variables">
+                            <ListBoxItem Tag="Variables" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationConfiguration}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Code"/>
-                                    <TextBlock Text="Variables" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationConfiguration}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
                             <ListBoxItem Classes="nav-header" IsEnabled="False" Focusable="False">
-                                <TextBlock Text="PROVISIONING"/>
+                                <TextBlock Text="{loc:Translate Key=MainNavigationGroupProvisioning}"/>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="M365Groups" Classes="nav" AutomationProperties.Name="M365 Groups">
+                            <ListBoxItem Tag="M365Groups" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationM365Groups}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="People"/>
-                                    <TextBlock Text="M365 Groups" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationM365Groups}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="CallQueues" Classes="nav" AutomationProperties.Name="Call Queues">
+                            <ListBoxItem Tag="CallQueues" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationCallQueues}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="CallInbound"/>
-                                    <TextBlock Text="Call Queues" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationCallQueues}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="AutoAttendants" Classes="nav" AutomationProperties.Name="Auto Attendants">
+                            <ListBoxItem Tag="AutoAttendants" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationAutoAttendants}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Bot"/>
-                                    <TextBlock Text="Auto Attendants" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationAutoAttendants}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Holidays" Classes="nav" AutomationProperties.Name="Holidays">
+                            <ListBoxItem Tag="Holidays" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationHolidays}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Calendar"/>
-                                    <TextBlock Text="Holidays" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationHolidays}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
                             <ListBoxItem Classes="nav-header" IsEnabled="False" Focusable="False">
-                                <TextBlock Text="TOOLS"/>
+                                <TextBlock Text="{loc:Translate Key=MainNavigationGroupTools}"/>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Wizard" Classes="nav" AutomationProperties.Name="Setup Wizard">
+                            <ListBoxItem Tag="Wizard" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationGuidedSetup}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Wand"/>
-                                    <TextBlock Text="Setup Wizard" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationGuidedSetup}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="BulkOperations" Classes="nav" AutomationProperties.Name="Bulk Operations">
+                            <ListBoxItem Tag="BulkOperations" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationBulkOperations}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="TableMultiple"/>
-                                    <TextBlock Text="Bulk Operations" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationBulkOperations}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="Documentation" Classes="nav" AutomationProperties.Name="Documentation">
+                            <ListBoxItem Tag="Documentation" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationTenantReport}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="DocumentText"/>
-                                    <TextBlock Text="Documentation" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationTenantReport}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
 
-                            <ListBoxItem Tag="History" Classes="nav" AutomationProperties.Name="History">
+                            <ListBoxItem Tag="History" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationAuditLog}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="History"/>
-                                    <TextBlock Text="History" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationAuditLog}" FontSize="13" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </ListBoxItem>
                         </ListBox>
@@ -197,7 +198,7 @@
                                                  IsVisible="{Binding IsTeamsConnected}"/>
                                         <Ellipse Classes="status-dot" Fill="{DynamicResource StatusOffBrush}"
                                                  IsVisible="{Binding !IsTeamsConnected}"/>
-                                        <TextBlock Text="Teams" FontSize="11"/>
+                                        <TextBlock Text="{loc:Translate Key=MainConnectionTeams}" FontSize="11"/>
                                     </StackPanel>
                                 </Border>
                                 <Border Classes="chip" Classes.ok="{Binding IsGraphConnected}">
@@ -206,7 +207,7 @@
                                                  IsVisible="{Binding IsGraphConnected}"/>
                                         <Ellipse Classes="status-dot" Fill="{DynamicResource StatusOffBrush}"
                                                  IsVisible="{Binding !IsGraphConnected}"/>
-                                        <TextBlock Text="Graph" FontSize="11"/>
+                                        <TextBlock Text="{loc:Translate Key=MainConnectionGraph}" FontSize="11"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -217,8 +218,8 @@
                                     Height="32"
                                     Margin="6,0,0,0"
                                     Classes="IconOnly"
-                                    AutomationProperties.Name="Settings"
-                                    ToolTip.Tip="Settings">
+                                    AutomationProperties.Name="{loc:Translate Key=MainSettingsButton}"
+                                    ToolTip.Tip="{loc:Translate Key=MainSettingsButton}">
                                 <fi:SymbolIcon Symbol="Settings" FontSize="16"/>
                             </Button>
                         </Grid>
@@ -258,8 +259,8 @@
                                 Padding="8,5"
                                 CornerRadius="8"
                                 HorizontalAlignment="Stretch"
-                                ToolTip.Tip="Click to view full log"
-                                AutomationProperties.Name="Latest Log Entry. Click to view full log.">
+                                ToolTip.Tip="{loc:Translate Key=MainLatestLogTooltip}"
+                                AutomationProperties.Name="{loc:Translate Key=MainLatestLogAutomationName}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -337,7 +338,7 @@
                             <DockPanel LastChildFill="False">
                                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                     <fi:SymbolIcon Symbol="Code" Foreground="{DynamicResource TeamsPrimaryBrush}"/>
-                                    <TextBlock Text="Log Viewer"
+                                    <TextBlock Text="{loc:Translate Key=MainLogViewerTitle}"
                                              FontFamily="{StaticResource DisplayFontFamily}"
                                              FontWeight="SemiBold"
                                              VerticalAlignment="Center"/>
@@ -347,8 +348,8 @@
                                         Width="36"
                                         Height="36"
                                         Classes="IconOnly"
-                                        AutomationProperties.Name="Close Log Viewer"
-                                        ToolTip.Tip="Close">
+                                        AutomationProperties.Name="{loc:Translate Key=MainLogViewerCloseAutomationName}"
+                                        ToolTip.Tip="{loc:Translate Key=CommonClose}">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
                                 </Button>
                             </DockPanel>
@@ -372,7 +373,7 @@
                                        TextChanged="LogView_TextChanged">
                                     <TextBox.ContextMenu>
                                         <ContextMenu>
-                                            <MenuItem Header="Clear Log"
+                                            <MenuItem Header="{loc:Translate Key=MainLogClear}"
                                                     Command="{Binding ClearLogCommand}"/>
                                         </ContextMenu>
                                     </TextBox.ContextMenu>
@@ -389,14 +390,14 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon FontSize="16" Symbol="Delete"/>
-                                    <TextBlock Text="Clear Log" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=MainLogClear}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding CloseLogDialogCommand}"
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon FontSize="16" Symbol="Dismiss"/>
-                                    <TextBlock Text="Close" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonClose}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -450,7 +451,7 @@
                     <DockPanel LastChildFill="False">
                         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                             <fi:SymbolIcon Symbol="Settings" Foreground="{DynamicResource TeamsPrimaryBrush}"/>
-                            <TextBlock Text="Settings"
+                            <TextBlock Text="{loc:Translate Key=SettingsTitle}"
                                      FontFamily="{StaticResource DisplayFontFamily}"
                                      FontSize="17"
                                      FontWeight="SemiBold"
@@ -461,8 +462,8 @@
                                 Width="36"
                                 Height="36"
                                 Classes="IconOnly"
-                                AutomationProperties.Name="Close Settings"
-                                ToolTip.Tip="Close">
+                                AutomationProperties.Name="{loc:Translate Key=SettingsCloseAutomationName}"
+                                ToolTip.Tip="{loc:Translate Key=CommonClose}">
                             <fi:SymbolIcon Symbol="Dismiss"/>
                         </Button>
                     </DockPanel>
@@ -473,16 +474,18 @@
 
                         <!-- Appearance Section -->
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Appearance"
+                            <TextBlock Text="{loc:Translate Key=SettingsAppearanceSection}"
                                      FontSize="16"
                                      FontWeight="SemiBold"/>
 
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <TextBlock Grid.Column="0"
-                                         Text="Dark Theme"
+                                         Text="{loc:Translate Key=SettingsDarkTheme}"
                                          VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="1"
                                             IsChecked="{Binding IsDarkTheme}"
+                                            OnContent="{loc:Translate Key=CommonOn}"
+                                            OffContent="{loc:Translate Key=CommonOff}"
                                             Margin="12,0,0,0"
                                             VerticalAlignment="Center"/>
                             </Grid>
@@ -490,44 +493,77 @@
 
                         <Border Height="1" Background="{DynamicResource HairlineBrush}"/>
 
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="{loc:Translate Key=SettingsLanguageSectionTitle}"
+                                     FontSize="16"
+                                     FontWeight="SemiBold"/>
+
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0"
+                                         Text="{loc:Translate Key=SettingsLanguageLabel}"
+                                         VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding LanguageOptions}"
+                                          SelectedValueBinding="{Binding Language}"
+                                          SelectedValue="{Binding CurrentLanguage}"
+                                          MinWidth="140"
+                                          Margin="12,0,0,0"
+                                          VerticalAlignment="Center">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Label}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource HairlineBrush}"/>
+
                         <!-- Workflow Section -->
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Workflow"
+                            <TextBlock Text="{loc:Translate Key=SettingsWorkflowSection}"
                                      FontSize="16"
                                      FontWeight="SemiBold"/>
 
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Skip Script Preview"/>
-                                    <TextBlock Text="Execute without showing the preview dialog"
+                                    <TextBlock Text="{loc:Translate Key=SettingsSkipScriptPreviewTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsSkipScriptPreviewDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1"
                                             IsChecked="{Binding SkipScriptPreview}"
+                                            OnContent="{loc:Translate Key=CommonOn}"
+                                            OffContent="{loc:Translate Key=CommonOff}"
                                             Margin="12,0,0,0"
                                             VerticalAlignment="Center"/>
                             </Grid>
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Skip Delete Confirmation"/>
-                                    <TextBlock Text="Remove items without a confirmation dialog"
+                                    <TextBlock Text="{loc:Translate Key=SettingsSkipDeleteConfirmationTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsSkipDeleteConfirmationDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1"
                                             IsChecked="{Binding SkipDeleteConfirmation}"
+                                            OnContent="{loc:Translate Key=CommonOn}"
+                                            OffContent="{loc:Translate Key=CommonOff}"
                                             Margin="12,0,0,0"
                                             VerticalAlignment="Center"/>
                             </Grid>
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Auto-Refresh After Operations"/>
-                                    <TextBlock Text="Reload lists after creating or removing items"
+                                    <TextBlock Text="{loc:Translate Key=SettingsAutoRefreshAfterOperationsTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsAutoRefreshAfterOperationsDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleSwitch Grid.Column="1"
                                             IsChecked="{Binding AutoRefreshAfterOperations}"
+                                            OnContent="{loc:Translate Key=CommonOn}"
+                                            OffContent="{loc:Translate Key=CommonOff}"
                                             Margin="12,0,0,0"
                                             VerticalAlignment="Center"/>
                             </Grid>
@@ -537,14 +573,14 @@
 
                         <!-- Logging Section -->
                         <StackPanel Spacing="12">
-                            <TextBlock Text="Logging"
+                            <TextBlock Text="{loc:Translate Key=SettingsLoggingSection}"
                                      FontSize="16"
                                      FontWeight="SemiBold"/>
 
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Minimum Log Level"/>
-                                    <TextBlock Text="Filter entries shown in the log viewer"
+                                    <TextBlock Text="{loc:Translate Key=SettingsMinimumLogLevelTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsMinimumLogLevelDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ComboBox Grid.Column="1"
@@ -552,16 +588,16 @@
                                         MinWidth="110"
                                         Margin="12,0,0,0"
                                         VerticalAlignment="Center">
-                                    <ComboBoxItem Content="Info"/>
-                                    <ComboBoxItem Content="Success"/>
-                                    <ComboBoxItem Content="Warning"/>
-                                    <ComboBoxItem Content="Error"/>
+                                    <ComboBoxItem Content="{loc:Translate Key=SettingsLogLevelInfo}"/>
+                                    <ComboBoxItem Content="{loc:Translate Key=SettingsLogLevelSuccess}"/>
+                                    <ComboBoxItem Content="{loc:Translate Key=SettingsLogLevelWarning}"/>
+                                    <ComboBoxItem Content="{loc:Translate Key=SettingsLogLevelError}"/>
                                 </ComboBox>
                             </Grid>
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Audit Log Location"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsAuditLogLocationTitle}"/>
                                     <TextBlock Text="{Binding AuditLogDirectory}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
@@ -570,10 +606,10 @@
                                         Classes="IconText"
                                         Margin="12,0,0,0"
                                         VerticalAlignment="Center"
-                                        ToolTip.Tip="Open the audit log folder in the file manager">
+                                        ToolTip.Tip="{loc:Translate Key=SettingsOpenAuditLogFolderTooltip}">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon Symbol="FolderOpen"/>
-                                        <TextBlock Text="Open" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=MainActionOpenAuditLogFolder}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -583,14 +619,14 @@
 
                         <!-- About Section -->
                         <StackPanel Spacing="12">
-                            <TextBlock Text="About"
+                            <TextBlock Text="{loc:Translate Key=SettingsAboutSection}"
                                      FontSize="16"
                                      FontWeight="SemiBold"/>
 
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="MicrosoftTeams Module"/>
-                                    <TextBlock Text="Bundled PowerShell module version"
+                                    <TextBlock Text="{loc:Translate Key=SettingsMicrosoftTeamsModuleTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsBundledPowerShellModuleDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1"
@@ -601,8 +637,8 @@
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Microsoft.Graph Modules"/>
-                                    <TextBlock Text="Bundled PowerShell module version"
+                                    <TextBlock Text="{loc:Translate Key=SettingsMicrosoftGraphModulesTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsBundledPowerShellModuleDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1"
@@ -613,8 +649,8 @@
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="PowerShell SDK"/>
-                                    <TextBlock Text="Bundled PowerShell runtime version"
+                                    <TextBlock Text="{loc:Translate Key=SettingsPowerShellSdkTitle}"/>
+                                    <TextBlock Text="{loc:Translate Key=SettingsBundledPowerShellRuntimeDescription}"
                                              FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1"
@@ -631,7 +667,7 @@
 
         <!-- Update notification banner (top overlay, dismissible) -->
         <ui:InfoBar Grid.Column="0" Grid.ColumnSpan="2"
-                    Title="Update available"
+                    Title="{loc:Translate Key=UpdateAvailableTitle}"
                     Message="{Binding UpdateBannerMessage}"
                     IsOpen="{Binding IsUpdateBannerVisible, Mode=TwoWay}"
                     Severity="Informational"
@@ -641,13 +677,13 @@
                     Margin="0,8,0,0">
             <ui:InfoBar.ActionButton>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Install update"
+                    <Button Content="{loc:Translate Key=UpdateInstallAction}"
                             Command="{Binding InstallUpdateCommand}"
                             IsVisible="{Binding CanInstallUpdate}"/>
-                    <Button Content="Cancel"
+                    <Button Content="{loc:Translate Key=UpdateCancelAction}"
                             Command="{Binding CancelUpdateCommand}"
                             IsVisible="{Binding IsUpdateInProgress}"/>
-                    <Button Content="View release" Command="{Binding OpenUpdatePageCommand}"/>
+                    <Button Content="{loc:Translate Key=UpdateViewReleaseAction}" Command="{Binding OpenUpdatePageCommand}"/>
                 </StackPanel>
             </ui:InfoBar.ActionButton>
             <ProgressBar Width="360"

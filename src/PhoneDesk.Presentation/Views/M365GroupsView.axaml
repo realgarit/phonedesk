@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -49,8 +50,8 @@
                         <fi:SymbolIcon Symbol="People"/>
                     </Border>
                     <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Text="M365 Groups" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="Search and manage Microsoft 365 Groups for your Teams Phone setup."
+                        <TextBlock Text="{loc:Translate Key=MainNavigationM365Groups}" Classes="page-title" Margin="0"/>
+                        <TextBlock Text="{loc:Translate Key=M365GroupsSubtitle}"
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                     </StackPanel>
@@ -63,9 +64,14 @@
                                IsOpen="{Binding GroupStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                IsClosable="True"
                                Margin="0,0,0,4"/>
-                    <TextBlock Text="{Binding GroupId, StringFormat='Group ID: {0}'}"
-                             FontSize="12"
-                             IsVisible="{Binding IsGroupChecked, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="4"
+                                IsVisible="{Binding IsGroupChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{loc:Translate Key=M365GroupsGroupIdLabel}"
+                                   FontSize="12"/>
+                        <TextBlock Text="{Binding GroupId}"
+                                   FontSize="12"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Action + Search -->
@@ -82,7 +88,7 @@
                             Margin="0,0,16,0" Classes="IconText">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon  Symbol="ArrowSync"/>
-                            <TextBlock Text="Retrieve Groups" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=M365GroupsLoadGroupsAction}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="1"
@@ -90,7 +96,7 @@
                             Margin="0,0,16,0" Classes="IconText">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon  Symbol="Add"/>
-                            <TextBlock Text="Create New Group" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=M365GroupsCreateGroupAction}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -99,20 +105,20 @@
                             Margin="0,0,16,0" Classes="IconText">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon Symbol="Delete" Foreground="OrangeRed"/>
-                            <TextBlock Text="Remove Group" Foreground="OrangeRed" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=M365GroupsDeleteGroupAction}" Foreground="OrangeRed" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
                     <TextBox Grid.Column="3"
                              Text="{Binding SearchText}"
-                             Watermark="Search groups..."
-                             ToolTip.Tip="Search groups"
-                             AutomationProperties.Name="Search groups"/>
+                             Watermark="{loc:Translate Key=M365GroupsSearchWatermark}"
+                             ToolTip.Tip="{loc:Translate Key=M365GroupsSearchTooltip}"
+                             AutomationProperties.Name="{loc:Translate Key=M365GroupsSearchAutomationName}"/>
                 </Grid>
 
                 <!-- Groups List -->
                 <Grid Grid.Row="3" Margin="0,16">
-                    <DataGrid AutomationProperties.Name="M365 Groups List"
+                    <DataGrid AutomationProperties.Name="{loc:Translate Key=M365GroupsGridAutomationName}"
                               ItemsSource="{Binding GroupsView}"
                               SelectedItem="{Binding SelectedGroup}"
                               AutoGenerateColumns="False"
@@ -122,10 +128,10 @@
                               SelectionMode="Single"
                               HorizontalScrollBarVisibility="Auto">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="2*"/>
-                            <DataGridTextColumn Header="Mail Nickname" Binding="{Binding MailNickname}" Width="*"/>
-                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*"/>
-                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="2*"/>
+                            <DataGridTextColumn Header="{loc:Translate Key=M365GroupsDisplayNameColumn}" Binding="{Binding DisplayName}" Width="2*"/>
+                            <DataGridTextColumn Header="{loc:Translate Key=M365GroupsMailNicknameColumn}" Binding="{Binding MailNickname}" Width="*"/>
+                            <DataGridTextColumn Header="{loc:Translate Key=M365GroupsDescriptionColumn}" Binding="{Binding Description}" Width="2*"/>
+                            <DataGridTextColumn Header="{loc:Translate Key=CommonIdColumn}" Binding="{Binding Id}" Width="2*"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -134,8 +140,8 @@
                         <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center">
                                         <fi:SymbolIcon Symbol="People" IsFilled="True" FontSize="26" Foreground="{DynamicResource TeamsPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0"/>
                                     </Border>
-                        <TextBlock Text="No M365 groups loaded" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Click 'Retrieve Groups' to load data from your tenant" FontSize="12" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{loc:Translate Key=M365GroupsEmptyTitle}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{loc:Translate Key=M365GroupsEmptyDescription}" FontSize="12" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Grid>
 
@@ -165,9 +171,9 @@
                       PointerPressed="ConfirmVariablesCard_PointerPressed">
                     <Border Classes="dialog" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Confirm Variables"
+                        <TextBlock Text="{loc:Translate Key=M365GroupsConfirmConfigurationTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Please confirm that you have set up all required variables in the Variables page before proceeding."
+                        <TextBlock Text="{loc:Translate Key=M365GroupsConfirmConfigurationDescription}"
                                  FontSize="14"
                                  TextWrapping="Wrap"
                                  Margin="0,0,0,16"/>
@@ -178,13 +184,13 @@
                                      Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Code"/>
-                                    <TextBlock Text="Go to Variables" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=M365GroupsGoToConfigurationAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding CheckM365GroupCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Continue" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonContinue}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -216,15 +222,15 @@
                       PointerPressed="CreateGroupCard_PointerPressed">
                     <Border Classes="dialog" MinWidth="400" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Create New M365 Group"
+                        <TextBlock Text="{loc:Translate Key=M365GroupsCreateDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Group Name:"
+                        <TextBlock Text="{loc:Translate Key=M365GroupsGroupNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding NewGroupName}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="Description (Optional):"
+                        <TextBlock Text="{loc:Translate Key=M365GroupsDescriptionOptionalLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
@@ -234,7 +240,7 @@
                                Height="60"
                                VerticalContentAlignment="Top"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="The group name is auto-generated from your variables. You can modify it if needed."
+                        <TextBlock Text="{loc:Translate Key=M365GroupsAutoGeneratedHint}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -246,13 +252,13 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding CreateNewGroupCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Add"/>
-                                    <TextBlock Text="Create Group" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=M365GroupsCreateDialogConfirmAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -279,7 +285,7 @@
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
                     <!-- Cancel affordance -->
-                    <Button Content="Cancel"
+                    <Button Content="{loc:Translate Key=CommonCancel}"
                             Command="{Binding CancelOperationCommand}"
                             IsVisible="{Binding IsCancellable}"
                             HorizontalAlignment="Center"/>

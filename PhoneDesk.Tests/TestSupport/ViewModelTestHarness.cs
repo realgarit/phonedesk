@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Moq;
+using PhoneDesk.Localization;
 using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.ViewModels;
 
 namespace PhoneDesk.Tests.TestSupport
 {
@@ -23,9 +25,24 @@ namespace PhoneDesk.Tests.TestSupport
         public Mock<IValidationService> ValidationService { get; } = new();
         public Mock<ISharedStateService> SharedStateService { get; } = new();
         public Mock<IDialogService> DialogService { get; } = new();
+        public Mock<IPageViewModelFactory> PageViewModelFactory { get; } = new();
+        public Mock<IUpdateCheckService> UpdateCheckService { get; } = new();
+        public Mock<IUpdateInstallerService> UpdateInstallerService { get; } = new();
+        public Mock<IBundledModuleVersionService> BundledModuleVersionService { get; } = new();
+        public ITranslationService TranslationService { get; }
 
         public ViewModelTestHarness()
         {
+            TranslationService = new TranslationService(
+                new InMemoryUserPreferencesStore(),
+                new Dictionary<AppLanguage, IReadOnlyDictionary<UiTextKey, string>>
+                {
+                    [AppLanguage.English] = TranslationCatalogLoader.Load(
+                        new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.en.json")),
+                    [AppLanguage.German] = TranslationCatalogLoader.Load(
+                        new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.de.json"))
+                });
+
             // Session: valid, not expired, so ExecutePowerShellCommandAsync's pre-flight check passes by default.
             SessionManager.SetupGet(s => s.IsSessionExpired).Returns(false);
             SessionManager.SetupGet(s => s.IsSessionValid).Returns(true);
@@ -46,6 +63,12 @@ namespace PhoneDesk.Tests.TestSupport
             DialogService.Setup(d => d.ShowConfirmationWithPreviewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
             DialogService.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
             DialogService.Setup(d => d.ShowMessageAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+            PageViewModelFactory.Setup(f => f.Create(It.IsAny<string>())).Returns((ViewModelBase)null!);
+            BundledModuleVersionService.SetupGet(s => s.TeamsModuleVersion).Returns("1.0.0");
+            BundledModuleVersionService.SetupGet(s => s.GraphModuleVersion).Returns("1.0.0");
+            BundledModuleVersionService.SetupGet(s => s.PowerShellSdkVersion).Returns("1.0.0");
+            LoggingService.SetupGet(l => l.LogEntries).Returns(new System.Collections.ObjectModel.ObservableCollection<string>());
+            UpdateCheckService.Setup(u => u.CheckForUpdateAsync(It.IsAny<CancellationToken>())).ReturnsAsync((UpdateInfo?)null);
 
             // Default PowerShell execution: a benign SUCCESS payload, no errors.
             SetExecutionResult("SUCCESS");
@@ -95,6 +118,15 @@ namespace PhoneDesk.Tests.TestSupport
         {
             SessionManager.SetupGet(s => s.IsSessionExpired).Returns(true);
             SessionManager.SetupGet(s => s.IsSessionValid).Returns(true);
+        }
+
+        private sealed class InMemoryUserPreferencesStore : IUserPreferencesStore
+        {
+            public AppLanguage? LoadLanguage() => null;
+
+            public void SaveLanguage(AppLanguage language)
+            {
+            }
         }
     }
 }

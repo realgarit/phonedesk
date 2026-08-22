@@ -1,7 +1,10 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using PhoneDesk.Localization;
 using PhoneDesk.ViewModels;
+using System.Collections.Generic;
 
 namespace PhoneDesk
 {
@@ -13,10 +16,22 @@ namespace PhoneDesk
     /// </summary>
     public class ViewLocator : IDataTemplate
     {
+        private static string GetText(
+            UiTextKey key,
+            IReadOnlyDictionary<string, object?>? parameters = null)
+        {
+            if (Application.Current?.Resources["TranslationCatalog"] is TranslationCatalog catalog)
+            {
+                return catalog.Get(key, parameters);
+            }
+
+            return key.ToString();
+        }
+
         public Control Build(object? data)
         {
             if (data is null)
-                return new TextBlock { Text = "No view-model" };
+                return new TextBlock { Text = GetText(UiTextKey.ViewLocatorNoViewModel) };
 
             var name = data.GetType().FullName!
                 .Replace("ViewModels", "Views", StringComparison.Ordinal)
@@ -26,7 +41,12 @@ namespace PhoneDesk
             if (type is not null)
                 return (Control)Activator.CreateInstance(type)!;
 
-            return new TextBlock { Text = "View not found: " + name };
+            return new TextBlock
+            {
+                Text = GetText(
+                    UiTextKey.ViewLocatorViewNotFound,
+                    new Dictionary<string, object?> { ["name"] = name })
+            };
         }
 
         public bool Match(object? data) => data is ViewModelBase;

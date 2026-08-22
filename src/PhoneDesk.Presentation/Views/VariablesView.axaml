@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -48,27 +49,26 @@
                 <!-- Page Header -->
                 <StackPanel Grid.Row="0" Margin="24,24,24,8">
                     <StackPanel Orientation="Horizontal" Spacing="14">
-                    <Border Classes="icon-badge">
-                        <fi:SymbolIcon Symbol="Code"/>
-                    </Border>
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Text="Configuration" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="Define variables for your Teams Phone setup — customer details, hours, holidays, and more."
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             TextWrapping="Wrap"/>
+                        <Border Classes="icon-badge">
+                            <fi:SymbolIcon Symbol="Code"/>
+                        </Border>
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Key=VariablesTitle}" Classes="page-title" Margin="0"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesSubtitle}"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-                    <TextBlock Text="{Binding WelcomeMessage}"
-                             FontSize="13"
-                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                             TextWrapping="Wrap"
-                             IsVisible="{Binding WelcomeMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{loc:Translate Key=VariablesWelcomeMessage}"
+                               FontSize="13"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Tab Control -->
                 <TabControl Grid.Row="1" >
                     <!-- General Tab -->
-                    <TabItem Header="General">
+                    <TabItem Header="{loc:Translate Key=VariablesTabGeneral}">
                         <ScrollViewer Margin="8">
                             <Grid IsEnabled="{Binding CanProceed}">
                                 <Grid.ColumnDefinitions>
@@ -84,61 +84,61 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,8,4,8">
-                                    <TextBox Watermark="Customer Legal Name"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesCustomerLegalNameWatermark}"
                                              Text="{Binding Variables.CustomerLegalName}"
                                              />
-                                    <TextBlock Text="Example: Acme Corp" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleAcmeCorp}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="4,8,0,8">
-                                    <TextBox Watermark="Microsoft Fallback Domain"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesMicrosoftFallbackDomainWatermark}"
                                              Text="{Binding Variables.MsFallbackDomain}"
                                              />
-                                    <TextBlock Text="Example: @acme.onmicrosoft.com" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleFallbackDomain}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,4,8">
-                                    <TextBox Watermark="Customer Code (e.g., acm-luc)"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesCustomerCodeWatermark}"
                                              Text="{Binding Variables.Customer}"
                                              />
-                                    <TextBlock Text="Example: acm-luc" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerCode}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,0,0,8">
-                                    <TextBox Watermark="Customer Group Name"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesCustomerGroupNameWatermark}"
                                              Text="{Binding Variables.CustomerGroupName}"
                                              />
-                                    <TextBlock Text="Example: immo" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerGroupName}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,4,8">
                                     <AutoCompleteBox
                                               ItemsSource="{Binding LanguageOptions}"
                                               Text="{Binding Variables.LanguageId}"
                                               FilterMode="Contains"
-                                              Watermark="Language ID (e.g., de-DE)"
+                                              Watermark="{loc:Translate Key=VariablesLanguageIdWatermark}"
                                               HorizontalAlignment="Stretch"
                                               />
-                                    <TextBlock Text="Example: de-DE" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleLanguageId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,0,0,8">
                                     <AutoCompleteBox
                                               ItemsSource="{Binding TimeZoneOptions}"
                                               Text="{Binding Variables.TimeZoneId}"
                                               FilterMode="Contains"
-                                              Watermark="Time Zone ID"
+                                              Watermark="{loc:Translate Key=VariablesTimeZoneIdWatermark}"
                                               HorizontalAlignment="Stretch"
                                               />
-                                    <TextBlock Text="Example: W. Europe Standard Time" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleTimeZoneId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,4,8">
                                     <AutoCompleteBox
                                               ItemsSource="{Binding UsageLocationOptions}"
                                               Text="{Binding Variables.UsageLocation}"
                                               FilterMode="Contains"
-                                              Watermark="Usage Location (e.g., CH)"
+                                              Watermark="{loc:Translate Key=VariablesUsageLocationWatermark}"
                                               HorizontalAlignment="Stretch"
                                               />
-                                    <TextBlock Text="Example: CH" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleUsageLocation}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="4,0,0,8">
-                                    <TextBlock Text="Teams Phone license SKU (read-only)"
+                                    <TextBlock Text="{loc:Translate Key=VariablesTeamsPhoneLicenseSkuReadOnly}"
                                                FontSize="12"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                Margin="4,0,0,4"/>
@@ -159,7 +159,7 @@
                     </TabItem>
 
                     <!-- Call Queues Tab -->
-                    <TabItem Header="Call Queues">
+                    <TabItem Header="{loc:Translate Key=VariablesTabCallQueues}">
                         <ScrollViewer Margin="8">
                             <StackPanel IsEnabled="{Binding CanProceed}" Spacing="16">
                                 <!-- Application ID (Read-only) -->
@@ -182,7 +182,7 @@
                                         HorizontalAlignment="Left" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="Settings"/>
-                                        <TextBlock Text="Configure Call Queue Settings" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesConfigureCallQueueSettingsAction}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
@@ -191,7 +191,7 @@
                     </TabItem>
 
                     <!-- Auto Attendants Tab -->
-                    <TabItem Header="Auto Attendants">
+                    <TabItem Header="{loc:Translate Key=VariablesTabAutoAttendants}">
                         <ScrollViewer Margin="8">
                             <Grid IsEnabled="{Binding CanProceed}">
                                 <Grid.ColumnDefinitions>
@@ -229,24 +229,24 @@
                                               ItemsSource="{Binding PhoneNumberTypeOptions}"
                                               Text="{Binding Variables.PhoneNumberType}"
                                               FilterMode="Contains"
-                                              Watermark="Phone Number Type"
+                                              Watermark="{loc:Translate Key=VariablesPhoneNumberTypeWatermark}"
                                               HorizontalAlignment="Stretch"
                                               />
-                                    <TextBlock Text="Example: DirectRouting" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleDirectRouting}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
-                                    <TextBox Watermark="Resource Account Name Suffix"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesResourceAccountNameSuffixWatermark}"
                                              Text="{Binding Variables.RaaAnrName}"
                                              />
-                                    <TextBlock Text="Example: hn for 'Hauptnummer'" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleResourceAccountSuffix}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
-                                    <TextBox Watermark="Main Phone Number"
+                                    <TextBox Watermark="{loc:Translate Key=VariablesMainPhoneNumberWatermark}"
                                              Text="{Binding Variables.RaaAnr}"
                                              />
-                                    <TextBlock Text="Example: +41413290024" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleMainPhoneNumber}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
@@ -254,14 +254,14 @@
                                             HorizontalAlignment="Left" Classes="IconText">
                                         <StackPanel Orientation="Horizontal">
                                             <fi:SymbolIcon  Symbol="Settings"/>
-                                            <TextBlock Text="Configure Auto Attendant Settings" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesConfigureAutoAttendantSettingsAction}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <TextBlock Text="Configure greetings and actions for Default and After Hours call flows" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesConfigureCallFlowsHint}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
-                                         Text="Business Hours"
+                                         Text="{loc:Translate Key=VariablesBusinessHoursTitle}"
                                          FontSize="18"
                                          FontWeight="SemiBold"
                                          Margin="0,8,0,8"/>
@@ -269,39 +269,39 @@
                                 <!-- Per-Day Toggle -->
                                 <StackPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
                                     <ToggleSwitch IsChecked="{Binding Variables.UsePerDaySchedule}"
-                                                  Content="Use per-day schedule (instead of uniform Mon-Fri)"/>
+                                                  Content="{loc:Translate Key=VariablesUsePerDayScheduleToggle}"/>
                                 </StackPanel>
 
                                 <!-- Uniform Hours (default) -->
                                 <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                           IsVisible="{Binding Variables.UsePerDaySchedule, Converter={StaticResource InverseBooleanConverter}}">
-                                    <TextBlock Text="Opening Hours 1 (Monday – Friday)"
+                                    <TextBlock Text="{loc:Translate Key=VariablesOpeningHours1Title}"
                                              Classes="section-title"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Spacing="16">
                                         <StackPanel MinWidth="100" MaxWidth="150">
                                             <TextBox Text="{Binding Variables.OpeningHours1Start, Converter={StaticResource TimeSpanConverter}}"
                                                      VerticalContentAlignment="Center"/>
-                                            <TextBlock Text="Example: 08:00" Classes="hint"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesExample0800}" Classes="hint"/>
                                         </StackPanel>
                                         <StackPanel MinWidth="100" MaxWidth="150">
                                             <TextBox Text="{Binding Variables.OpeningHours1End, Converter={StaticResource TimeSpanConverter}}"
                                                      VerticalContentAlignment="Center"/>
-                                            <TextBlock Text="Example: 12:00" Classes="hint"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesExample1200}" Classes="hint"/>
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <TextBlock Text="Opening Hours 2 (Monday – Friday)"
+                                    <TextBlock Text="{loc:Translate Key=VariablesOpeningHours2Title}"
                                              Classes="section-title"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Spacing="16">
                                         <StackPanel MinWidth="100" MaxWidth="150">
                                             <TextBox Text="{Binding Variables.OpeningHours2Start, Converter={StaticResource TimeSpanConverter}}"
                                                      VerticalContentAlignment="Center"/>
-                                            <TextBlock Text="Example: 13:30" Classes="hint"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesExample1330}" Classes="hint"/>
                                         </StackPanel>
                                         <StackPanel MinWidth="100" MaxWidth="150">
                                             <TextBox Text="{Binding Variables.OpeningHours2End, Converter={StaticResource TimeSpanConverter}}"
                                                      VerticalContentAlignment="Center"/>
-                                            <TextBlock Text="Example: 17:00" Classes="hint"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesExample1700}" Classes="hint"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -309,7 +309,7 @@
                                 <!-- Per-Day Hours -->
                                 <StackPanel Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
                                           IsVisible="{Binding Variables.UsePerDaySchedule}">
-                                    <TextBlock Text="Configure hours for each day individually:"
+                                    <TextBlock Text="{loc:Translate Key=VariablesConfigureHoursPerDayHint}"
                                              Classes="hint" Margin="0,0,0,12"/>
                                     <ItemsControl ItemsSource="{Binding Variables.WeeklySchedule}">
                                         <ItemsControl.ItemTemplate>
@@ -320,7 +320,7 @@
                                                                       IsChecked="{Binding IsEnabled}"
                                                                       Content="{Binding DayName}"
                                                                       Margin="0,0,12,0"/>
-                                                        <TextBlock Grid.Column="1" Text="Hours 1:" 
+                                                        <TextBlock Grid.Column="1" Text="{loc:Translate Key=VariablesHours1Label}" 
                                                                  VerticalAlignment="Center" Margin="0,0,8,0"
                                                                  FontSize="12" Opacity="0.7"/>
                                                         <TextBox Grid.Column="2" 
@@ -331,7 +331,7 @@
                                                                  Text="{Binding Hours1End, Converter={StaticResource TimeSpanConverter}}"
                                                                  IsEnabled="{Binding IsEnabled}"
                                                                  Margin="4,0,12,0" MinWidth="80"/>
-                                                        <TextBlock Grid.Column="4" Text="Hours 2:" 
+                                                        <TextBlock Grid.Column="4" Text="{loc:Translate Key=VariablesHours2Label}" 
                                                                  VerticalAlignment="Center" Margin="0,0,8,0"
                                                                  FontSize="12" Opacity="0.7"/>
                                                         <TextBox Grid.Column="5" 
@@ -353,7 +353,7 @@
                     </TabItem>
 
                     <!-- Holidays Tab -->
-                    <TabItem Header="Holidays">
+                    <TabItem Header="{loc:Translate Key=VariablesTabHolidays}">
                         <ScrollViewer Margin="8">
                             <Grid IsEnabled="{Binding CanProceed}">
                                 <Grid.ColumnDefinitions>
@@ -369,45 +369,59 @@
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,8,4,8">
                                     <Grid>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Variables.Customer, StringFormat=hd-\{0\}-, FallbackValue=hd-}" 
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCustomerPrefix}" 
                                                        Opacity="0.7"
                                                        VerticalAlignment="Center"
                                                        Margin="12,0,4,0"/>
+                                            <TextBlock Text="{Binding Variables.Customer}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding Variables.Customer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCustomerSuffix}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding Variables.Customer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                             <TextBox Text="{Binding Variables.HolidayNameSuffix}"
                                                      Background="Transparent"
                                                      MinWidth="200"
                                                      />
                                         </StackPanel>
                                     </Grid>
-                                    <TextBlock Text="Example: kantonal-2025" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesExampleHolidayNameSuffix}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="4,8,0,8">
                                     <Button Command="{Binding OpenHolidaySeriesManagerCommand}"
                                             HorizontalAlignment="Stretch" Classes="IconText">
                                         <StackPanel Orientation="Horizontal">
                                             <fi:SymbolIcon  Symbol="Calendar"/>
-                                            <TextBlock Text="Manage Holiday Series" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Variables.HolidaySeries.Count, StringFormat=' ({0} holidays)'}"
-                                                     Margin="8,0,0,0"
-                                                     Opacity="0.7"
-                                                     VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesManageHolidaySeriesAction}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCountPrefix}"
+                                                       Margin="8,0,0,0"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Variables.HolidaySeries.Count}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=VariablesHolidayCountSuffix}"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <TextBlock Text="Click to manage multiple holiday dates and times" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesManageHolidaySeriesHint}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
                                     <TextBox 
                                              Text="{Binding Variables.HolidayGreetingPromptDE}"
                                              />
-                                    <TextBlock Text="Example: Herzlich Willkommen bei der Acme Corp. Leider können wir Ihren Anruf derzeit nicht entgegennehmen, da Sie uns an einem Feiertag anrufen." FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesHolidayGreetingExample}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                         </ScrollViewer>
                     </TabItem>
 
                     <!-- Auto-generated Tab -->
-                    <TabItem Header="Auto-generated">
+                    <TabItem Header="{loc:Translate Key=VariablesTabAutoGenerated}">
                         <ScrollViewer Margin="8">
                             <Grid IsEnabled="{Binding CanProceed}">
                                 <Grid.ColumnDefinitions>
@@ -514,13 +528,13 @@
                              Classes="IconText">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon  Symbol="FolderOpen"/>
-                            <TextBlock Text="Load Variables from File" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesLoadFromFileAction}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding SaveVariablesToFileCommand}" Classes="IconText">
                         <StackPanel Orientation="Horizontal">
                             <fi:SymbolIcon  Symbol="Save"/>
-                            <TextBlock Text="Save Variables to File" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesSaveToFileAction}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -549,10 +563,10 @@
                   PointerPressed="HolidayTimePickerCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="400" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Select Holiday Time"
+                        <TextBlock Text="{loc:Translate Key=VariablesSelectHolidayTimeTitle}"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="Choose a time that aligns with 15-minute boundaries:"
+                        <TextBlock Text="{loc:Translate Key=VariablesSelectHolidayTimeDescription}"
                                  FontSize="14"
                                  TextWrapping="Wrap"
                                  Margin="0,0,0,16"/>
@@ -572,13 +586,13 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding SaveHolidayTimeCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Save Time" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesSaveTimeAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -620,17 +634,17 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0"
-                                 Text="Manage Holiday Series"
+                                 Text="{loc:Translate Key=VariablesManageHolidaySeriesTitle}"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,16"/>
                         <TextBlock Grid.Row="1"
-                                 Text="Add, edit, or remove holiday dates and times. Each holiday will be created with the specified date and time."
+                                 Text="{loc:Translate Key=VariablesManageHolidaySeriesDescription}"
                                  FontSize="14"
                                  TextWrapping="Wrap"
                                  Margin="0,0,0,8"/>
 
                         <TextBlock Grid.Row="2"
-                                 Text="If no time is selected, 00:00 will be used by default."
+                                 Text="{loc:Translate Key=VariablesHolidaySeriesDefaultTimeHint}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  Margin="0,0,0,16"/>
@@ -654,10 +668,15 @@
                                                     <TextBlock Text="{Binding DisplayText}"
                                                              FontSize="16"
                                                              FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{Binding Name, StringFormat='Holiday: {0}'}"
-                                                             FontSize="12"
-                                                             Opacity="0.7"
-                                                             IsVisible="{Binding Name, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                    <StackPanel Orientation="Horizontal"
+                                                                IsVisible="{Binding Name, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock Text="{loc:Translate Key=VariablesHolidayNamePrefix}"
+                                                                   FontSize="12"
+                                                                   Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontSize="12"
+                                                                   Opacity="0.7"/>
+                                                    </StackPanel>
                                                 </StackPanel>
                                                 <Button Grid.Column="1"
                                                         Command="{Binding DataContext.EditHolidayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -667,8 +686,8 @@
                                                         Height="40"
                                                         Classes="IconOnly"
                                                         Padding="0"
-                                                        AutomationProperties.Name="Edit Holiday"
-                                                        ToolTip.Tip="Edit Holiday"
+                                                        AutomationProperties.Name="{loc:Translate Key=VariablesEditHolidayA11y}"
+                                                        ToolTip.Tip="{loc:Translate Key=VariablesEditHolidayA11y}"
                                                         >
                                                     <fi:SymbolIcon  Symbol="Edit"
                                                                   HorizontalAlignment="Center"
@@ -683,8 +702,8 @@
                                                         Height="40"
                                                         Classes="IconOnly"
                                                         Padding="0"
-                                                        AutomationProperties.Name="Remove Holiday"
-                                                        ToolTip.Tip="Remove Holiday"
+                                                        AutomationProperties.Name="{loc:Translate Key=VariablesRemoveHolidayA11y}"
+                                                        ToolTip.Tip="{loc:Translate Key=VariablesRemoveHolidayA11y}"
                                                         >
                                                     <fi:SymbolIcon  Symbol="Delete"
                                                                   HorizontalAlignment="Center"
@@ -702,13 +721,13 @@
                                      Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="CalendarAdd"/>
-                                    <TextBlock Text="Add Holiday" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesAddHolidayAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding DeleteAllHolidaysCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Delete"/>
-                                    <TextBlock Text="Delete All" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonDeleteAll}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -719,7 +738,7 @@
                                 Margin="0,0,0,16" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon  Symbol="Globe"/>
-                                <TextBlock Text="Use Predefined Sets…" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesUsePredefinedSetsAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Action Buttons -->
@@ -731,13 +750,13 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding SaveHolidaySeriesCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Save Series" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesSaveSeriesAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -768,17 +787,17 @@
                   PointerPressed="EditHolidayCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="400" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Edit Holiday"
+                        <TextBlock Text="{loc:Translate Key=VariablesEditHolidayTitle}"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="Start Date:"
+                        <TextBlock Text="{loc:Translate Key=VariablesStartDateLabel}"
                                  Classes="section-title"
                                  Margin="0,0,0,8"/>
                         <CalendarDatePicker SelectedDate="{Binding DialogHolidayDate, TargetNullValue={x:Static sys:DateTime.Today}}"
                                           HorizontalAlignment="Stretch"
                                           VerticalContentAlignment="Center"
                                           Margin="0,0,0,16"/>
-                        <TextBlock Text="Start Time:"
+                        <TextBlock Text="{loc:Translate Key=VariablesStartTimeLabel}"
                                  Classes="section-title"
                                  Margin="0,0,0,8"/>
                         <ComboBox ItemsSource="{Binding TimeOptions}"
@@ -793,11 +812,11 @@
 
                         <!-- End Date Toggle -->
                         <ToggleSwitch IsChecked="{Binding DialogHasEndDate}"
-                                      Content="Set explicit end date/time"
+                                      Content="{loc:Translate Key=VariablesSetExplicitEndDateToggle}"
                                       Margin="0,0,0,12"/>
 
                         <StackPanel IsVisible="{Binding DialogHasEndDate}" Margin="0,0,0,16">
-                            <TextBlock Text="End Date:"
+                            <TextBlock Text="{loc:Translate Key=VariablesEndDateLabel}"
                                      Classes="section-title"
                                      Margin="0,0,0,8"/>
                             <CalendarDatePicker SelectedDate="{Binding DialogEndDate}"
@@ -805,7 +824,7 @@
                                               VerticalContentAlignment="Center"
                                               Margin="0,0,0,16"/>
 
-                            <TextBlock Text="End Time:"
+                            <TextBlock Text="{loc:Translate Key=VariablesEndTimeLabel}"
                                      Classes="section-title"
                                      Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding TimeOptions}"
@@ -817,7 +836,7 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <TextBlock Text="If not set, Teams defaults to next day at 12:00"
+                            <TextBlock Text="{loc:Translate Key=VariablesTeamsDefaultEndTimeHint}"
                                      Classes="hint"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" 
@@ -827,13 +846,13 @@
                                     Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding SaveEditHolidayCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Save" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonSave}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -865,13 +884,13 @@
                   PointerPressed="PredefinedHolidaysWizardCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="500" MaxWidth="700" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Predefined Holiday Sets"
+                        <TextBlock Text="{loc:Translate Key=VariablesPredefinedHolidaySetsTitle}"
                                    FontWeight="SemiBold"
                                    Margin="0,0,0,16"/>
 
                     <StackPanel Spacing="8">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Country" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesCountryLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <ComboBox ItemsSource="{Binding Countries}"
                                       SelectedItem="{Binding SelectedCountry}"
                                       HorizontalAlignment="Stretch"
@@ -887,11 +906,11 @@
                         <StackPanel IsVisible="{Binding IsSwitzerlandSelected, Converter={StaticResource BooleanToVisibilityConverter}}" Spacing="8">
                             <StackPanel Spacing="4">
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="Canton" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesCantonLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <Button Command="{Binding ShowAargauInfoCommand}"
                                             IsVisible="{Binding IsAargauSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            ToolTip.Tip="Aargau Holiday Reference Information"
-                                            AutomationProperties.Name="Aargau Holiday Reference Information"
+                                            ToolTip.Tip="{loc:Translate Key=VariablesAargauHolidayReferenceInfoA11y}"
+                                            AutomationProperties.Name="{loc:Translate Key=VariablesAargauHolidayReferenceInfoA11y}"
                                             Background="Transparent"
                                             VerticalAlignment="Center"
                                             Classes="IconOnly"
@@ -908,7 +927,7 @@
                                                 Spacing="4"
                                                 VerticalAlignment="Center">
                                         <fi:SymbolIcon  Symbol="ArrowLeft" Foreground="{DynamicResource TeamsPrimaryBrush}" Classes="AnimatedArrow"/>
-                                        <TextBlock Text="Click for reference" 
+                                        <TextBlock Text="{loc:Translate Key=VariablesClickForReferenceHint}" 
                                                    FontSize="14"
                                                    Foreground="{DynamicResource TeamsPrimaryBrush}"
                                                    Opacity="0.9"
@@ -928,7 +947,7 @@
                             </StackPanel>
 
                             <StackPanel IsVisible="{Binding IsAargauSelected, Converter={StaticResource BooleanToVisibilityConverter}}" Spacing="4">
-                                <TextBlock Text="Bezirk" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesDistrictLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <ComboBox ItemsSource="{Binding Bezirke}"
                                           SelectedItem="{Binding SelectedBezirk}"
                                           HorizontalAlignment="Stretch"
@@ -943,7 +962,7 @@
                         </StackPanel>
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Year" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesYearLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <ComboBox ItemsSource="{Binding Years}"
                                       SelectedItem="{Binding SelectedYear}"
                                       HorizontalAlignment="Stretch"
@@ -962,14 +981,14 @@
                                 Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Dismiss"/>
-                                <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ApplyPredefinedHolidaysCommand}"
                                 IsEnabled="{Binding CanApplyPredefinedSelection}" Classes="IconText">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon  Symbol="Checkmark"/>
-                                <TextBlock Text="Add Holidays" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesAddHolidaysAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -1001,11 +1020,11 @@
                   PointerPressed="AargauInfoCard_PointerPressed">
                 <Border Classes="dialog" MinWidth="600" MaxWidth="800" Margin="16">
                     <StackPanel>
-                        <TextBlock Text="Aargau Holiday Reference"
+                        <TextBlock Text="{loc:Translate Key=VariablesAargauHolidayReferenceTitle}"
                                    FontWeight="SemiBold"
                                    Margin="0,0,0,16"/>
 
-                        <TextBlock Text="Use this as a reference image because the holidays in Aargau can vary yearly. Please look up the official page of the DEPARTEMENT VOLKSWIRTSCHAFT UND INNERES, Amt für Wirtschaft und Arbeit of Kanton Aargau to get the newest list."
+                        <TextBlock Text="{loc:Translate Key=VariablesAargauHolidayReferenceDescription}"
                                    FontSize="14"
                                    TextWrapping="Wrap"
                                    Margin="0,0,0,16"/>
@@ -1017,14 +1036,14 @@
                             <Image Source="avares://PhoneDesk.Presentation/Resources/AargauHolidaysReference.png"
                                    Stretch="Uniform"
                                    MaxHeight="400"
-                                   AutomationProperties.Name="Aargau Holiday Reference Table"/>
+                                   AutomationProperties.Name="{loc:Translate Key=VariablesAargauHolidayReferenceTableA11y}"/>
                         </Border>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Command="{Binding CloseAargauInfoCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Checkmark"/>
-                                    <TextBlock Text="Close" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonClose}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -1062,15 +1081,15 @@
                         Margin="16">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
                         <StackPanel Spacing="24" Margin="0">
-                            <TextBlock Text="Call Queue Configuration"
+                            <TextBlock Text="{loc:Translate Key=VariablesCallQueueConfigurationTitle}"
                                      FontWeight="SemiBold"
                                      Margin="0,0,0,8"/>
                             <!-- Greeting and Music Section -->
                             <StackPanel Spacing="24">
-                                <TextBlock Text="Greeting and Music" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesGreetingAndMusicTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Greeting" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding GreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.CqGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1085,9 +1104,9 @@
                                     <StackPanel IsVisible="{Binding ShowGreetingAudioFile}" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.CqGreetingAudioFileId}"
-                                                         Watermark="No file selected"
+                                                         Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                          IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
@@ -1096,23 +1115,23 @@
                                                     VerticalAlignment="Bottom">
                                                 <StackPanel Orientation="Horizontal">
                                                     <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                    <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
-                                        <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                        <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                    FontSize="11" 
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.CqGreetingTextToSpeechPrompt}"
-                                                 Watermark="Enter greeting message"/>
+                                                 Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Music on Hold" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesMusicOnHoldTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding MusicOnHoldTypeOptions}"
                                                   SelectedItem="{Binding Variables.CqMusicOnHoldType}"
                                                   HorizontalAlignment="Left"
@@ -1127,9 +1146,9 @@
                                     <StackPanel IsVisible="{Binding ShowMusicOnHoldAudioFile}" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.CqMusicOnHoldAudioFileId}"
-                                                         Watermark="No file selected"
+                                                         Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                          IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
@@ -1138,11 +1157,11 @@
                                                     VerticalAlignment="Bottom">
                                                 <StackPanel Orientation="Horizontal">
                                                     <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                    <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
-                                        <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                        <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                    FontSize="11" 
                                                    Opacity="0.7"/>
                                     </StackPanel>
@@ -1150,20 +1169,20 @@
                             </StackPanel>
                             <!-- Exception Handling Section -->
                             <StackPanel Spacing="24">
-                                <TextBlock Text="Exception Handling" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesExceptionHandlingTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <!-- Call Overflow -->
                                 <StackPanel Spacing="16">
-                                    <TextBlock Text="Call Overflow" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesCallOverflowTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Maximum calls in queue" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesMaximumCallsInQueueLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <NumericUpDown Value="{Binding Variables.CqOverflowThreshold}"
                                                       Minimum="1"
                                                       HorizontalAlignment="Left"
                                                       Width="200"/>
                                     </StackPanel>
-                                    <TextBlock Text="When the maximum number of calls is reached" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesMaximumCallsReachedHint}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Action" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding OverflowActionOptions}"
                                                   SelectedItem="{Binding Variables.CqOverflowAction}"
                                                   HorizontalAlignment="Left"
@@ -1176,15 +1195,15 @@
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowOverflowTarget}" Spacing="4">
-                                        <TextBlock Text="Target" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.CqOverflowActionTarget}"
-                                                 Watermark="Resource Account UPN or M365 Group ID"/>
+                                                 Watermark="{loc:Translate Key=CommonResourceAccountTargetWatermark}"/>
                                     </StackPanel>
                                     <!-- Voicemail Greeting (required for SharedVoicemail) -->
                                     <StackPanel IsVisible="{Binding ShowOverflowVoicemailGreeting}" Spacing="8">
-                                        <TextBlock Text="Voicemail Greeting (Required)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesVoicemailGreetingRequiredTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <StackPanel Spacing="4">
-                                            <TextBlock Text="Greeting Type" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <ComboBox ItemsSource="{Binding VoicemailGreetingTypeOptions}"
                                                       SelectedItem="{Binding Variables.CqOverflowVoicemailGreetingType}"
                                                       HorizontalAlignment="Left"
@@ -1199,9 +1218,9 @@
                                         <StackPanel IsVisible="{Binding ShowOverflowVoicemailAudioFile}" Spacing="8">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                    <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqOverflowActionAudioFileId}"
-                                                             Watermark="No file selected"
+                                                             Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                              IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
@@ -1210,34 +1229,34 @@
                                                         VerticalAlignment="Bottom">
                                                     <StackPanel Orientation="Horizontal">
                                                         <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                        <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
                                             </StackPanel>
-                                            <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                            <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                        FontSize="11" 
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowOverflowVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqOverflowActionTextToSpeechPrompt}"
-                                                     Watermark="Enter voicemail greeting message"/>
+                                                     Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 <!-- Call Timeout -->
                                 <StackPanel Spacing="16">
-                                    <TextBlock Text="Call Timeout" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesCallTimeoutTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Maximum wait time (seconds, min 30)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesMaximumWaitTimeLabel}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <NumericUpDown Value="{Binding Variables.CqTimeoutThreshold}"
                                                       Minimum="30"
                                                       HorizontalAlignment="Left"
                                                       Width="250"/>
                                     </StackPanel>
-                                    <TextBlock Text="When call times out" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesCallTimesOutHint}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Action" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding TimeoutActionOptions}"
                                                   SelectedItem="{Binding Variables.CqTimeoutAction}"
                                                   HorizontalAlignment="Left"
@@ -1250,15 +1269,15 @@
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowTimeoutTarget}" Spacing="4">
-                                        <TextBlock Text="Target" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.CqTimeoutActionTarget}"
-                                                 Watermark="Resource Account UPN or M365 Group ID"/>
+                                                 Watermark="{loc:Translate Key=CommonResourceAccountTargetWatermark}"/>
                                     </StackPanel>
                                     <!-- Voicemail Greeting (required for SharedVoicemail) -->
                                     <StackPanel IsVisible="{Binding ShowTimeoutVoicemailGreeting}" Spacing="8">
-                                        <TextBlock Text="Voicemail Greeting (Required)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesVoicemailGreetingRequiredTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <StackPanel Spacing="4">
-                                            <TextBlock Text="Greeting Type" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <ComboBox ItemsSource="{Binding VoicemailGreetingTypeOptions}"
                                                       SelectedItem="{Binding Variables.CqTimeoutVoicemailGreetingType}"
                                                       HorizontalAlignment="Left"
@@ -1273,9 +1292,9 @@
                                         <StackPanel IsVisible="{Binding ShowTimeoutVoicemailAudioFile}" Spacing="8">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                    <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqTimeoutActionAudioFileId}"
-                                                             Watermark="No file selected"
+                                                             Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                              IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
@@ -1284,29 +1303,29 @@
                                                         VerticalAlignment="Bottom">
                                                     <StackPanel Orientation="Horizontal">
                                                         <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                        <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
                                             </StackPanel>
-                                            <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                            <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                        FontSize="11" 
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowTimeoutVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqTimeoutActionTextToSpeechPrompt}"
-                                                     Watermark="Enter voicemail greeting message"/>
+                                                     Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 <!-- No Agents Available -->
                                 <StackPanel Spacing="16">
-                                    <TextBlock Text="No Agents Available" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    <CheckBox Content="Apply settings only to new incoming calls"
+                                    <TextBlock Text="{loc:Translate Key=VariablesNoAgentsAvailableTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <CheckBox Content="{loc:Translate Key=VariablesApplyToNewIncomingCallsToggle}"
                                               IsChecked="{Binding Variables.CqNoAgentApplyToNewCallsOnly}"/>
-                                    <TextBlock Text="When no agents are available" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesNoAgentsAvailableHint}" FontSize="11" Opacity="0.7" VerticalAlignment="Center"/>
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Action" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding NoAgentActionOptions}"
                                                   SelectedItem="{Binding Variables.CqNoAgentAction}"
                                                   HorizontalAlignment="Left"
@@ -1319,15 +1338,15 @@
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowNoAgentTarget}" Spacing="4">
-                                        <TextBlock Text="Target" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.CqNoAgentActionTarget}"
-                                                 Watermark="Resource Account UPN or M365 Group ID"/>
+                                                 Watermark="{loc:Translate Key=CommonResourceAccountTargetWatermark}"/>
                                     </StackPanel>
                                     <!-- Voicemail Greeting (required for SharedVoicemail) -->
                                     <StackPanel IsVisible="{Binding ShowNoAgentVoicemailGreeting}" Spacing="8">
-                                        <TextBlock Text="Voicemail Greeting (Required)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=VariablesVoicemailGreetingRequiredTitle}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <StackPanel Spacing="4">
-                                            <TextBlock Text="Greeting Type" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <ComboBox ItemsSource="{Binding VoicemailGreetingTypeOptions}"
                                                       SelectedItem="{Binding Variables.CqNoAgentVoicemailGreetingType}"
                                                       HorizontalAlignment="Left"
@@ -1342,9 +1361,9 @@
                                         <StackPanel IsVisible="{Binding ShowNoAgentVoicemailAudioFile}" Spacing="8">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                    <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqNoAgentActionAudioFileId}"
-                                                             Watermark="No file selected"
+                                                             Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                              IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
@@ -1353,18 +1372,18 @@
                                                         VerticalAlignment="Bottom">
                                                     <StackPanel Orientation="Horizontal">
                                                         <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                        <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
                                             </StackPanel>
-                                            <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                            <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                        FontSize="11" 
                                                        Opacity="0.7"/>
                                         </StackPanel>
                                         <StackPanel IsVisible="{Binding ShowNoAgentVoicemailTextToSpeech}" Spacing="4">
-                                            <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding Variables.CqNoAgentActionTextToSpeechPrompt}"
-                                                     Watermark="Enter voicemail greeting message"/>
+                                                     Watermark="{loc:Translate Key=CommonEnterVoicemailGreetingMessage}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -1378,13 +1397,13 @@
                                         Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon Symbol="Dismiss"/>
-                                        <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SaveCallQueueConfigurationCommand}" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="Checkmark"/>
-                                        <TextBlock Text="Save" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonSave}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -1423,15 +1442,15 @@
                         Margin="16">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
                         <StackPanel Spacing="24" Margin="0">
-                            <TextBlock Text="Auto Attendant Configuration"
+                            <TextBlock Text="{loc:Translate Key=VariablesAutoAttendantConfigurationTitle}"
                                      FontWeight="SemiBold"
                                      Margin="0,0,0,8"/>
                             <!-- Default Call Flow Section -->
                             <StackPanel Spacing="24">
-                                <TextBlock Text="Default Call Flow (Business Hours)" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesDefaultCallFlowBusinessHoursTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Greeting" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaGreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.AaDefaultGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1446,9 +1465,9 @@
                                     <StackPanel IsVisible="{Binding ShowAaDefaultGreetingAudioFile}" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.AaDefaultGreetingAudioFileId}"
-                                                         Watermark="No file selected"
+                                                         Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                          IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
@@ -1457,22 +1476,22 @@
                                                     VerticalAlignment="Bottom">
                                                 <StackPanel Orientation="Horizontal">
                                                     <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                    <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
-                                        <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                        <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                    FontSize="11" 
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaDefaultGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaDefaultGreetingTextToSpeechPrompt}"
-                                                 Watermark="Enter greeting message"/>
+                                                 Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Action" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaActionOptions}"
                                                   SelectedItem="{Binding Variables.AaDefaultAction}"
                                                   HorizontalAlignment="Left"
@@ -1485,18 +1504,18 @@
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaDefaultTarget}" Spacing="4">
-                                        <TextBlock Text="Target" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaDefaultActionTarget}"
-                                                 Watermark="Resource Account UPN or M365 Group ID"/>
+                                                 Watermark="{loc:Translate Key=CommonResourceAccountTargetWatermark}"/>
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                             <!-- After Hours Call Flow Section -->
                             <StackPanel Spacing="24">
-                                <TextBlock Text="After Hours Call Flow" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=VariablesAfterHoursCallFlowTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <StackPanel Spacing="16">
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Greeting" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreetingType}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaGreetingTypeOptions}"
                                                   SelectedItem="{Binding Variables.AaAfterHoursGreetingType}"
                                                   HorizontalAlignment="Left"
@@ -1511,9 +1530,9 @@
                                     <StackPanel IsVisible="{Binding ShowAaAfterHoursGreetingAudioFile}" Spacing="8">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <StackPanel Spacing="4" HorizontalAlignment="Stretch">
-                                                <TextBlock Text="Audio File" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.AaAfterHoursGreetingAudioFileId}"
-                                                         Watermark="No file selected"
+                                                         Watermark="{loc:Translate Key=CommonNoFileSelected}"
                                                          IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
@@ -1522,22 +1541,22 @@
                                                     VerticalAlignment="Bottom">
                                                 <StackPanel Orientation="Horizontal">
                                                     <fi:SymbolIcon Symbol="FolderOpen"/>
-                                                    <TextBlock Text="Select File" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{loc:Translate Key=CommonSelectFile}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
-                                        <TextBlock Text="Select a WAV file (max 5MB). It will be uploaded automatically." 
+                                        <TextBlock Text="{loc:Translate Key=CommonWavFileHint}" 
                                                    FontSize="11" 
                                                    Opacity="0.7"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaAfterHoursGreetingTextToSpeech}" Spacing="4">
-                                        <TextBlock Text="Text to Speech Prompt" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonGreeting}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaAfterHoursGreetingTextToSpeechPrompt}"
-                                                 Watermark="Enter greeting message"/>
+                                                 Watermark="{loc:Translate Key=CommonEnterGreetingMessage}"/>
                                     </StackPanel>
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Action" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding AaActionOptions}"
                                                   SelectedItem="{Binding Variables.AaAfterHoursAction}"
                                                   HorizontalAlignment="Left"
@@ -1550,9 +1569,9 @@
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaAfterHoursTarget}" Spacing="4">
-                                        <TextBlock Text="Target" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBox Text="{Binding Variables.AaAfterHoursActionTarget}"
-                                                 Watermark="Resource Account UPN or M365 Group ID"/>
+                                                 Watermark="{loc:Translate Key=CommonResourceAccountTargetWatermark}"/>
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
@@ -1565,13 +1584,13 @@
                                         Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon Symbol="Dismiss"/>
-                                        <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Command="{Binding SaveAutoAttendantConfigurationCommand}" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="Checkmark"/>
-                                        <TextBlock Text="Save" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CommonSave}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>

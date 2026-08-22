@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Models;
 using System;
@@ -64,11 +65,15 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("Call Queues page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.CallQueuesPageLoadedLog,
+                "Call queues page loaded",
+                LogLevel.Info);
 
             ResourceAccounts.CollectionChanged += (s, e) => OnPropertyChanged(nameof(ResourceAccountsView));
             CallQueues.CollectionChanged += (s, e) => OnPropertyChanged(nameof(CallQueuesView));
@@ -79,12 +84,20 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(
+                    UiTextKey.RuntimeWorkingPleaseWait,
+                    "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ResourceAccounts.Clear();
-                StatusMessage = "Retrieving resource accounts...";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesLoadResourceAccountsStatus,
+                    "Loading resource accounts...");
 
-                _loggingService.Log("Retrieving resource accounts starting with 'racq-'", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.CallQueuesLoadResourceAccountsLog,
+                    "Loading resource accounts starting with '{prefix}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["prefix"] = "racq-" });
 
                 var command = _powerShellCommandService.GetRetrieveResourceAccountsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveResourceAccounts", allowThrottleRetry: true);
@@ -92,19 +105,47 @@ namespace PhoneDesk.ViewModels
                 if (!string.IsNullOrEmpty(result.Value))
                 {
                     ParseResourceAccountsFromResult(result.Value);
-                    StatusMessage = $"Found {ResourceAccounts.Count} resource accounts starting with 'racq-'";
-                    _loggingService.Log($"Retrieved {ResourceAccounts.Count} resource accounts", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesLoadResourceAccountsSuccess,
+                        "Loaded {count} resource accounts starting with '{prefix}'.",
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = ResourceAccounts.Count,
+                            ["prefix"] = "racq-"
+                        });
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadResourceAccountsSuccess,
+                        "Loaded {count} resource accounts starting with '{prefix}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = ResourceAccounts.Count,
+                            ["prefix"] = "racq-"
+                        });
                 }
                 else
                 {
-                    StatusMessage = "Error: No output from PowerShell command";
-                    _loggingService.Log("Error retrieving resource accounts: No output from PowerShell command", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadResourceAccountsNoOutputLog,
+                        "Error loading resource accounts: no output from the PowerShell command.",
+                        LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RetrieveResourceAccountsAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RetrieveResourceAccountsAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -117,12 +158,18 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 CallQueues.Clear();
-                StatusMessage = "Retrieving call queues...";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesLoadCallQueuesStatus,
+                    "Loading call queues...");
 
-                _loggingService.Log("Retrieving call queues containing 'cq-'", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.CallQueuesLoadCallQueuesLog,
+                    "Loading call queues containing '{pattern}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["pattern"] = "cq-" });
 
                 var command = _powerShellCommandService.GetRetrieveCallQueuesCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveCallQueues", allowThrottleRetry: true);
@@ -130,19 +177,47 @@ namespace PhoneDesk.ViewModels
                 if (!string.IsNullOrEmpty(result.Value))
                 {
                     ParseCallQueuesFromResult(result.Value);
-                    StatusMessage = $"Found {CallQueues.Count} call queues containing 'cq-'";
-                    _loggingService.Log($"Retrieved {CallQueues.Count} call queues", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesLoadCallQueuesSuccess,
+                        "Loaded {count} call queues containing '{pattern}'.",
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = CallQueues.Count,
+                            ["pattern"] = "cq-"
+                        });
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadCallQueuesSuccess,
+                        "Loaded {count} call queues containing '{pattern}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["count"] = CallQueues.Count,
+                            ["pattern"] = "cq-"
+                        });
                 }
                 else
                 {
-                    StatusMessage = "Error: No output from PowerShell command";
-                    _loggingService.Log("Error retrieving call queues: No output from PowerShell command", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeNoPowerShellOutputError,
+                        "Error: No output from the PowerShell command.");
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadCallQueuesNoOutputLog,
+                        "Error loading call queues: no output from the PowerShell command.",
+                        LogLevel.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RetrieveCallQueuesAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RetrieveCallQueuesAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -197,46 +272,82 @@ namespace PhoneDesk.ViewModels
             var variables = _sharedStateService?.Variables;
             if (variables == null)
             {
-                StatusMessage = "Error: Variables not found";
+                StatusMessage = GetText(
+                    UiTextKey.RuntimeVariablesNotFoundError,
+                    "Error: Configuration not found.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(variables.RacqUPN))
             {
-                StatusMessage = "Error: Resource Account UPN is not set. Please set variables first.";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesResourceAccountUpnMissingError,
+                    "Error: Resource account UPN is not set. Set the configuration first.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(variables.SkuId))
             {
-                StatusMessage = "Error: SKU ID is not set. Please set the SKU ID variable first.";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesSkuIdMissingError,
+                    "Error: SKU ID is not set. Set the SKU ID in Configuration first.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.LicenseWaitingMessage;
+                SetWaiting(
+                    UiTextKey.RuntimeApplyingLicensePleaseWait,
+                    "Please wait while the Teams Phone Resource License is being applied.");
                 IsBusy = true;
-                StatusMessage = "Assigning license to resource account...";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesAssignLicenseStatus,
+                    "Assigning the license to the resource account...");
 
                 var command = _powerShellCommandService.GetAssignLicenseCommand(variables.RacqUPN, variables.SkuId);
                 var result = await ExecutePowerShellCommandAsync(command, "AssignLicense");
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"License assigned to resource account '{variables.RacqUPN}' successfully";
-                    _loggingService.Log($"License assigned to resource account {variables.RacqUPN}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssignLicenseSuccess,
+                        "License assigned to resource account '{upn}' successfully.",
+                        new Dictionary<string, object?> { ["upn"] = variables.RacqUPN });
+                    LogLocalized(
+                        UiTextKey.CallQueuesAssignLicenseLog,
+                        "License assigned to resource account '{upn}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = variables.RacqUPN });
                 }
                 else
                 {
-                    StatusMessage = $"Error assigning license: {result.Value}";
-                    _loggingService.Log($"Error assigning license to {variables.RacqUPN}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssignLicenseError,
+                        "Error assigning the license: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesAssignLicenseErrorLog,
+                        "Error assigning the license to '{upn}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = variables.RacqUPN,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in AssignLicenseAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(AssignLicenseAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -250,21 +361,27 @@ namespace PhoneDesk.ViewModels
             var variables = _sharedStateService?.Variables;
             if (variables == null)
             {
-                StatusMessage = "Error: Variables not found";
+                StatusMessage = GetText(
+                    UiTextKey.RuntimeVariablesNotFoundError,
+                    "Error: Configuration not found.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(variables.M365Group))
             {
-                StatusMessage = "Error: M365 Group name is not set. Please set Customer and Customer Group Name variables first.";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesM365GroupNameMissingError,
+                    "Error: M365 Group name is not set. Set Customer and Customer Group Name in Configuration first.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
-                StatusMessage = "Retrieving M365 Group ID...";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesLoadM365GroupIdStatus,
+                    "Loading M365 Group ID...");
 
                 var command = _powerShellCommandService.GetM365GroupIdCommand(variables.M365Group);
                 var result = await ExecutePowerShellCommandAsync(command, null, "GetM365GroupId", allowThrottleRetry: true);
@@ -279,24 +396,51 @@ namespace PhoneDesk.ViewModels
                         {
                             var groupId = line.Substring(12).Trim();
                             variables.M365GroupId = groupId;
-                            StatusMessage = $"M365 Group ID retrieved and saved: {groupId}";
-                            _loggingService.Log($"M365 Group ID saved: {groupId}", LogLevel.Info);
+                            StatusMessage = GetText(
+                                UiTextKey.CallQueuesLoadM365GroupIdSuccess,
+                                "M365 Group ID loaded and saved: {groupId}",
+                                new Dictionary<string, object?> { ["groupId"] = groupId });
+                            LogLocalized(
+                                UiTextKey.CallQueuesLoadM365GroupIdLog,
+                                "M365 Group ID saved: {groupId}",
+                                LogLevel.Info,
+                                new Dictionary<string, object?> { ["groupId"] = groupId });
                             return;
                         }
                     }
-                    StatusMessage = "Error: Could not parse M365 Group ID from result";
-                    _loggingService.Log("Error: Could not parse M365 Group ID from result - no M365GROUPID line found", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesLoadM365GroupIdParseError,
+                        "Error: Could not parse the M365 Group ID from the result.");
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadM365GroupIdParseErrorLog,
+                        "Could not parse the M365 Group ID from the result. No M365GROUPID line was found.",
+                        LogLevel.Error);
                 }
                 else
                 {
-                    StatusMessage = $"Error retrieving M365 Group ID: {result.Value}";
-                    _loggingService.Log($"Error retrieving M365 Group ID: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesLoadM365GroupIdError,
+                        "Error loading the M365 Group ID: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesLoadM365GroupIdErrorLog,
+                        "Error loading the M365 Group ID: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in GetM365GroupIdAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(GetM365GroupIdAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -309,33 +453,41 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(ResourceAccountUpn) || string.IsNullOrWhiteSpace(ResourceAccountDisplayName))
             {
-                StatusMessage = "Error: Resource account UPN and display name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesCreateResourceAccountValidationError,
+                    "Error: Resource account UPN and display name cannot be empty.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowCreateResourceAccountDialog = false;
 
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeVariablesNotFoundError,
+                        "Error: Configuration not found.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(variables.CsAppCqId))
                 {
-                    StatusMessage = "Error: Call Queue Application ID not found in variables";
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesApplicationIdMissingError,
+                        "Error: Call queue application ID was not found in Configuration.");
                     return;
                 }
 
                 // Validate that the UPN includes a domain
                 if (string.IsNullOrWhiteSpace(variables.MsFallbackDomain) || !variables.MsFallbackDomain.StartsWith("@"))
                 {
-                    StatusMessage = "Error: MS Fallback Domain is not set or invalid. Please set a valid domain (e.g., @yourdomain.com) in Variables.";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeFallbackDomainInvalidError,
+                        "Error: Microsoft fallback domain is not set or is invalid. Set a valid domain such as @yourdomain.com in Configuration.");
                     return;
                 }
 
@@ -347,30 +499,67 @@ namespace PhoneDesk.ViewModels
                 }
 
                 var command = _powerShellCommandService.GetCreateResourceAccountCommand(upn, ResourceAccountDisplayName, variables.CsAppCqId);
-                var result = await PreviewAndExecuteAsync(command, "Create Resource Account");
+                LogLocalized(
+                    UiTextKey.CallQueuesCreateResourceAccountLog,
+                    "Creating resource account '{upn}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["upn"] = upn });
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.CallQueuesCreateResourceAccountContext,
+                        "Create resource account"));
                 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Resource account '{ResourceAccountUpn}' created successfully";
-                    _loggingService.Log($"Resource account {ResourceAccountUpn} created successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesCreateResourceAccountSuccess,
+                        "Resource account '{upn}' created successfully.",
+                        new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
+                    LogLocalized(
+                        UiTextKey.CallQueuesCreateResourceAccountSuccess,
+                        "Resource account '{upn}' created successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
                     // Don't auto-refresh to avoid showing "Found ... resource accounts" message
                 }
                 else
                 {
-                    StatusMessage = $"Error creating resource account: {result.Value}";
-                    _loggingService.Log($"Error creating resource account {ResourceAccountUpn}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesCreateResourceAccountError,
+                        "Error creating the resource account: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesCreateResourceAccountErrorLog,
+                        "Error creating the resource account '{upn}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateResourceAccountAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(CreateResourceAccountAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -398,44 +587,86 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(ResourceAccountUpn))
             {
-                StatusMessage = "Error: Resource account UPN cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesUpdateUsageLocationUpnRequiredError,
+                    "Error: Resource account UPN cannot be empty.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowUpdateUsageLocationDialog = false;
 
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeVariablesNotFoundError,
+                        "Error: Configuration not found.");
                     return;
                 }
 
-                _loggingService.Log($"Updating usage location for: {ResourceAccountUpn}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.CallQueuesUpdateUsageLocationLog,
+                    "Updating the usage location for '{upn}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
 
                 var command = _powerShellCommandService.GetUpdateResourceAccountUsageLocationCommand(ResourceAccountUpn, variables.UsageLocation);
-                var result = await ExecutePowerShellCommandAsync(command, "UpdateUsageLocation");
+                var result = await ExecutePowerShellCommandAsync(
+                    command,
+                    GetText(
+                        UiTextKey.CallQueuesUpdateUsageLocationContext,
+                        "Update usage location"));
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Usage location updated for '{ResourceAccountUpn}' to '{variables.UsageLocation}'";
-                    _loggingService.Log($"Usage location updated for {ResourceAccountUpn}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesUpdateUsageLocationSuccess,
+                        "Usage location updated for '{upn}' to '{usageLocation}'.",
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["usageLocation"] = variables.UsageLocation
+                        });
+                    LogLocalized(
+                        UiTextKey.CallQueuesUpdateUsageLocationSuccessLog,
+                        "Usage location updated for '{upn}'.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = ResourceAccountUpn });
                     // Don't auto-refresh to avoid showing "Found ... resource accounts" message
                 }
                 else
                 {
-                    StatusMessage = $"Error updating usage location: {result.Value}";
-                    _loggingService.Log($"Error updating usage location for {ResourceAccountUpn}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesUpdateUsageLocationError,
+                        "Error updating the usage location: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesUpdateUsageLocationErrorLog,
+                        "Error updating the usage location for '{upn}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in UpdateUsageLocationAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(UpdateUsageLocationAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -465,50 +696,90 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(CallQueueName))
             {
-                StatusMessage = "Error: Call queue name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesNameRequiredError,
+                    "Error: Call queue name cannot be empty.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowCreateCallQueueDialog = false;
 
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeVariablesNotFoundError,
+                        "Error: Configuration not found.");
                     return;
                 }
 
-                _loggingService.Log($"Creating call queue: {CallQueueName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.CallQueuesCreateCallQueueLog,
+                    "Creating call queue '{name}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = CallQueueName });
 
                 var command = _powerShellCommandService.GetCreateCallQueueCommand(CallQueueName, variables.LanguageId, variables.M365GroupId, variables);
-                var result = await PreviewAndExecuteAsync(command, "Create Call Queue");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.CallQueuesCreateCallQueueContext,
+                        "Create call queue"));
                 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Call queue '{CallQueueName}' created successfully";
-                    _loggingService.Log($"Call queue {CallQueueName} created successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesCreateCallQueueSuccess,
+                        "Call queue '{name}' created successfully.",
+                        new Dictionary<string, object?> { ["name"] = CallQueueName });
+                    LogLocalized(
+                        UiTextKey.CallQueuesCreateCallQueueSuccessLog,
+                        "Call queue '{name}' created successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = CallQueueName });
                     // Don't auto-refresh to avoid showing "Found ... call queues" message
                 }
                 else
                 {
-                    StatusMessage = $"Error creating call queue: {result.Value}";
-                    _loggingService.Log($"Error creating call queue {CallQueueName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesCreateCallQueueError,
+                        "Error creating the call queue: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesCreateCallQueueErrorLog,
+                        "Error creating the call queue '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = CallQueueName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateCallQueueAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(CreateCallQueueAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -538,42 +809,93 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(ResourceAccountUpn) || string.IsNullOrWhiteSpace(CallQueueName))
             {
-                StatusMessage = "Error: Resource account UPN and call queue name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesAssociateDetailsRequiredError,
+                    "Error: Resource account UPN and call queue name cannot be empty.");
                 return;
             }
 
             try
             {
-                WaitingMessage = ConstantsService.Messages.WaitingMessage;
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
                 IsBusy = true;
                 ShowAssociateDialog = false;
 
-                _loggingService.Log($"Associating resource account {ResourceAccountUpn} with call queue {CallQueueName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.CallQueuesAssociateResourceAccountLog,
+                    "Associating resource account '{upn}' with call queue '{name}'.",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["upn"] = ResourceAccountUpn,
+                        ["name"] = CallQueueName
+                    });
 
                 var command = _powerShellCommandService.GetAssociateResourceAccountWithCallQueueCommand(ResourceAccountUpn, CallQueueName);
-                var result = await PreviewAndExecuteAsync(command, "Associate Resource Account");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(
+                        UiTextKey.CallQueuesAssociateResourceAccountContext,
+                        "Associate resource account"));
                 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Successfully associated resource account '{ResourceAccountUpn}' with call queue '{CallQueueName}'";
-                    _loggingService.Log($"Successfully associated resource account {ResourceAccountUpn} with call queue {CallQueueName}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssociateResourceAccountSuccess,
+                        "Resource account '{upn}' was associated with call queue '{name}' successfully.",
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["name"] = CallQueueName
+                        });
+                    LogLocalized(
+                        UiTextKey.CallQueuesAssociateResourceAccountSuccessLog,
+                        "Resource account '{upn}' was associated with call queue '{name}' successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["name"] = CallQueueName
+                        });
                 }
                 else
                 {
-                    StatusMessage = $"Error associating resource account with call queue: {result.Value}";
-                    _loggingService.Log($"Error associating resource account {ResourceAccountUpn} with call queue {CallQueueName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesAssociateResourceAccountError,
+                        "Error associating the resource account with the call queue: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesAssociateResourceAccountErrorLog,
+                        "Error associating resource account '{upn}' with call queue '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = ResourceAccountUpn,
+                            ["name"] = CallQueueName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in AssociateResourceAccountWithCallQueueAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(AssociateResourceAccountWithCallQueueAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -587,7 +909,9 @@ namespace PhoneDesk.ViewModels
             var name = callQueueName ?? CallQueueName;
             if (string.IsNullOrWhiteSpace(name))
             {
-                StatusMessage = "Error: Call queue name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesNameRequiredError,
+                    "Error: Call queue name cannot be empty.");
                 return;
             }
 
@@ -597,32 +921,65 @@ namespace PhoneDesk.ViewModels
 
                 var command = _powerShellCommandService.GetRemoveCallQueueCommand(name);
                 var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the call queue '{name}'. This action cannot be undone.",
-                    "Remove Call Queue");
+                    GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueConfirm,
+                        "This permanently deletes the call queue '{name}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["name"] = name }),
+                    GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueContext,
+                        "Delete call queue"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Call queue '{name}' removed successfully";
-                    _loggingService.Log($"Call queue {name} removed successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueSuccess,
+                        "Call queue '{name}' deleted successfully.",
+                        new Dictionary<string, object?> { ["name"] = name });
+                    LogLocalized(
+                        UiTextKey.CallQueuesDeleteCallQueueLog,
+                        "Call queue '{name}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = name });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveCallQueuesAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error removing call queue: {result.Value}";
-                    _loggingService.Log($"Error removing call queue {name}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteCallQueueError,
+                        "Error deleting the call queue: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesDeleteCallQueueErrorLog,
+                        "Error deleting the call queue '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = name,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveCallQueueAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RemoveCallQueueAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {
@@ -636,7 +993,9 @@ namespace PhoneDesk.ViewModels
             var accountUpn = upn ?? ResourceAccountUpn;
             if (string.IsNullOrWhiteSpace(accountUpn))
             {
-                StatusMessage = "Error: Resource account UPN cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesUpdateUsageLocationUpnRequiredError,
+                    "Error: Resource account UPN cannot be empty.");
                 return;
             }
 
@@ -646,32 +1005,65 @@ namespace PhoneDesk.ViewModels
 
                 var command = _powerShellCommandService.GetRemoveResourceAccountCommand(accountUpn);
                 var result = await ConfirmAndExecuteAsync(command,
-                    $"This will permanently remove the resource account '{accountUpn}'. This action cannot be undone.",
-                    "Remove Resource Account");
+                    GetText(
+                        UiTextKey.CallQueuesDeleteResourceAccountConfirm,
+                        "This permanently deletes the resource account '{upn}'. This action cannot be undone.",
+                        new Dictionary<string, object?> { ["upn"] = accountUpn }),
+                    GetText(
+                        UiTextKey.CallQueuesDeleteResourceAccountContext,
+                        "Delete resource account"));
 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Resource account '{accountUpn}' removed successfully";
-                    _loggingService.Log($"Resource account {accountUpn} removed successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteResourceAccountSuccess,
+                        "Resource account '{upn}' deleted successfully.",
+                        new Dictionary<string, object?> { ["upn"] = accountUpn });
+                    LogLocalized(
+                        UiTextKey.CallQueuesDeleteResourceAccountLog,
+                        "Resource account '{upn}' deleted successfully.",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["upn"] = accountUpn });
                     if (_sharedStateService?.AutoRefreshAfterOperations ?? true)
                         await RetrieveResourceAccountsAsync();
                 }
                 else
                 {
-                    StatusMessage = $"Error removing resource account: {result.Value}";
-                    _loggingService.Log($"Error removing resource account {accountUpn}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.CallQueuesDeleteResourceAccountError,
+                        "Error deleting the resource account: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.CallQueuesDeleteResourceAccountErrorLog,
+                        "Error deleting the resource account '{upn}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["upn"] = accountUpn,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in RemoveResourceAccountAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?>
+                    {
+                        ["context"] = nameof(RemoveResourceAccountAsync),
+                        ["details"] = ex.ToString()
+                    });
             }
             finally
             {

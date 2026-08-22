@@ -192,6 +192,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore PhoneDesk.slnx
 
+    - name: Validate localized UI strings
+      run: pwsh -NoProfile -File scripts/check-localization.ps1
+
     - name: Build
       run: dotnet build PhoneDesk.slnx --configuration Release --no-restore
 
@@ -418,6 +421,9 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore PhoneDesk.slnx
+
+    - name: Validate localized UI strings
+      run: pwsh -NoProfile -File scripts/check-localization.ps1
 
     - name: Build
       run: dotnet build PhoneDesk.slnx --configuration Release --no-restore

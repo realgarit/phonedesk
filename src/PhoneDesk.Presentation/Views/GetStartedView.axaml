@@ -3,6 +3,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -30,19 +31,19 @@
         <StackPanel Margin="32" MaxWidth="850" HorizontalAlignment="Center" Spacing="24">
 
             <!-- Header Section -->
-            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,0,0,16">
-                <Border Classes="icon-badge">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,0,0,16">
+                <Border Grid.Column="0" Classes="icon-badge" VerticalAlignment="Top">
                     <fi:SymbolIcon Symbol="Rocket"/>
                 </Border>
-                <StackPanel Spacing="4" VerticalAlignment="Center">
-                    <TextBlock Text="Setup Steps"
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:Translate Key=GetStartedTitle}"
                              Classes="page-title"
                              Margin="0"/>
-                    <TextBlock Text="A short readiness check before you configure a customer. You can pause after any step and return later."
+                    <TextBlock Text="{loc:Translate Key=GetStartedSubtitle}"
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                 </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <Border Classes="setup-guidance">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
@@ -52,7 +53,7 @@
                                    Foreground="{DynamicResource TeamsPrimaryBrush}"
                                    VerticalAlignment="Top"/>
                     <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Text="What happens here"
+                        <TextBlock Text="{loc:Translate Key=GetStartedWhatHappensHereTitle}"
                                    FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding SetupGuidance}"
                                    TextWrapping="Wrap"/>
@@ -69,7 +70,7 @@
                             VerticalAlignment="Center"
                             MinWidth="190">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Start configuration" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=GetStartedStartConfigurationAction}" VerticalAlignment="Center"/>
                             <fi:SymbolIcon Symbol="ArrowRight"/>
                         </StackPanel>
                     </Button>
@@ -89,8 +90,8 @@
                                 BorderBrush="{DynamicResource AccentHairlineBrush}"
                                 BorderThickness="2"
                                 IsVisible="{Binding !ModulesChecked}"
-                                AutomationProperties.Name="Step 1: Pending"
-                                ToolTip.Tip="Step 1: Pending">
+                                AutomationProperties.Name="{loc:Translate Key=GetStartedStep1PendingA11y}"
+                                ToolTip.Tip="{loc:Translate Key=GetStartedStep1PendingA11y}">
                             <TextBlock Text="1" 
                                      FontSize="15"
                                      FontWeight="Bold"
@@ -106,15 +107,15 @@
                                      VerticalAlignment="Center"
                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                                      IsVisible="{Binding ModulesChecked}"
-                                     AutomationProperties.Name="Step 1: Completed"
-                                     ToolTip.Tip="Step 1: Completed"/>
+                                     AutomationProperties.Name="{loc:Translate Key=GetStartedStep1CompletedA11y}"
+                                     ToolTip.Tip="{loc:Translate Key=GetStartedStep1CompletedA11y}"/>
                     </Panel>
                     <!-- Content -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
-                        <TextBlock Text="Check PowerShell Modules"
+                        <TextBlock Text="{loc:Translate Key=GetStartedModulesTitle}"
                                  FontSize="18"
                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Verify that Microsoft Teams and Microsoft Graph PowerShell modules are installed."
+                        <TextBlock Text="{loc:Translate Key=GetStartedModulesDescription}"
                                  FontSize="14"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"/>
@@ -146,8 +147,8 @@
                                 BorderBrush="{DynamicResource AccentHairlineBrush}"
                                 BorderThickness="2"
                                 IsVisible="{Binding !TeamsConnected}"
-                                AutomationProperties.Name="Step 2: Pending"
-                                ToolTip.Tip="Step 2: Pending">
+                                AutomationProperties.Name="{loc:Translate Key=GetStartedStep2PendingA11y}"
+                                ToolTip.Tip="{loc:Translate Key=GetStartedStep2PendingA11y}">
                             <TextBlock Text="2" 
                                      FontSize="15"
                                      FontWeight="Bold"
@@ -162,15 +163,15 @@
                                      VerticalAlignment="Center"
                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                                      IsVisible="{Binding TeamsConnected}"
-                                     AutomationProperties.Name="Step 2: Completed"
-                                     ToolTip.Tip="Step 2: Completed"/>
+                                     AutomationProperties.Name="{loc:Translate Key=GetStartedStep2CompletedA11y}"
+                                     ToolTip.Tip="{loc:Translate Key=GetStartedStep2CompletedA11y}"/>
                     </Panel>
                     <!-- Content -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
-                        <TextBlock Text="Connect to Microsoft Teams"
+                        <TextBlock Text="{loc:Translate Key=GetStartedTeamsTitle}"
                                  FontSize="18"
                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Establish a secure connection to your Microsoft Teams tenant. A sign-in window may appear."
+                        <TextBlock Text="{loc:Translate Key=GetStartedTeamsDescription}"
                                  FontSize="14"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"/>
@@ -194,7 +195,7 @@
                                 MinWidth="160">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="SignOut"/>
-                                <TextBlock Text="Disconnect" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=GetStartedDisconnectAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -213,8 +214,8 @@
                                 BorderBrush="{DynamicResource AccentHairlineBrush}"
                                 BorderThickness="2"
                                 IsVisible="{Binding !GraphConnected}"
-                                AutomationProperties.Name="Step 3: Pending"
-                                ToolTip.Tip="Step 3: Pending">
+                                AutomationProperties.Name="{loc:Translate Key=GetStartedStep3PendingA11y}"
+                                ToolTip.Tip="{loc:Translate Key=GetStartedStep3PendingA11y}">
                             <TextBlock Text="3" 
                                      FontSize="15"
                                      FontWeight="Bold"
@@ -229,15 +230,15 @@
                                      VerticalAlignment="Center"
                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                                      IsVisible="{Binding GraphConnected}"
-                                     AutomationProperties.Name="Step 3: Completed"
-                                     ToolTip.Tip="Step 3: Completed"/>
+                                     AutomationProperties.Name="{loc:Translate Key=GetStartedStep3CompletedA11y}"
+                                     ToolTip.Tip="{loc:Translate Key=GetStartedStep3CompletedA11y}"/>
                     </Panel>
                     <!-- Content -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
-                        <TextBlock Text="Connect to Microsoft Graph"
+                        <TextBlock Text="{loc:Translate Key=GetStartedGraphTitle}"
                                  FontSize="18"
                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Connect to Microsoft Graph to manage groups and phone resources. A browser sign-in window will open."
+                        <TextBlock Text="{loc:Translate Key=GetStartedGraphDescription}"
                                  FontSize="14"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"/>
@@ -261,7 +262,7 @@
                                 MinWidth="160">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="SignOut"/>
-                                <TextBlock Text="Disconnect" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=GetStartedDisconnectAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -292,11 +293,11 @@
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <fi:SymbolIcon Symbol="CheckmarkCircle" Foreground="{DynamicResource SystemFillColorSuccessBrush}" FontSize="24"/>
-                            <TextBlock Text="All Systems Ready"
+                            <TextBlock Text="{loc:Translate Key=GetStartedAllSystemsReadyTitle}"
                                      FontSize="18"
                                      FontWeight="SemiBold"/>
                         </StackPanel>
-                        <TextBlock Text="You have successfully connected to all required services."
+                        <TextBlock Text="{loc:Translate Key=GetStartedAllSystemsReadyDescription}"
                                  FontSize="14"
                                  Opacity="0.7"/>
                     </StackPanel>
@@ -307,7 +308,7 @@
                             FontWeight="Bold"
                             MinWidth="200">
                         <StackPanel Orientation="Horizontal" Spacing="12">
-                            <TextBlock Text="Start Configuration" VerticalAlignment="Center"/>
+                            <TextBlock Text="{loc:Translate Key=GetStartedStartConfigurationAction}" VerticalAlignment="Center"/>
                             <fi:SymbolIcon Symbol="ArrowRight"/>
                         </StackPanel>
                     </Button>
@@ -320,7 +321,7 @@
                         Spacing="12"
                         IsVisible="{Binding IsBusy}">
                 <ProgressBar IsIndeterminate="True" Width="20" Height="20"/>
-                <TextBlock Text="Processing..." Opacity="0.7"/>
+                <TextBlock Text="{loc:Translate Key=GetStartedProcessing}" Opacity="0.7"/>
             </StackPanel>
 
         </StackPanel>

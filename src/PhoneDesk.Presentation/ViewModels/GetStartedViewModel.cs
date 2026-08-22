@@ -2,13 +2,17 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Localization;
 using System.Threading.Tasks;
 using System;
+using System.ComponentModel;
 
 namespace PhoneDesk.ViewModels
 {
-    public partial class GetStartedViewModel : ViewModelBase
+    public partial class GetStartedViewModel : ViewModelBase, IDisposable
     {
+        private bool _disposed;
+
         [ObservableProperty]
         private bool _modulesChecked;
 
@@ -21,27 +25,90 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private bool _canProceed;
 
-        private string? _lastSetupError;
+        private UiTextKey? _lastSetupErrorKey;
+        private string? _lastSetupErrorFallback;
 
         public bool CanConnectTeams => ModulesChecked && !TeamsConnected;
         public bool CanConnectGraph => ModulesChecked && !GraphConnected;
 
-        public string SetupGuidance { get; private set; } = string.Empty;
+        public string SetupGuidance => CanProceed
+            ? GetText(
+                UiTextKey.GetStartedSetupGuidanceReady,
+                "Everything is ready. Start configuration when you're ready.")
+            : _lastSetupErrorKey is { } errorKey
+                ? GetText(errorKey, _lastSetupErrorFallback ?? string.Empty)
+                : !ModulesChecked
+                    ? GetText(
+                        UiTextKey.GetStartedSetupGuidanceStartModules,
+                        "Start here: check the bundled modules before connecting to a customer tenant.")
+                    : !TeamsConnected
+                        ? GetText(
+                            UiTextKey.GetStartedSetupGuidanceConnectTeams,
+                            "The modules are ready. Connect to Microsoft Teams next.")
+                        : GetText(
+                            UiTextKey.GetStartedSetupGuidanceConnectGraph,
+                            "Teams is connected. Connect to Microsoft Graph next; a browser sign-in window will open.");
+
         public string SetupGuidanceDetail => CanProceed
-            ? "Your connections are ready. You can start the customer configuration now."
-            : "Setup becomes available only after all three checks pass.";
+            ? GetText(
+                UiTextKey.GetStartedSetupGuidanceDetailReady,
+                "Your connections are ready. You can start the customer configuration now.")
+            : GetText(
+                UiTextKey.GetStartedSetupGuidanceDetailBlocked,
+                "Setup becomes available only after all three checks pass.");
 
-        public string ModulesActionText => ModulesChecked ? "Check again" : "Check modules";
+        public string ModulesActionText => ModulesChecked
+            ? GetText(UiTextKey.GetStartedCheckAgainAction, "Check again")
+            : GetText(UiTextKey.GetStartedCheckModulesAction, "Check modules");
         public string TeamsActionText => TeamsConnected
-            ? "Connected"
-            : ModulesChecked ? "Connect Teams" : "Check modules first";
+            ? GetText(UiTextKey.GetStartedConnectedAction, "Connected")
+            : ModulesChecked
+                ? GetText(UiTextKey.GetStartedConnectTeamsAction, "Connect Teams")
+                : GetText(UiTextKey.GetStartedCheckModulesFirstAction, "Check modules first");
         public string GraphActionText => GraphConnected
-            ? "Connected"
-            : ModulesChecked ? "Connect Graph" : "Check modules first";
+            ? GetText(UiTextKey.GetStartedConnectedAction, "Connected")
+            : ModulesChecked
+                ? GetText(UiTextKey.GetStartedConnectGraphAction, "Connect Graph")
+                : GetText(UiTextKey.GetStartedCheckModulesFirstAction, "Check modules first");
 
-        public string ModulesStatusText => $"Step 1 of 3: Modules — {(ModulesChecked ? "Ready" : "Not checked yet")}";
-        public string TeamsStatusText => $"Step 2 of 3: Microsoft Teams — {(TeamsConnected ? "Connected" : "Waiting")}";
-        public string GraphStatusText => $"Step 3 of 3: Microsoft Graph — {(GraphConnected ? "Connected" : "Waiting")}";
+        public string ModulesStatusText => GetText(
+            UiTextKey.GetStartedStepStatus,
+            "Step {step} of {total}: {title} — {status}",
+            new Dictionary<string, object?>
+            {
+                ["step"] = 1,
+                ["total"] = 3,
+                ["title"] = GetText(UiTextKey.GetStartedModulesTitle, "Check PowerShell Modules"),
+                ["status"] = ModulesChecked
+                    ? GetText(UiTextKey.GetStartedStatusReady, "Ready")
+                    : GetText(UiTextKey.GetStartedStatusNotChecked, "Not checked yet")
+            });
+
+        public string TeamsStatusText => GetText(
+            UiTextKey.GetStartedStepStatus,
+            "Step {step} of {total}: {title} — {status}",
+            new Dictionary<string, object?>
+            {
+                ["step"] = 2,
+                ["total"] = 3,
+                ["title"] = "Microsoft Teams",
+                ["status"] = TeamsConnected
+                    ? GetText(UiTextKey.GetStartedStatusConnected, "Connected")
+                    : GetText(UiTextKey.GetStartedStatusWaiting, "Waiting")
+            });
+
+        public string GraphStatusText => GetText(
+            UiTextKey.GetStartedStepStatus,
+            "Step {step} of {total}: {title} — {status}",
+            new Dictionary<string, object?>
+            {
+                ["step"] = 3,
+                ["total"] = 3,
+                ["title"] = "Microsoft Graph",
+                ["status"] = GraphConnected
+                    ? GetText(UiTextKey.GetStartedStatusConnected, "Connected")
+                    : GetText(UiTextKey.GetStartedStatusWaiting, "Waiting")
+            });
 
         private readonly IMsalGraphAuthenticationService _msalAuthService;
 
@@ -54,17 +121,25 @@ namespace PhoneDesk.ViewModels
             IErrorHandlingService errorHandlingService,
             IValidationService validationService,
             IMsalGraphAuthenticationService msalAuthService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
             _msalAuthService = msalAuthService;
             _modulesChecked = _sessionManager.ModulesChecked;
             _teamsConnected = _sessionManager.TeamsConnected;
             _graphConnected = _sessionManager.GraphConnected;
             UpdateCanProceed();
+            LogLocalized(
+                UiTextKey.GetStartedPageLoadedLog,
+                "Get Started page loaded",
+                LogLevel.Info);
 
-            _loggingService.Log("Get Started page loaded", LogLevel.Info);
+            if (_translationService is not null)
+            {
+                _translationService.PropertyChanged += OnTranslationServicePropertyChanged;
+            }
         }
 
         [RelayCommand]
@@ -72,7 +147,10 @@ namespace PhoneDesk.ViewModels
         {
             if (!CanProceed)
             {
-                _loggingService.Log("Cannot navigate: prerequisites not met", LogLevel.Warning);
+                LogLocalized(
+                    UiTextKey.GetStartedNavigationBlockedLog,
+                    "Cannot navigate: prerequisites not met",
+                    LogLevel.Warning);
                 return;
             }
 
@@ -84,9 +162,12 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                _lastSetupError = null;
+                ClearSetupError();
                 IsBusy = true;
-                _loggingService.Log("Checking PowerShell modules...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedCheckModulesLog,
+                    "Checking PowerShell modules...",
+                    LogLevel.Info);
 
                 var command = _powerShellCommandService.GetCheckModulesCommand();
                 var result = await ExecutePowerShellCommandAsync(command, "CheckModules");
@@ -113,7 +194,10 @@ namespace PhoneDesk.ViewModels
 
                 if (ModulesChecked)
                 {
-                    _loggingService.Log("PowerShell modules are available", LogLevel.Success);
+                    LogLocalized(
+                        UiTextKey.GetStartedModulesAvailableLog,
+                        "PowerShell modules are available",
+                        LogLevel.Success);
                     foreach (var line in output.Split('\n'))
                     {
                         if (!string.IsNullOrWhiteSpace(line))
@@ -124,17 +208,27 @@ namespace PhoneDesk.ViewModels
                 }
                 else
                 {
-                    var errorMessage = "One or more required modules could not be installed";
-                    _loggingService.Log(errorMessage, LogLevel.Error);
-                    SetSetupError("Some required PowerShell modules are missing. Review the log, then try again.");
+                    LogLocalized(
+                        UiTextKey.GetStartedModulesMissingLog,
+                        "One or more required modules could not be installed",
+                        LogLevel.Error);
+                    SetSetupError(
+                        UiTextKey.GetStartedSetupGuidanceModulesRetry,
+                        "Some required PowerShell modules are missing. Review the log, then try again.");
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error checking PowerShell modules: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.GetStartedModulesCheckErrorLog,
+                    "Error checking PowerShell modules: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.Message });
                 ModulesChecked = false;
                 _sessionManager.UpdateModulesChecked(false);
-                SetSetupError("The module check could not be completed. Review the log and try again.");
+                SetSetupError(
+                    UiTextKey.GetStartedSetupGuidanceModulesRetry,
+                    "The module check could not be completed. Review the log and try again.");
             }
             finally
             {
@@ -149,14 +243,22 @@ namespace PhoneDesk.ViewModels
             {
                 if (!ModulesChecked)
                 {
-                    _loggingService.Log("Please check modules first", LogLevel.Warning);
-                    SetSetupError("Check the required modules before connecting to Microsoft Teams.");
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectTeamsBlockedLog,
+                        "Check the required modules before connecting to Microsoft Teams.",
+                        LogLevel.Warning);
+                    SetSetupError(
+                        UiTextKey.GetStartedConnectTeamsBlockedLog,
+                        "Check the required modules before connecting to Microsoft Teams.");
                     return;
                 }
 
-                _lastSetupError = null;
+                ClearSetupError();
                 IsBusy = true;
-                _loggingService.Log("Connecting to Microsoft Teams...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedConnectTeamsLog,
+                    "Connecting to Microsoft Teams...",
+                    LogLevel.Info);
 
                 var command = _powerShellCommandService.GetConnectTeamsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, "ConnectTeams");
@@ -167,7 +269,10 @@ namespace PhoneDesk.ViewModels
 
                 if (TeamsConnected)
                 {
-                    _loggingService.Log("Connected to Microsoft Teams successfully", LogLevel.Success);
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectTeamsSuccessLog,
+                        "Connected to Microsoft Teams successfully",
+                        LogLevel.Success);
 
                     foreach (var line in (result.Value ?? string.Empty).Split('\n'))
                     {
@@ -184,8 +289,14 @@ namespace PhoneDesk.ViewModels
                 }
                 else
                 {
-                    _loggingService.Log($"Error connecting to Microsoft Teams: {result.Value}", LogLevel.Error);
-                    SetSetupError("Microsoft Teams could not be connected. Check the sign-in window and try again.");
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectTeamsErrorLog,
+                        "Error connecting to Microsoft Teams: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    SetSetupError(
+                        UiTextKey.GetStartedSetupGuidanceTeamsRetry,
+                        "Microsoft Teams could not be connected. Check the sign-in window and try again.");
                 }
 
                 _sessionManager.UpdateTeamsConnection(TeamsConnected);
@@ -198,11 +309,17 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error connecting to Microsoft Teams: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.GetStartedConnectTeamsErrorLog,
+                    "Error connecting to Microsoft Teams: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.Message });
                 TeamsConnected = false;
                 _sessionManager.UpdateTeamsConnection(false);
                 UpdateCanProceed();
-                SetSetupError("Microsoft Teams could not be connected. Check the sign-in window and try again.");
+                SetSetupError(
+                    UiTextKey.GetStartedSetupGuidanceTeamsRetry,
+                    "Microsoft Teams could not be connected. Check the sign-in window and try again.");
             }
             finally
             {
@@ -217,29 +334,46 @@ namespace PhoneDesk.ViewModels
             {
                 if (!ModulesChecked)
                 {
-                    _loggingService.Log("Please check modules first", LogLevel.Warning);
-                    SetSetupError("Check the required modules before connecting to Microsoft Graph.");
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectGraphBlockedLog,
+                        "Check the required modules before connecting to Microsoft Graph.",
+                        LogLevel.Warning);
+                    SetSetupError(
+                        UiTextKey.GetStartedConnectGraphBlockedLog,
+                        "Check the required modules before connecting to Microsoft Graph.");
                     return;
                 }
 
-                _lastSetupError = null;
+                ClearSetupError();
                 IsBusy = true;
-                _loggingService.Log("Authenticating to Microsoft Graph...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedConnectGraphAuthLog,
+                    "Authenticating to Microsoft Graph...",
+                    LogLevel.Info);
 
                 // Step 1: Authenticate using MSAL (opens browser popup)
                 var authResult = await _msalAuthService.AuthenticateAsync();
 
                 if (!authResult.Success || string.IsNullOrEmpty(authResult.AccessToken))
                 {
-                    _loggingService.Log($"Authentication failed: {authResult.ErrorMessage}", LogLevel.Error);
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectGraphAuthFailedLog,
+                        "Authentication failed: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = authResult.ErrorMessage });
                     GraphConnected = false;
                     _sessionManager.UpdateGraphConnection(false);
                     UpdateCanProceed();
-                    SetSetupError("Microsoft Graph sign-in did not complete. Finish the browser sign-in and try again.");
+                    SetSetupError(
+                        UiTextKey.GetStartedSetupGuidanceGraphRetry,
+                        "Microsoft Graph sign-in did not complete. Finish the browser sign-in and try again.");
                     return;
                 }
 
-                _loggingService.Log("Authentication successful, connecting PowerShell to Microsoft Graph...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedConnectGraphPowerShellLog,
+                    "Authentication successful, connecting PowerShell to Microsoft Graph...",
+                    LogLevel.Info);
 
                 // Step 2: Pass the token securely via environment variable (not embedded in script)
                 // This prevents the token from appearing in logs or error messages
@@ -255,12 +389,22 @@ namespace PhoneDesk.ViewModels
 
                 if (GraphConnected)
                 {
-                    _loggingService.Log($"Connected to Microsoft Graph successfully as {account}", LogLevel.Success);
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectGraphSuccessLog,
+                        "Connected to Microsoft Graph successfully as {account}",
+                        LogLevel.Success,
+                        new Dictionary<string, object?> { ["account"] = account });
                 }
                 else
                 {
-                    _loggingService.Log($"Error connecting to Microsoft Graph: {result.Value}", LogLevel.Error);
-                    SetSetupError("Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
+                    LogLocalized(
+                        UiTextKey.GetStartedConnectGraphErrorLog,
+                        "Error connecting to Microsoft Graph: {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    SetSetupError(
+                        UiTextKey.GetStartedSetupGuidanceGraphRetry,
+                        "Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
                 }
 
                 _sessionManager.UpdateGraphConnection(GraphConnected, account);
@@ -268,11 +412,17 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error connecting to Microsoft Graph: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.GetStartedConnectGraphErrorLog,
+                    "Error connecting to Microsoft Graph: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.Message });
                 GraphConnected = false;
                 _sessionManager.UpdateGraphConnection(false);
                 UpdateCanProceed();
-                SetSetupError("Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
+                SetSetupError(
+                    UiTextKey.GetStartedSetupGuidanceGraphRetry,
+                    "Microsoft Graph could not be connected. Finish the browser sign-in and try again.");
             }
             finally
             {
@@ -285,20 +435,30 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                _lastSetupError = null;
+                ClearSetupError();
                 IsBusy = true;
-                _loggingService.Log("Disconnecting from Microsoft Teams...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectTeamsLog,
+                    "Disconnecting from Microsoft Teams...",
+                    LogLevel.Info);
 
                 var command = _powerShellCommandService.GetDisconnectTeamsCommand();
                 var result = await ExecutePowerShellCommandAsync(command, "DisconnectTeams");
                 TeamsConnected = false;
                 _sessionManager.UpdateTeamsConnection(false);
-                _loggingService.Log("Disconnected from Microsoft Teams", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectTeamsSuccessLog,
+                    "Disconnected from Microsoft Teams",
+                    LogLevel.Info);
                 UpdateCanProceed();
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error disconnecting from Microsoft Teams: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectTeamsErrorLog,
+                    "Error disconnecting from Microsoft Teams: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.Message });
             }
             finally
             {
@@ -311,9 +471,12 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                _lastSetupError = null;
+                ClearSetupError();
                 IsBusy = true;
-                _loggingService.Log("Disconnecting from Microsoft Graph...", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectGraphLog,
+                    "Disconnecting from Microsoft Graph...",
+                    LogLevel.Info);
 
                 // Sign out from MSAL to clear cached tokens
                 await _msalAuthService.SignOutAsync();
@@ -322,12 +485,19 @@ namespace PhoneDesk.ViewModels
                 var result = await ExecutePowerShellCommandAsync(command, "DisconnectGraph");
                 GraphConnected = false;
                 _sessionManager.UpdateGraphConnection(false);
-                _loggingService.Log("Disconnected from Microsoft Graph", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectGraphSuccessLog,
+                    "Disconnected from Microsoft Graph",
+                    LogLevel.Info);
                 UpdateCanProceed();
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error disconnecting from Microsoft Graph: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.GetStartedDisconnectGraphErrorLog,
+                    "Error disconnecting from Microsoft Graph: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.Message });
             }
             finally
             {
@@ -341,28 +511,30 @@ namespace PhoneDesk.ViewModels
             UpdateGuidance();
         }
 
-        private void SetSetupError(string message)
+        private void SetSetupError(UiTextKey key, string fallback)
         {
-            _lastSetupError = message;
+            _lastSetupErrorKey = key;
+            _lastSetupErrorFallback = fallback;
+            UpdateGuidance();
+        }
+
+        private void ClearSetupError()
+        {
+            _lastSetupErrorKey = null;
+            _lastSetupErrorFallback = null;
             UpdateGuidance();
         }
 
         private void UpdateGuidance()
         {
-            SetupGuidance = CanProceed
-                ? "Everything is ready. Start configuration when you're ready."
-                : _lastSetupError
-                    ?? (!ModulesChecked
-                        ? "Start here: check the bundled modules before connecting to a customer tenant."
-                        : !TeamsConnected
-                            ? "The modules are ready. Connect to Microsoft Teams next."
-                            : "Teams is connected. Connect to Microsoft Graph next; a browser sign-in window will open.");
-
             OnPropertyChanged(nameof(SetupGuidance));
             OnPropertyChanged(nameof(SetupGuidanceDetail));
             OnPropertyChanged(nameof(ModulesActionText));
             OnPropertyChanged(nameof(TeamsActionText));
             OnPropertyChanged(nameof(GraphActionText));
+            OnPropertyChanged(nameof(ModulesStatusText));
+            OnPropertyChanged(nameof(TeamsStatusText));
+            OnPropertyChanged(nameof(GraphStatusText));
         }
 
         partial void OnModulesCheckedChanged(bool value)
@@ -388,6 +560,29 @@ namespace PhoneDesk.ViewModels
             OnPropertyChanged(nameof(CanConnectGraph));
             OnPropertyChanged(nameof(GraphStatusText));
             OnPropertyChanged(nameof(GraphActionText));
+        }
+
+        private void OnTranslationServicePropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ITranslationService.CurrentLanguage))
+            {
+                UpdateGuidance();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_translationService is not null)
+            {
+                _translationService.PropertyChanged -= OnTranslationServicePropertyChanged;
+            }
+
+            _disposed = true;
         }
     }
 }

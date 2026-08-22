@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhoneDesk.Localization;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Topology;
@@ -18,10 +20,11 @@ namespace PhoneDesk.ViewModels
     /// <see cref="ITenantTopologyCache"/>, and exposes search + relationship drill-down + orphans.
     /// This page never mutates tenant state.
     /// </summary>
-    public partial class DashboardViewModel : ViewModelBase
+    public partial class DashboardViewModel : ViewModelBase, IDisposable
     {
         private readonly ITenantTopologyAssembler _assembler;
         private readonly ITenantTopologyCache _cache;
+        private bool _disposed;
 
         [ObservableProperty]
         private ObservableCollection<TopologyAutoAttendant> _autoAttendants = new();
@@ -80,14 +83,23 @@ namespace PhoneDesk.ViewModels
             ITenantTopologyCache cache,
             ISharedStateService? sharedStateService = null,
             IDialogService? dialogService = null,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService,
-                  sharedStateService, dialogService, auditLog)
+                  sharedStateService, dialogService, auditLog, translationService)
         {
             _assembler = assembler;
             _cache = cache;
-            _loggingService.Log("Dashboard page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.DashboardPageLoadedLog,
+                "Dashboard page loaded",
+                LogLevel.Info);
+
+            if (_translationService is not null)
+            {
+                _translationService.PropertyChanged += OnTranslationServicePropertyChanged;
+            }
 
             // Instant restore from the session cache (issue #64: navigation back is instant).
             if (_cache.HasValue && _cache.Current is not null)
@@ -117,8 +129,13 @@ namespace PhoneDesk.ViewModels
         public int OrphanCount => Orphans.Count;
 
         public string LastRefreshedText => LastRefreshedUtc is { } ts
-            ? $"Last refreshed {ts.UtcDateTime:yyyy-MM-dd HH:mm:ss} UTC"
-            : "Not yet loaded";
+            ? GetText(
+                UiTextKey.DashboardLastRefreshed,
+                "Last refreshed {timestamp} UTC",
+                new Dictionary<string, object?> { ["timestamp"] = ts.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") })
+            : GetText(
+                UiTextKey.DashboardNotYetLoaded,
+                "Not yet loaded");
 
         /// <summary>Loads from the session cache when present; otherwise performs the first query.</summary>
         [RelayCommand]
@@ -139,7 +156,9 @@ namespace PhoneDesk.ViewModels
         {
             await RunBusyAsync(async () =>
             {
-                StatusMessage = "Retrieving tenant topology...";
+                StatusMessage = GetText(
+                    UiTextKey.DashboardLoadingStatus,
+                    "Loading tenant topology...");
                 var command = _powerShellCommandService.GetRetrieveTenantTopologyCommand();
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveTenantTopology", allowThrottleRetry: true);
 
@@ -147,10 +166,30 @@ namespace PhoneDesk.ViewModels
                 _cache.Set(topology);
                 Populate(topology);
 
-                StatusMessage = $"Loaded {AutoAttendants.Count} auto attendants, {CallQueues.Count} call queues, "
-                    + $"{ResourceAccounts.Count} resource accounts, {Groups.Count} groups. {OrphanCount} orphan(s).";
-                _loggingService.Log(StatusMessage, LogLevel.Info);
-            }, nameof(RefreshAsync), "Retrieving tenant topology...");
+                StatusMessage = GetText(
+                    UiTextKey.DashboardLoadedStatus,
+                    "Loaded {autoAttendants} auto attendants, {callQueues} call queues, {resourceAccounts} resource accounts, {groups} groups. {orphans} orphan(s).",
+                    new Dictionary<string, object?>
+                    {
+                        ["autoAttendants"] = AutoAttendants.Count,
+                        ["callQueues"] = CallQueues.Count,
+                        ["resourceAccounts"] = ResourceAccounts.Count,
+                        ["groups"] = Groups.Count,
+                        ["orphans"] = OrphanCount
+                    });
+                LogLocalized(
+                    UiTextKey.DashboardLoadedLog,
+                    "Tenant topology loaded: {autoAttendants} auto attendants, {callQueues} call queues, {resourceAccounts} resource accounts, {groups} groups, {orphans} orphan(s).",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["autoAttendants"] = AutoAttendants.Count,
+                        ["callQueues"] = CallQueues.Count,
+                        ["resourceAccounts"] = ResourceAccounts.Count,
+                        ["groups"] = Groups.Count,
+                        ["orphans"] = OrphanCount
+                    });
+            }, nameof(RefreshAsync), GetText(UiTextKey.DashboardLoadingStatus, "Loading tenant topology..."));
         }
 
         [RelayCommand]
@@ -186,6 +225,14 @@ namespace PhoneDesk.ViewModels
 
         partial void OnLastRefreshedUtcChanged(DateTimeOffset? value)
             => OnPropertyChanged(nameof(LastRefreshedText));
+
+        private void OnTranslationServicePropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ITranslationService.CurrentLanguage))
+            {
+                OnPropertyChanged(nameof(LastRefreshedText));
+            }
+        }
 
         partial void OnSelectedAutoAttendantChanged(TopologyAutoAttendant? value)
         {
@@ -268,5 +315,20 @@ namespace PhoneDesk.ViewModels
 
         private static bool Contains(string? value, string query)
             => !string.IsNullOrEmpty(value) && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (_translationService is not null)
+            {
+                _translationService.PropertyChanged -= OnTranslationServicePropertyChanged;
+            }
+
+            _disposed = true;
+        }
     }
 }

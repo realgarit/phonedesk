@@ -11,15 +11,14 @@ using System.Text.Json;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using PhoneDesk.Helpers;
+using PhoneDesk.Localization;
+using System.Collections.Generic;
 
 namespace PhoneDesk.ViewModels
 {
     public partial class VariablesViewModel : ViewModelBase
     {
         private PhoneManagerVariables? _subscribedVariables;
-
-        [ObservableProperty]
-        private string _welcomeMessage = "Start on General: enter the customer identity and locale first. Examples appear below each field; generated IDs stay read-only.";
 
         // Removed TeamsConnected and GraphConnected - no longer needed since lock was removed
 
@@ -191,11 +190,12 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("Variables page loaded", LogLevel.Info);
+            LogLocalized(UiTextKey.VariablesPageLoadedLog, "Variables page loaded", LogLevel.Info);
 
             // Subscribe to variable changes for Call Queue configuration visibility
             if (_sharedStateService?.Variables != null)
@@ -282,6 +282,18 @@ namespace PhoneDesk.ViewModels
 
         public bool CanProceed => true; // Removed lock - Variables page is always accessible
 
+        private string GetAudioContextText(string context) => context switch
+        {
+            "Greeting" => GetText(UiTextKey.VariablesAudioGreetingContext, "Greeting"),
+            "Music on Hold" => GetText(UiTextKey.VariablesAudioMusicOnHoldContext, "Music on hold"),
+            "Overflow Voicemail Greeting" => GetText(UiTextKey.VariablesAudioOverflowVoicemailContext, "Overflow voicemail greeting"),
+            "Timeout Voicemail Greeting" => GetText(UiTextKey.VariablesAudioTimeoutVoicemailContext, "Timeout voicemail greeting"),
+            "No Agent Voicemail Greeting" => GetText(UiTextKey.VariablesAudioNoAgentVoicemailContext, "No-agent voicemail greeting"),
+            "AA Default Greeting" => GetText(UiTextKey.VariablesAudioDefaultGreetingContext, "Default greeting"),
+            "AA After Hours Greeting" => GetText(UiTextKey.VariablesAudioAfterHoursGreetingContext, "After-hours greeting"),
+            _ => context
+        };
+
         [RelayCommand]
         private async Task SaveVariablesToFileAsync()
         {
@@ -302,13 +314,31 @@ namespace PhoneDesk.ViewModels
                 var json = JsonSerializer.Serialize(Variables, jsonOptions);
                 await File.WriteAllTextAsync(filePath, json);
 
-                _loggingService.Log($"Variables saved to: {filePath}", LogLevel.Info);
-                await _errorHandlingService.ShowSuccess($"Variables saved successfully to:\n{filePath}", "Save Successful");
+                LogLocalized(
+                    UiTextKey.VariablesSavedLog,
+                    "Configuration saved to: {path}",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["path"] = filePath });
+                await _errorHandlingService.ShowSuccess(
+                    GetText(
+                        UiTextKey.VariablesSaveSuccessMessage,
+                        "Configuration saved successfully to:\n{path}",
+                        new Dictionary<string, object?> { ["path"] = filePath }),
+                    GetText(UiTextKey.VariablesSaveSuccessTitle, "Save successful"));
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error saving variables: {ex.Message}", LogLevel.Error);
-                await _errorHandlingService.HandleGenericError($"Error saving variables:\n{ex.Message}", "SaveVariables");
+                LogLocalized(
+                    UiTextKey.VariablesSaveFailedLog,
+                    "Error saving configuration: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                await _errorHandlingService.HandleGenericError(
+                    GetText(
+                        UiTextKey.VariablesSaveFailedMessage,
+                        "Error saving configuration:\n{error}",
+                        new Dictionary<string, object?> { ["error"] = ex.Message }),
+                    "SaveVariables");
             }
         }
 
@@ -326,11 +356,11 @@ namespace PhoneDesk.ViewModels
                     
                     var file = await storageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
                     {
-                        Title = "Load Variables from File",
+                        Title = GetText(UiTextKey.VariablesLoadPickerTitle, "Load configuration from file"),
                         FileTypeFilter = new[]
                         {
-                            new Avalonia.Platform.Storage.FilePickerFileType("JSON files") { Patterns = new[] { "*.json" } },
-                            new Avalonia.Platform.Storage.FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesJsonFiles, "JSON files")) { Patterns = new[] { "*.json" } },
+                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesAllFiles, "All files")) { Patterns = new[] { "*" } }
                         },
                         SuggestedStartLocation = suggestedLocation
                     });
@@ -349,20 +379,42 @@ namespace PhoneDesk.ViewModels
                         if (loadedVariables != null)
                         {
                             Variables = loadedVariables;
-                            _loggingService.Log($"Variables loaded from: {fileName}", LogLevel.Info);
-                            await _errorHandlingService.ShowSuccess($"Variables loaded successfully from:\n{fileName}", "Load Successful");
+                            LogLocalized(
+                                UiTextKey.VariablesLoadedLog,
+                                "Configuration loaded from: {path}",
+                                LogLevel.Info,
+                                new Dictionary<string, object?> { ["path"] = fileName });
+                            await _errorHandlingService.ShowSuccess(
+                                GetText(
+                                    UiTextKey.VariablesLoadSuccessMessage,
+                                    "Configuration loaded successfully from:\n{path}",
+                                    new Dictionary<string, object?> { ["path"] = fileName }),
+                                GetText(UiTextKey.VariablesLoadSuccessTitle, "Load successful"));
                         }
                         else
                         {
-                            await _errorHandlingService.HandleGenericError("Failed to load variables from the selected file.", "LoadVariables");
+                            await _errorHandlingService.HandleGenericError(
+                                GetText(
+                                    UiTextKey.VariablesLoadFailedMessage,
+                                    "Failed to load configuration from the selected file."),
+                                "LoadVariables");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error loading variables: {ex.Message}", LogLevel.Error);
-                await _errorHandlingService.HandleGenericError($"Error loading variables:\n{ex.Message}", "LoadVariables");
+                LogLocalized(
+                    UiTextKey.VariablesLoadFailedLog,
+                    "Error loading configuration: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                await _errorHandlingService.HandleGenericError(
+                    GetText(
+                        UiTextKey.VariablesLoadFailedMessage,
+                        "Error loading configuration:\n{error}",
+                        new Dictionary<string, object?> { ["error"] = ex.Message }),
+                    "LoadVariables");
             }
         }
 
@@ -390,7 +442,11 @@ namespace PhoneDesk.ViewModels
             if (SelectedHolidayTime.HasValue)
             {
                 Variables.HolidayTime = SelectedHolidayTime.Value;
-                _loggingService.Log($"Holiday time updated to: {SelectedHolidayTime.Value:hh\\:mm}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.VariablesHolidayTimeUpdatedLog,
+                    "Holiday time updated to: {time}",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["time"] = SelectedHolidayTime.Value.ToString(@"hh\:mm") });
             }
             
             ShowHolidayTimePicker = false;
@@ -457,11 +513,15 @@ namespace PhoneDesk.ViewModels
                 // Open the edit dialog
                 ShowEditHolidayDialog = true;
                 
-                _loggingService.Log("Add Holiday dialog opened", LogLevel.Info);
+                LogLocalized(UiTextKey.VariablesAddHolidayDialogOpenedLog, "Add holiday dialog opened", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error in AddHoliday: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesOpenAddHolidayFailedLog,
+                    "Error opening add holiday dialog: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -557,11 +617,15 @@ namespace PhoneDesk.ViewModels
                 SelectedBezirk = null;
                 SelectedYear = Math.Max(2025, Math.Min(2030, DateTime.Now.Year));
                 ShowPredefinedHolidaysWizard = true;
-                _loggingService.Log("Opened Predefined Holidays wizard", LogLevel.Info);
+                LogLocalized(UiTextKey.VariablesPredefinedWizardOpenedLog, "Opened predefined holidays wizard", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error opening wizard: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesOpenPredefinedWizardFailedLog,
+                    "Error opening predefined holidays wizard: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -577,11 +641,15 @@ namespace PhoneDesk.ViewModels
             try
             {
                 ShowAargauInfoDialog = true;
-                _loggingService.Log("Opened Aargau holiday reference info", LogLevel.Info);
+                LogLocalized(UiTextKey.VariablesAargauReferenceOpenedLog, "Opened Aargau holiday reference info", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error opening Aargau info: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesOpenAargauReferenceFailedLog,
+                    "Error opening Aargau holiday reference info: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -605,23 +673,36 @@ namespace PhoneDesk.ViewModels
 
                 if (result.Completeness != PhoneDesk.Holidays.HolidayResultCompleteness.Complete)
                 {
-                    _loggingService.Log(
-                        $"Predefined holidays for '{SelectedCanton}' are regionally incomplete ({result.Completeness}): " +
-                        "only the canton-wide intersection was applied. A region/Bezirk is required for the full list.",
-                        LogLevel.Warning);
+                    LogLocalized(
+                        UiTextKey.VariablesPredefinedHolidayRegionIncompleteLog,
+                        "Predefined holidays for '{canton}' are regionally incomplete ({completeness}): only the canton-wide intersection was applied. A region or district is required for the full list.",
+                        LogLevel.Warning,
+                        new Dictionary<string, object?>
+                        {
+                            ["canton"] = SelectedCanton,
+                            ["completeness"] = result.Completeness
+                        });
                 }
 
                 foreach (var holiday in result.Holidays)
                 {
                     variables.HolidaySeries.Add(holiday);
-                    _loggingService.Log($"Added predefined holiday: {holiday.DisplayText}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesPredefinedHolidayAddedLog,
+                        "Added predefined holiday: {holiday}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["holiday"] = holiday.DisplayText });
                 }
 
                 ShowPredefinedHolidaysWizard = false;
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error applying predefined holidays: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesApplyPredefinedHolidaysFailedLog,
+                    "Error applying predefined holidays: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
         [RelayCommand]
@@ -631,9 +712,11 @@ namespace PhoneDesk.ViewModels
             {
                 if (holiday != null)
                 {
-                    _loggingService.Log($"EditHoliday: Starting edit for holiday", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesEditHolidayStartedLog,
+                        "Starting holiday edit",
+                        LogLevel.Info);
                     EditingHoliday = holiday;
-                    _loggingService.Log($"EditHoliday: Set EditingHoliday", LogLevel.Info);
                     
                     // Set the selected time, rounding to nearest 15-minute increment if needed
                     var roundedTime = new TimeSpan(holiday.Time.Hours, (holiday.Time.Minutes / 15) * 15, 0);
@@ -653,13 +736,24 @@ namespace PhoneDesk.ViewModels
                     }
                     
                     ShowEditHolidayDialog = true;
-                    _loggingService.Log($"EditHoliday: Set ShowEditHolidayDialog to true", LogLevel.Info);
-                    _loggingService.Log($"Edit holiday requested: {holiday.DisplayText}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesEditHolidayDialogReadyLog,
+                        "Holiday edit dialog is ready",
+                        LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesEditHolidayRequestedLog,
+                        "Edit holiday requested: {holiday}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["holiday"] = holiday.DisplayText });
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error in EditHoliday: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesEditHolidayFailedLog,
+                    "Error editing holiday: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -690,7 +784,11 @@ namespace PhoneDesk.ViewModels
                     EditingHoliday.Time = selectedTime;
                     EditingHoliday.EndDate = DialogHasEndDate ? DialogEndDate : null;
                     EditingHoliday.EndTime = DialogHasEndDate ? (SelectedEditEndTime ?? TimeSpan.Zero) : null;
-                    _loggingService.Log($"Updated holiday: {EditingHoliday.DisplayText}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesHolidayUpdatedLog,
+                        "Updated holiday: {holiday}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["holiday"] = EditingHoliday.DisplayText });
                 }
                 else
                 {
@@ -703,7 +801,11 @@ namespace PhoneDesk.ViewModels
                         EndTime = DialogHasEndDate ? (SelectedEditEndTime ?? TimeSpan.Zero) : null
                     };
                     variables.HolidaySeries.Add(newHoliday);
-                    _loggingService.Log($"Added new holiday: {newHoliday.DisplayText}", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesHolidayAddedLog,
+                        "Added holiday: {holiday}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["holiday"] = newHoliday.DisplayText });
                 }
                 
                 ShowEditHolidayDialog = false;
@@ -714,7 +816,11 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error in SaveEditHoliday: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesSaveHolidayFailedLog,
+                    "Error saving holiday: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -729,13 +835,21 @@ namespace PhoneDesk.ViewModels
                     if (variables != null)
                     {
                         variables.HolidaySeries.Remove(holiday);
-                        _loggingService.Log($"Removed holiday: {holiday.DisplayText}", LogLevel.Info);
+                        LogLocalized(
+                            UiTextKey.VariablesHolidayDeletedLog,
+                            "Deleted holiday: {holiday}",
+                            LogLevel.Info,
+                            new Dictionary<string, object?> { ["holiday"] = holiday.DisplayText });
                     }
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error in RemoveHoliday: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesDeleteHolidayFailedLog,
+                    "Error deleting holiday: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -749,12 +863,20 @@ namespace PhoneDesk.ViewModels
                 {
                     var count = variables.HolidaySeries.Count;
                     variables.HolidaySeries.Clear();
-                    _loggingService.Log($"Deleted all {count} holidays from series", LogLevel.Info);
+                    LogLocalized(
+                        UiTextKey.VariablesDeleteAllHolidaysLog,
+                        "Deleted all {count} holidays from the series",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["count"] = count });
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error in DeleteAllHolidays: {ex.Message}", LogLevel.Error);
+                LogLocalized(
+                    UiTextKey.VariablesDeleteAllHolidaysFailedLog,
+                    "Error deleting all holidays: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -764,7 +886,11 @@ namespace PhoneDesk.ViewModels
             var variables = _sharedStateService?.Variables;
             if (variables != null)
             {
-                _loggingService.Log($"Saved holiday series with {variables.HolidaySeries.Count} holidays", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.VariablesSaveHolidaySeriesLog,
+                    "Saved holiday series with {count} holidays",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["count"] = variables.HolidaySeries.Count });
                 ShowHolidaySeriesManager = false;
             }
         }
@@ -912,7 +1038,7 @@ namespace PhoneDesk.ViewModels
         [RelayCommand]
         private void SaveCallQueueConfiguration()
         {
-            _loggingService.Log("Call Queue configuration saved", LogLevel.Info);
+            LogLocalized(UiTextKey.VariablesCallQueueConfigurationSavedLog, "Call queue configuration saved", LogLevel.Info);
             ShowCallQueueConfigurationDialog = false;
         }
 
@@ -975,7 +1101,7 @@ namespace PhoneDesk.ViewModels
         [RelayCommand]
         private void SaveAutoAttendantConfiguration()
         {
-            _loggingService.Log("Auto Attendant configuration saved", LogLevel.Info);
+            LogLocalized(UiTextKey.VariablesAutoAttendantConfigurationSavedLog, "Auto attendant configuration saved", LogLevel.Info);
             ShowAutoAttendantConfigurationDialog = false;
         }
 
@@ -1000,6 +1126,7 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
+                var contextLabel = GetAudioContextText(context);
                 var window = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
                 if (window?.MainWindow != null)
                 {
@@ -1007,11 +1134,14 @@ namespace PhoneDesk.ViewModels
                     
                     var file = await storageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
                     {
-                        Title = $"Select Audio File for {context}",
+                        Title = GetText(
+                            UiTextKey.VariablesAudioFilePickerTitle,
+                            "Select audio file for {context}",
+                            new Dictionary<string, object?> { ["context"] = contextLabel }),
                         FileTypeFilter = new[]
                         {
-                            new Avalonia.Platform.Storage.FilePickerFileType("WAV files") { Patterns = new[] { "*.wav" } },
-                            new Avalonia.Platform.Storage.FilePickerFileType("All files") { Patterns = new[] { "*" } }
+                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesWavFiles, "WAV files")) { Patterns = new[] { "*.wav" } },
+                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesAllFiles, "All files")) { Patterns = new[] { "*" } }
                         }
                     });
 
@@ -1023,18 +1153,30 @@ namespace PhoneDesk.ViewModels
                         // Validate file size (max 5MB)
                         if (fileInfo.Length > 5 * 1024 * 1024)
                         {
-                            await _errorHandlingService.HandleGenericError("Audio file must be 5MB or smaller.", "File Size Error");
+                            await _errorHandlingService.HandleGenericError(
+                                GetText(UiTextKey.VariablesAudioFileTooLargeMessage, "Audio file must be 5MB or smaller."),
+                                GetText(UiTextKey.VariablesAudioFileTooLargeTitle, "File size error"));
                             return;
                         }
 
                         // Validate file extension
                         if (!filePath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
                         {
-                            await _errorHandlingService.HandleGenericError("Only WAV files are supported.", "File Type Error");
+                            await _errorHandlingService.HandleGenericError(
+                                GetText(UiTextKey.VariablesAudioFileTypeInvalidMessage, "Only WAV files are supported."),
+                                GetText(UiTextKey.VariablesAudioFileTypeInvalidTitle, "File type error"));
                             return;
                         }
 
-                        _loggingService.Log($"Importing audio file: {filePath}", LogLevel.Info);
+                        LogLocalized(
+                            UiTextKey.VariablesImportAudioFileLog,
+                            "Importing audio file for {context}: {path}",
+                            LogLevel.Info,
+                            new Dictionary<string, object?>
+                            {
+                                ["context"] = contextLabel,
+                                ["path"] = filePath
+                            });
                         
                         // Import the audio file via PowerShell
                         var command = _powerShellCommandService.GetImportAudioFileCommand(filePath);
@@ -1048,25 +1190,58 @@ namespace PhoneDesk.ViewModels
                             {
                                 var fileName = fileInfo.Name;
                                 setAudioFileId(audioFileId);
-                                _loggingService.Log($"Audio file imported successfully. ID: {audioFileId}, File: {fileName}", LogLevel.Info);
-                                await _errorHandlingService.ShowSuccess($"Audio file imported successfully.\nFile: {fileName}\nID: {audioFileId}", "Import Successful");
+                                LogLocalized(
+                                    UiTextKey.VariablesAudioFileImportedLog,
+                                    "Audio file imported successfully. ID: {id}, File: {file}",
+                                    LogLevel.Info,
+                                    new Dictionary<string, object?>
+                                    {
+                                        ["id"] = audioFileId,
+                                        ["file"] = fileName
+                                    });
+                                await _errorHandlingService.ShowSuccess(
+                                    GetText(
+                                        UiTextKey.VariablesAudioFileImportedMessage,
+                                        "Audio file imported successfully.\nFile: {file}\nID: {id}",
+                                        new Dictionary<string, object?>
+                                        {
+                                            ["file"] = fileName,
+                                            ["id"] = audioFileId
+                                        }),
+                                    GetText(UiTextKey.VariablesAudioFileImportedTitle, "Import successful"));
                             }
                             else
                             {
-                                await _errorHandlingService.HandleGenericError("Failed to parse audio file ID from result.", "Import Error");
+                                await _errorHandlingService.HandleGenericError(
+                                    GetText(UiTextKey.VariablesAudioFileIdParseFailedMessage, "Failed to parse the audio file ID from the result."),
+                                    GetText(UiTextKey.VariablesAudioFileIdParseFailedTitle, "Import error"));
                             }
                         }
                         else
                         {
-                            await _errorHandlingService.HandleGenericError($"Failed to import audio file:\n{result.Value}", "Import Error");
+                            await _errorHandlingService.HandleGenericError(
+                                GetText(
+                                    UiTextKey.VariablesAudioFileImportFailedMessage,
+                                    "Failed to import the audio file:\n{details}",
+                                    new Dictionary<string, object?> { ["details"] = result.Value }),
+                                GetText(UiTextKey.VariablesAudioFileImportFailedTitle, "Import error"));
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _loggingService.Log($"Error importing audio file: {ex.Message}", LogLevel.Error);
-                await _errorHandlingService.HandleGenericError($"Error importing audio file:\n{ex.Message}", "Import Error");
+                LogLocalized(
+                    UiTextKey.VariablesAudioFileImportFailedLog,
+                    "Error importing audio file: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                await _errorHandlingService.HandleGenericError(
+                    GetText(
+                        UiTextKey.VariablesAudioFileImportFailedMessage,
+                        "Error importing the audio file:\n{details}",
+                        new Dictionary<string, object?> { ["details"] = ex.Message }),
+                    GetText(UiTextKey.VariablesAudioFileImportFailedTitle, "Import error"));
             }
         }
 

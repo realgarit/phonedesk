@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Services;
 using PhoneDesk.Models;
+using PhoneDesk.Localization;
 using System;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
@@ -43,11 +44,12 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             ISharedStateService sharedStateService,
             IDialogService dialogService,
-            IAuditLog? auditLog = null)
+            IAuditLog? auditLog = null,
+            ITranslationService? translationService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
-                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog)
+                  sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
-            _loggingService.Log("Holidays page loaded", LogLevel.Info);
+            LogLocalized(UiTextKey.HolidaysPageLoadedLog, "Holidays page loaded", LogLevel.Info);
         }
 
         [RelayCommand]
@@ -56,7 +58,9 @@ namespace PhoneDesk.ViewModels
             IsHolidayCreated = false;
             HolidayName = string.Empty;
             HolidayDate = DateTime.Now;
-            StatusMessage = "Holiday state reset. You can now create a new holiday.";
+            StatusMessage = GetText(
+                UiTextKey.HolidaysResetStateStatus,
+                "Holiday state reset. You can now create a new holiday.");
         }
 
         [RelayCommand]
@@ -93,13 +97,17 @@ namespace PhoneDesk.ViewModels
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysVariablesNotFoundError,
+                        "Error: Variables not found");
                     return;
                 }
 
                 if (variables.HolidaySeries.Count == 0)
                 {
-                    StatusMessage = "Error: No holidays configured. Please add holidays in the Variables page first.";
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysNoHolidaysConfiguredError,
+                        "Error: No holidays configured. Please add holidays in the Variables page first.");
                     return;
                 }
 
@@ -107,34 +115,68 @@ namespace PhoneDesk.ViewModels
                 var holidayEntries = variables.HolidaySeries.ToList();
                 var holidayName = variables.HolidayName;
                 
-                _loggingService.Log($"Creating holiday series: {holidayName} with {holidayEntries.Count} dates", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysCreateHolidaySeriesLog,
+                    "Creating holiday series '{name}' with {count} dates",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = holidayName,
+                        ["count"] = holidayEntries.Count
+                    });
 
                 var command = _powerShellCommandService.GetCreateHolidaySeriesFromEntriesCommand(holidayName, holidayEntries);
-                var result = await PreviewAndExecuteAsync(command, "Create Holiday Series");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.HolidaysCreateHolidayScheduleAction, "Create Holiday Schedule"));
                 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Holiday series '{holidayName}' created successfully with {holidayEntries.Count} dates!";
-                    _loggingService.Log($"Holiday series {holidayName} created successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysHolidaySeriesCreatedSuccess,
+                        "Holiday series '{name}' created successfully with {count} dates!",
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = holidayName,
+                            ["count"] = holidayEntries.Count
+                        });
+                    LogLocalized(
+                        UiTextKey.HolidaysCreateHolidaySeriesSuccessLog,
+                        "Holiday series '{name}' created successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = holidayName });
                     IsHolidayCreated = true;
                 }
                 else
                 {
-                    StatusMessage = $"Error creating holiday series: {result.Value}";
-                    _loggingService.Log($"Error creating holiday series {holidayName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysCreateHolidaySeriesError,
+                        "Error creating holiday series: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.HolidaysCreateHolidaySeriesErrorLog,
+                        "Error creating holiday series '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = holidayName,
+                            ["details"] = result.Value
+                        });
                     IsHolidayCreated = false;
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in CreateHolidayAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(CreateHolidayAsync), ex);
                 IsHolidayCreated = false;
             }
             finally
@@ -169,7 +211,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(AutoAttendantName))
             {
-                StatusMessage = "Error: Auto attendant name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.HolidaysAutoAttendantNameRequiredError,
+                    "Error: Auto attendant name cannot be empty");
                 return;
             }
 
@@ -178,26 +222,52 @@ namespace PhoneDesk.ViewModels
                 IsBusy = true;
                 ShowCheckAutoAttendantDialog = false;
 
-                _loggingService.Log($"Verifying auto attendant: {AutoAttendantName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysVerifyAutoAttendantLog,
+                    "Verifying auto attendant '{name}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["name"] = AutoAttendantName });
 
                 var command = _powerShellCommandService.GetVerifyAutoAttendantCommand(AutoAttendantName);
                 var result = await ExecutePowerShellCommandAsync(command, null, "VerifyAutoAttendant", allowThrottleRetry: true);
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Auto attendant '{AutoAttendantName}' verified successfully and is ready for holiday configuration";
-                    _loggingService.Log($"Auto attendant {AutoAttendantName} verified successfully", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysVerifyAutoAttendantSuccess,
+                        "Auto attendant '{name}' verified successfully and is ready for holiday configuration",
+                        new Dictionary<string, object?> { ["name"] = AutoAttendantName });
+                    LogLocalized(
+                        UiTextKey.HolidaysVerifyAutoAttendantSuccessLog,
+                        "Auto attendant '{name}' verified successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = AutoAttendantName });
                 }
                 else
                 {
-                    StatusMessage = $"Error: Auto attendant '{AutoAttendantName}' not found or not accessible: {result.Value}";
-                    _loggingService.Log($"Error verifying auto attendant {AutoAttendantName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysVerifyAutoAttendantMissingError,
+                        "Error: Auto attendant '{name}' not found or not accessible: {details}",
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = AutoAttendantName,
+                            ["details"] = result.Value
+                        });
+                    LogLocalized(
+                        UiTextKey.HolidaysVerifyAutoAttendantErrorLog,
+                        "Error verifying auto attendant '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["name"] = AutoAttendantName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in VerifyAutoAttendantAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(VerifyAutoAttendantAsync), ex);
             }
             finally
             {
@@ -233,7 +303,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrWhiteSpace(AutoAttendantName))
             {
-                StatusMessage = "Error: Auto attendant name cannot be empty";
+                StatusMessage = GetText(
+                    UiTextKey.HolidaysAutoAttendantNameRequiredError,
+                    "Error: Auto attendant name cannot be empty");
                 return;
             }
 
@@ -245,37 +317,78 @@ namespace PhoneDesk.ViewModels
                 var variables = _sharedStateService?.Variables;
                 if (variables == null)
                 {
-                    StatusMessage = "Error: Variables not found";
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysVariablesNotFoundError,
+                        "Error: Variables not found");
                     return;
                 }
 
                 var holidayName = HolidayName;
-                _loggingService.Log($"Attaching holiday {holidayName} to auto attendant {AutoAttendantName}", LogLevel.Info);
+                LogLocalized(
+                    UiTextKey.HolidaysAttachHolidayLog,
+                    "Attaching holiday '{holidayName}' to auto attendant '{name}'",
+                    LogLevel.Info,
+                    new Dictionary<string, object?>
+                    {
+                        ["holidayName"] = holidayName,
+                        ["name"] = AutoAttendantName
+                    });
 
                 var command = _powerShellCommandService.GetAttachHolidayToAutoAttendantCommand(holidayName, AutoAttendantName, variables.HolidayGreetingPromptDE);
-                var result = await PreviewAndExecuteAsync(command, "Attach Holiday to Auto Attendant");
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.HolidaysLinkHolidayAction, "Link Holiday to Auto Attendant"));
                 
                 if (result == null)
                 {
-                    StatusMessage = "Operation cancelled by user";
+                    StatusMessage = GetText(
+                        UiTextKey.RuntimeOperationCancelledByUser,
+                        "Operation cancelled by user");
                     return;
                 }
                 
                 if (result.HasSuccessMarker)
                 {
-                    StatusMessage = $"Successfully attached holiday '{holidayName}' to auto attendant '{AutoAttendantName}'";
-                    _loggingService.Log($"Successfully attached holiday {holidayName} to auto attendant {AutoAttendantName}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysAttachHolidaySuccess,
+                        "Successfully attached holiday '{holidayName}' to auto attendant '{name}'",
+                        new Dictionary<string, object?>
+                        {
+                            ["holidayName"] = holidayName,
+                            ["name"] = AutoAttendantName
+                        });
+                    LogLocalized(
+                        UiTextKey.HolidaysAttachHolidaySuccessLog,
+                        "Holiday '{holidayName}' attached to auto attendant '{name}' successfully",
+                        LogLevel.Info,
+                        new Dictionary<string, object?>
+                        {
+                            ["holidayName"] = holidayName,
+                            ["name"] = AutoAttendantName
+                        });
                 }
                 else
                 {
-                    StatusMessage = $"Error attaching holiday to auto attendant: {result.Value}";
-                    _loggingService.Log($"Error attaching holiday {holidayName} to auto attendant {AutoAttendantName}: {result.Value}", LogLevel.Error);
+                    StatusMessage = GetText(
+                        UiTextKey.HolidaysAttachHolidayError,
+                        "Error attaching holiday to auto attendant: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+                    LogLocalized(
+                        UiTextKey.HolidaysAttachHolidayErrorLog,
+                        "Error attaching holiday '{holidayName}' to auto attendant '{name}': {details}",
+                        LogLevel.Error,
+                        new Dictionary<string, object?>
+                        {
+                            ["holidayName"] = holidayName,
+                            ["name"] = AutoAttendantName,
+                            ["details"] = result.Value
+                        });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in AttachHolidayToAutoAttendantAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(AttachHolidayToAutoAttendantAsync), ex);
             }
             finally
             {

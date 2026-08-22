@@ -5,7 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -47,8 +49,8 @@
                         <fi:SymbolIcon Symbol="CallInbound"/>
                     </Border>
                     <StackPanel Spacing="4" VerticalAlignment="Center">
-                        <TextBlock Text="Call Queues" Classes="page-title" Margin="0"/>
-                        <TextBlock Text="Manage resource accounts, call queues, and step-by-step creation."
+                        <TextBlock Text="{loc:Translate Key=MainNavigationCallQueues}" Classes="page-title" Margin="0"/>
+                        <TextBlock Text="{loc:Translate Key=CallQueuesSubtitle}"
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                              TextWrapping="Wrap"/>
                     </StackPanel>
@@ -65,7 +67,7 @@
                 <!-- Tab Control -->
                 <TabControl Grid.Row="2">
                     <!-- Resource Accounts Tab -->
-                    <TabItem Header="Resource Accounts">
+                    <TabItem Header="{loc:Translate Key=CommonResourceAccountsTab}">
                         <Grid Margin="16">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -84,47 +86,47 @@
 
                                 <Button Grid.Column="0"
                                         Command="{Binding RetrieveResourceAccountsCommand}"
-                                        ToolTip.Tip="Retrieve resource accounts from Microsoft Teams"
-                                        AutomationProperties.Name="Retrieve Resource Accounts"
+                                        ToolTip.Tip="{loc:Translate Key=ProvisioningLoadResourceAccountsTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=ProvisioningLoadResourceAccountsAutomationName}"
                                         Margin="0,0,16,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="ArrowSync"/>
-                                        <TextBlock Text="Retrieve Accounts" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningLoadResourceAccountsAction}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
                                 <Button Grid.Column="1"
                                         Command="{Binding OpenCreateResourceAccountDialogCommand}"
-                                        ToolTip.Tip="Open dialog to create a new resource account"
-                                        AutomationProperties.Name="Create Resource Account"
+                                        ToolTip.Tip="{loc:Translate Key=ProvisioningCreateResourceAccountTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=ProvisioningCreateResourceAccountAutomationName}"
                                         Margin="0,0,8,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="PersonAdd"/>
-                                        <TextBlock Text="Create Account" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningCreateResourceAccountAction}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
                                 <Button Grid.Column="2"
                                         Command="{Binding RemoveResourceAccountCommand}"
-                                        ToolTip.Tip="Remove the selected resource account"
-                                        AutomationProperties.Name="Remove Resource Account"
+                                        ToolTip.Tip="{loc:Translate Key=ProvisioningDeleteResourceAccountTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=ProvisioningDeleteResourceAccountAutomationName}"
                                         Margin="0,0,16,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon Symbol="PersonDelete" Foreground="OrangeRed"/>
-                                        <TextBlock Text="Remove Account" VerticalAlignment="Center" Foreground="OrangeRed"/>
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningDeleteResourceAccountAction}" VerticalAlignment="Center" Foreground="OrangeRed"/>
                                     </StackPanel>
                                 </Button>
 
                                 <TextBox Grid.Column="3"
                                          Text="{Binding SearchResourceAccountsText}"
-                                         Watermark="Search resource accounts..."
-                                         ToolTip.Tip="Search resource accounts"
-                                         AutomationProperties.Name="Search resource accounts"/>
+                                         Watermark="{loc:Translate Key=ProvisioningSearchResourceAccountsWatermark}"
+                                         ToolTip.Tip="{loc:Translate Key=ProvisioningSearchResourceAccountsTooltip}"
+                                         AutomationProperties.Name="{loc:Translate Key=ProvisioningSearchResourceAccountsAutomationName}"/>
                             </Grid>
 
                             <!-- Resource Accounts List -->
                             <Grid Grid.Row="2">
-                                <DataGrid AutomationProperties.Name="Resource Accounts List"
+                                <DataGrid AutomationProperties.Name="{loc:Translate Key=ProvisioningResourceAccountsGridAutomationName}"
                                           ItemsSource="{Binding ResourceAccountsView}"
                                           AutoGenerateColumns="False"
                                           HeadersVisibility="Column"
@@ -133,10 +135,10 @@
                                           SelectionMode="Single"
                                           HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="2*"/>
-                                        <DataGridTextColumn Header="UPN" Binding="{Binding UserPrincipalName}" Width="2*"/>
-                                        <DataGridTextColumn Header="Identity" Binding="{Binding Identity}" Width="2*"/>
-                                        <DataGridTextColumn Header="Usage Location" Binding="{Binding UsageLocation}" Width="*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonDisplayNameColumn}" Binding="{Binding DisplayName}" Width="2*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonUpnColumn}" Binding="{Binding UserPrincipalName}" Width="2*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonIdentityColumn}" Binding="{Binding Identity}" Width="2*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonUsageLocationColumn}" Binding="{Binding UsageLocation}" Width="*"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <!-- Empty State -->
@@ -146,15 +148,15 @@
                                     <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center">
                                         <fi:SymbolIcon Symbol="PersonSearch" IsFilled="True" FontSize="26" Foreground="{DynamicResource TeamsPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0"/>
                                     </Border>
-                                    <TextBlock Text="No resource accounts loaded" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Click 'Retrieve Accounts' to load data from Teams" FontSize="12" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=ProvisioningNoResourceAccountsLoadedTitle}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=ProvisioningNoResourceAccountsLoadedDescription}" FontSize="12" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>
                     </TabItem>
 
                     <!-- Call Queues Tab -->
-                    <TabItem Header="Call Queues">
+                    <TabItem Header="{loc:Translate Key=MainNavigationCallQueues}">
                         <Grid Margin="16">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -173,47 +175,47 @@
 
                                 <Button Grid.Column="0"
                                         Command="{Binding RetrieveCallQueuesCommand}"
-                                        ToolTip.Tip="Retrieve call queues from Microsoft Teams"
-                                        AutomationProperties.Name="Retrieve Call Queues"
+                                        ToolTip.Tip="{loc:Translate Key=CallQueuesLoadTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=CallQueuesLoadAutomationName}"
                                         Margin="0,0,16,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="ArrowSync"/>
-                                        <TextBlock Text="Retrieve Queues" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesLoadAction}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
                                 <Button Grid.Column="1"
                                         Command="{Binding OpenCreateCallQueueDialogCommand}"
-                                        ToolTip.Tip="Open dialog to create a new call queue"
-                                        AutomationProperties.Name="Create Call Queue"
+                                        ToolTip.Tip="{loc:Translate Key=CallQueuesCreateTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=CallQueuesCreateAutomationName}"
                                         Margin="0,0,8,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon  Symbol="CallAdd"/>
-                                        <TextBlock Text="Create Queue" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesCreateAction}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
 
                                 <Button Grid.Column="2"
                                         Command="{Binding RemoveCallQueueCommand}"
-                                        ToolTip.Tip="Remove the selected call queue"
-                                        AutomationProperties.Name="Remove Call Queue"
+                                        ToolTip.Tip="{loc:Translate Key=CallQueuesDeleteTooltip}"
+                                        AutomationProperties.Name="{loc:Translate Key=CallQueuesDeleteAutomationName}"
                                         Margin="0,0,16,0" Classes="IconText">
                                     <StackPanel Orientation="Horizontal">
                                         <fi:SymbolIcon Symbol="CallDismiss" Foreground="OrangeRed"/>
-                                        <TextBlock Text="Remove Queue" VerticalAlignment="Center" Foreground="OrangeRed"/>
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesDeleteAction}" VerticalAlignment="Center" Foreground="OrangeRed"/>
                                     </StackPanel>
                                 </Button>
 
                                 <TextBox Grid.Column="3"
                                          Text="{Binding SearchCallQueuesText}"
-                                         Watermark="Search call queues..."
-                                         ToolTip.Tip="Search call queues"
-                                         AutomationProperties.Name="Search call queues"/>
+                                         Watermark="{loc:Translate Key=CallQueuesSearchWatermark}"
+                                         ToolTip.Tip="{loc:Translate Key=CallQueuesSearchTooltip}"
+                                         AutomationProperties.Name="{loc:Translate Key=CallQueuesSearchAutomationName}"/>
                             </Grid>
 
                             <!-- Call Queues List -->
                             <Grid Grid.Row="2">
-                                <DataGrid AutomationProperties.Name="Call Queues List"
+                                <DataGrid AutomationProperties.Name="{loc:Translate Key=CallQueuesGridAutomationName}"
                                           ItemsSource="{Binding CallQueuesView}"
                                           AutoGenerateColumns="False"
                                           HeadersVisibility="Column"
@@ -222,10 +224,10 @@
                                           SelectionMode="Single"
                                           HorizontalScrollBarVisibility="Auto">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*"/>
-                                        <DataGridTextColumn Header="Identity" Binding="{Binding Identity}" Width="2*"/>
-                                        <DataGridTextColumn Header="Routing Method" Binding="{Binding RoutingMethod}" Width="*"/>
-                                        <DataGridTextColumn Header="Agent Alert Time" Binding="{Binding AgentAlertTime}" Width="*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonNameColumn}" Binding="{Binding Name}" Width="2*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CommonIdentityColumn}" Binding="{Binding Identity}" Width="2*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CallQueuesRoutingMethodColumn}" Binding="{Binding RoutingMethod}" Width="*"/>
+                                        <DataGridTextColumn Header="{loc:Translate Key=CallQueuesAgentAlertTimeColumn}" Binding="{Binding AgentAlertTime}" Width="*"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <!-- Empty State -->
@@ -235,18 +237,18 @@
                                     <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource AccentSoftBrush}" HorizontalAlignment="Center">
                                         <fi:SymbolIcon Symbol="CallInbound" IsFilled="True" FontSize="26" Foreground="{DynamicResource TeamsPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0"/>
                                     </Border>
-                                    <TextBlock Text="No call queues loaded" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Click 'Retrieve Queues' to load data from Teams" FontSize="12" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CallQueuesEmptyTitle}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CallQueuesEmptyDescription}" FontSize="12" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>
                     </TabItem>
 
                     <!-- Step-by-Step Creation Tab -->
-                    <TabItem Header="Step-by-Step Creation">
+                    <TabItem Header="{loc:Translate Key=MainNavigationGuidedSetup}">
                         <ScrollViewer Margin="16">
                             <StackPanel>
-                                <TextBlock Text="Follow these steps in order to create a complete call queue setup:"
+                                <TextBlock Text="{loc:Translate Key=CallQueuesGuidedSetupIntro}"
                                          FontSize="18"
                                  FontWeight="SemiBold"
                                          Margin="0,0,0,24"/>
@@ -254,11 +256,11 @@
                                 <!-- Step 1: Create Resource Account -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 1: Create Resource Account"
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep1Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Create a resource account for the call queue. This account will handle the call queue functionality."
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep1Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -267,7 +269,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="PersonAdd"/>
-                                                <TextBlock Text="Create Resource Account" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=ProvisioningCreateResourceAccountAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -276,11 +278,11 @@
                                 <!-- Step 2: Update Usage Location -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 2: Update Usage Location"
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningStep2Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Set the usage location for the resource account. This is required for licensing."
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningStep2Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -289,7 +291,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="Location"/>
-                                                <TextBlock Text="Update Usage Location" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=ProvisioningUpdateUsageLocationAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -298,11 +300,11 @@
                                 <!-- Step 3: Assign License -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 3: Assign License"
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningStep3Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Assign a license to the resource account. This is required for the resource account to function properly."
+                                        <TextBlock Text="{loc:Translate Key=ProvisioningStep3Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -311,7 +313,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="Certificate"/>
-                                                <TextBlock Text="Assign License" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=ProvisioningAssignLicenseAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -320,11 +322,11 @@
                                 <!-- Step 4: Get M365 Group ID -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 4: Get M365 Group ID"
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep4Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Retrieve the M365 Group ID from the group name. This is required before creating the call queue."
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep4Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -333,7 +335,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="PersonSearch"/>
-                                                <TextBlock Text="Get M365 Group ID" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CallQueuesLoadM365GroupIdAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -342,11 +344,11 @@
                                 <!-- Step 5: Create Call Queue -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 5: Create Call Queue"
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep5Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Create the actual call queue with routing settings and distribution lists."
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep5Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -355,7 +357,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                     <StackPanel Orientation="Horizontal">
                         <fi:SymbolIcon  Symbol="CallAdd"/>
-                        <TextBlock Text="Create Call Queue" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:Translate Key=CallQueuesCreateCallQueueAction}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
                                     </StackPanel>
@@ -364,11 +366,11 @@
                                 <!-- Step 6: Associate Resource Account -->
                                 <Border Classes="card interactive" Margin="0,0,0,16">
                                     <StackPanel>
-                                        <TextBlock Text="Step 6: Associate Resource Account"
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep6Title}"
                                                  FontSize="18"
                                                  FontWeight="Bold"
                                                  Margin="0,0,0,8"/>
-                                        <TextBlock Text="Associate the resource account with the call queue to complete the setup."
+                                        <TextBlock Text="{loc:Translate Key=CallQueuesStep6Description}"
                                                  FontSize="14"
                                                  TextWrapping="Wrap"
                                                  Margin="0,0,0,16"/>
@@ -377,7 +379,7 @@
                                                 HorizontalAlignment="Left" Classes="IconText">
                                             <StackPanel Orientation="Horizontal">
                                                 <fi:SymbolIcon  Symbol="Link"/>
-                                                <TextBlock Text="Associate Account" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{loc:Translate Key=CallQueuesAssignResourceAccountAction}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -411,21 +413,21 @@
                       PointerPressed="CreateResourceAccountCard_PointerPressed">
                     <Border Classes="dialog" MinWidth="400" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Create Resource Account"
+                        <TextBlock Text="{loc:Translate Key=ProvisioningCreateResourceAccountTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="UPN:"
+                        <TextBlock Text="{loc:Translate Key=CommonUpnLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding ResourceAccountUpn}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="Display Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonDisplayNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding ResourceAccountDisplayName}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="The values are auto-generated from your variables. You can modify them if needed."
+                        <TextBlock Text="{loc:Translate Key=ProvisioningCreateResourceAccountDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -436,14 +438,14 @@
                             <Button Command="{Binding CloseCreateResourceAccountDialogCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding CreateResourceAccountCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="PersonAdd"/>
-                                    <TextBlock Text="Create Account" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=ProvisioningCreateResourceAccountAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -475,16 +477,16 @@
                       PointerPressed="UpdateUsageLocationCard_PointerPressed">
                     <Border Classes="dialog" MinWidth="400" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Update Usage Location"
+                        <TextBlock Text="{loc:Translate Key=ProvisioningUpdateUsageLocationTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Resource Account UPN:"
+                        <TextBlock Text="{loc:Translate Key=CommonResourceAccountUpnLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding ResourceAccountUpn}"
                                IsReadOnly="True"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="This will update the usage location for the resource account. The value is taken from your variables."
+                        <TextBlock Text="{loc:Translate Key=ProvisioningUpdateUsageLocationDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -495,14 +497,14 @@
                             <Button Command="{Binding CloseUpdateUsageLocationDialogCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding UpdateUsageLocationCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Location"/>
-                                    <TextBlock Text="Update Location" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=ProvisioningUpdateUsageLocationAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -534,26 +536,26 @@
                       PointerPressed="CreateCallQueueCard_PointerPressed">
                     <Border Classes="dialog" MinWidth="400" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Create Call Queue"
+                        <TextBlock Text="{loc:Translate Key=CallQueuesCreateDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Call Queue Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonCallQueueNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding CallQueueName}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="M365 Group ID:"
+                        <TextBlock Text="{loc:Translate Key=CommonM365GroupIdLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding M365GroupId}"
                                Margin="0,0,0,8"/>
-                        <TextBlock Text="Note: Use 'Get M365 Group ID' button to retrieve the Group ID before creating the call queue."
+                        <TextBlock Text="{loc:Translate Key=CallQueuesCreateDialogNote}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
                                  Margin="0,0,0,16"/>
-                        <TextBlock Text="The call queue name is auto-generated from your variables. Use the 'Get M365 Group ID' button to retrieve the Group ID."
+                        <TextBlock Text="{loc:Translate Key=CallQueuesCreateDialogDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -564,14 +566,14 @@
                             <Button Command="{Binding CloseCreateCallQueueDialogCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding CreateCallQueueCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="CallAdd"/>
-                                    <TextBlock Text="Create Queue" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CallQueuesCreateAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -603,21 +605,21 @@
                       PointerPressed="AssociateResourceAccountCard_PointerPressed">
                     <Border Classes="dialog" MinWidth="400" Margin="16">
                         <StackPanel>
-                        <TextBlock Text="Associate Resource Account with Call Queue"
+                        <TextBlock Text="{loc:Translate Key=CallQueuesAssignDialogTitle}"
                                  Classes="dialog-title"/>
-                        <TextBlock Text="Resource Account UPN:"
+                        <TextBlock Text="{loc:Translate Key=CommonResourceAccountUpnLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding ResourceAccountUpn}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="Call Queue Name:"
+                        <TextBlock Text="{loc:Translate Key=CommonCallQueueNameLabel}"
                                  FontSize="16"
                                  FontWeight="SemiBold"
                                  Margin="0,0,0,8"/>
                         <TextBox Text="{Binding CallQueueName}"
                                Margin="0,0,0,16"/>
-                        <TextBlock Text="This will associate the resource account with the call queue to complete the setup."
+                        <TextBlock Text="{loc:Translate Key=CallQueuesAssignDialogDescription}"
                                  FontSize="12"
                                  Opacity="0.7"
                                  TextWrapping="Wrap"
@@ -628,14 +630,14 @@
                             <Button Command="{Binding CloseAssociateDialogCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Dismiss"/>
-                                    <TextBlock Text="Cancel" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button
                                     Command="{Binding AssociateResourceAccountWithCallQueueCommand}" Classes="IconText">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon  Symbol="Link"/>
-                                    <TextBlock Text="Associate" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CallQueuesAssignResourceAccountAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -651,14 +653,14 @@
                   IsVisible="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" MaxWidth="360">
                     <ProgressBar
-                               AutomationProperties.Name="Operation Progress"
+                               AutomationProperties.Name="{loc:Translate Key=CommonOperationProgressAutomationName}"
                                Minimum="0"
                                Maximum="100"
                                Value="{Binding ProgressValue}"
                                IsIndeterminate="{Binding IsProgressIndeterminate}"
                                Width="200"/>
                     <!-- Waiting Message -->
-                    <TextBlock Text="{Binding WaitingMessage, TargetNullValue=''}"
+                    <TextBlock Text="{Binding WaitingMessage, TargetNullValue={x:Static sys:String.Empty}}"
                                FontSize="14"
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
@@ -670,7 +672,7 @@
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
                     <!-- Cancel affordance -->
-                    <Button Content="Cancel"
+                    <Button Content="{loc:Translate Key=CommonCancel}"
                             Command="{Binding CancelOperationCommand}"
                             IsVisible="{Binding IsCancellable}"
                             HorizontalAlignment="Center"/>

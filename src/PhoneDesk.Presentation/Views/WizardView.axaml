@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:fi="using:FluentIcons.Avalonia"
              xmlns:fic="using:FluentIcons.Common"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
              xmlns:local="clr-namespace:PhoneDesk.Views"
              xmlns:viewmodels="clr-namespace:PhoneDesk.ViewModels"
              xmlns:converters="clr-namespace:PhoneDesk.Converters"
@@ -48,12 +49,12 @@
                         </Grid.RowDefinitions>
 
                         <StackPanel Grid.Row="0" Margin="16,20,16,12">
-                            <TextBlock Text="Setup Wizard"
+                            <TextBlock Text="{loc:Translate Key=WizardSidebarTitle}"
                                      FontFamily="{StaticResource DisplayFontFamily}"
                                      FontSize="17"
                                      FontWeight="SemiBold"
                                      Margin="0,0,0,4"/>
-                            <TextBlock Text="A safe, reviewable setup for each customer"
+                            <TextBlock Text="{loc:Translate Key=WizardSidebarSubtitle}"
                                      FontSize="12"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                      TextWrapping="Wrap"/>
@@ -175,7 +176,7 @@
                                                 <fi:SymbolIcon Symbol="Settings"
                                                                Foreground="{DynamicResource TeamsPrimaryBrush}"
                                                                VerticalAlignment="Center"/>
-                                                <TextBlock Text="Configuration snapshot"
+                                                <TextBlock Text="{loc:Translate Key=WizardReviewSnapshotTitle}"
                                                            FontWeight="SemiBold"
                                                            FontSize="15"
                                                            VerticalAlignment="Center"/>
@@ -183,7 +184,7 @@
                                             <TextBlock Text="{Binding ReviewSummary}"
                                                        TextWrapping="Wrap"
                                                        FontSize="13"/>
-                                            <TextBlock Text="Need to change something? Use Edit Variables, then return here to review again."
+                                            <TextBlock Text="{loc:Translate Key=WizardReviewSnapshotHint}"
                                                        FontSize="12"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        TextWrapping="Wrap"/>
@@ -202,7 +203,7 @@
                                                  FontSize="12"
                                                  BorderThickness="0"
                                                  Padding="16"
-                                                 Watermark="Script preview will appear here..."/>
+                                                 Watermark="{loc:Translate Key=WizardScriptPreviewWatermark}"/>
                                     </ScrollViewer>
                                 </Grid>
 
@@ -291,7 +292,7 @@
                                 IsEnabled="{Binding CanGoPrevious}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <fi:SymbolIcon Symbol="ArrowLeft" FontSize="14"/>
-                                <TextBlock Text="Back" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=CommonBack}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -317,27 +318,27 @@
                                     IsEnabled="{Binding !IsBusy}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="Next" FontSize="14"/>
-                                    <TextBlock Text="Skip" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonSkip}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
                             <!-- Dry-run plan preview + export -->
                             <Button Command="{Binding GeneratePlanCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    ToolTip.Tip="Preview every object that would be created, with resolved names, UPNs, number and settings — no tenant changes are made.">
+                                    ToolTip.Tip="{loc:Translate Key=WizardPreviewChangesTooltip}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="ClipboardTaskListLtr" FontSize="14"/>
-                                    <TextBlock Text="Preview changes" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=WizardPreviewChangesAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding ExportPlanJsonCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    ToolTip.Tip="Export the plan as JSON for change-approval workflows.">
+                                    ToolTip.Tip="{loc:Translate Key=WizardExportPlanJsonTooltip}">
                                 <fi:SymbolIcon Symbol="Code" FontSize="14"/>
                             </Button>
                             <Button Command="{Binding ExportPlanCsvCommand}"
                                     IsEnabled="{Binding !IsBusy}"
-                                    ToolTip.Tip="Export the plan as CSV for change-approval workflows.">
+                                    ToolTip.Tip="{loc:Translate Key=WizardExportPlanCsvTooltip}">
                                 <fi:SymbolIcon Symbol="DocumentTable" FontSize="14"/>
                             </Button>
                             <!-- Retry (visible on failure) -->
@@ -345,7 +346,7 @@
                                     IsVisible="{Binding StepFailed}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="ArrowSync" FontSize="14"/>
-                                    <TextBlock Text="Retry" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonRetry}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
@@ -355,7 +356,7 @@
                                     Tag="edit_variables">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="Edit" FontSize="14"/>
-                                    <TextBlock Text="Edit Variables" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{loc:Translate Key=WizardEditConfigurationAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </WrapPanel>
@@ -367,7 +368,7 @@
                                 IsEnabled="{Binding CanGoNext}"
                                 Classes="accent">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Next" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Translate Key=CommonNext}" VerticalAlignment="Center"/>
                                 <fi:SymbolIcon Symbol="ArrowRight" FontSize="14"/>
                             </StackPanel>
                         </Button>
@@ -403,7 +404,7 @@
                            TextAlignment="Center"
                            HorizontalAlignment="Center"/>
                 <!-- Cancel affordance -->
-                <Button Content="Cancel"
+                <Button Content="{loc:Translate Key=CommonCancel}"
                         Command="{Binding CancelOperationCommand}"
                         IsVisible="{Binding IsCancellable}"
                         HorizontalAlignment="Center"/>

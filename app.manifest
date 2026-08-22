@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!-- release-please updates this attribute through release-please-config.json -->
-  <assemblyIdentity 
-    version="3.26.0.0"
-    name="PhoneDesk"
-    processorArchitecture="*"
-    type="win32"/>
+  <assemblyIdentity version="3.26.0" name="PhoneDesk" processorArchitecture="*" type="win32"/>
   
   <description>PhoneDesk - Microsoft Teams administration tool</description>
   
@@ -13,7 +9,7 @@
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
         <!-- Request execution level as invoker (no admin elevation required) -->
-        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
       </requestedPrivileges>
     </security>
   </trustInfo>

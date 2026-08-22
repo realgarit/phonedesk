@@ -79,15 +79,23 @@ namespace PhoneDesk.ViewModels
             _bulkBuilder = bulkBuilder;
             _planBuilder = planBuilder;
             _planExporter = planExporter;
-            _loggingService.Log("Bulk Operations page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.BulkOperationsPageLoadedLog,
+                "Bulk operations page loaded",
+                LogLevel.Info);
         }
 
         [RelayCommand]
         private void GenerateTemplate()
         {
             CsvContent = _bulkBuilder.GenerateCsvTemplate();
-            StatusMessage = "CSV template generated. Edit the data and click 'Parse CSV'.";
-            _loggingService.Log("Bulk CSV template generated", LogLevel.Info);
+            StatusMessage = GetText(
+                UiTextKey.BulkOperationsTemplateGeneratedStatus,
+                "CSV template generated. Edit the data and click 'Parse CSV'.");
+            LogLocalized(
+                UiTextKey.BulkOperationsTemplateGeneratedLog,
+                "Bulk CSV template generated",
+                LogLevel.Info);
         }
 
         [RelayCommand]
@@ -101,7 +109,9 @@ namespace PhoneDesk.ViewModels
 
                 if (topLevel == null)
                 {
-                    StatusMessage = "Cannot open file picker.";
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsFilePickerUnavailable,
+                        "Cannot open the file picker.");
                     return;
                 }
 
@@ -121,15 +131,29 @@ namespace PhoneDesk.ViewModels
                     await using var stream = await files[0].OpenReadAsync();
                     using var reader = new StreamReader(stream);
                     CsvContent = await reader.ReadToEndAsync();
-                    StatusMessage = $"CSV file loaded: {files[0].Name}";
-                    _loggingService.Log($"Bulk CSV imported from file: {files[0].Name}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsCsvLoadedStatus,
+                        "CSV file loaded: {name}",
+                        new Dictionary<string, object?> { ["name"] = files[0].Name });
+                    LogLocalized(
+                        UiTextKey.BulkOperationsCsvLoadedLog,
+                        "Bulk CSV imported from file: {name}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = files[0].Name });
                     ParseCsvContent();
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Failed to import: {ex.Message}";
-                _loggingService.Log($"Bulk CSV import failed: {ex.Message}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsImportFailedStatus,
+                    "Failed to import: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                LogLocalized(
+                    UiTextKey.BulkOperationsImportFailedLog,
+                    "Bulk CSV import failed: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -145,7 +169,9 @@ namespace PhoneDesk.ViewModels
             {
                 if (string.IsNullOrWhiteSpace(CsvContent))
                 {
-                    StatusMessage = "No CSV content to parse.";
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsNoCsvContentError,
+                        "No CSV content to parse.");
                     return;
                 }
 
@@ -169,18 +195,34 @@ namespace PhoneDesk.ViewModels
 
                 if (ParsedEntries.Count > 0)
                 {
-                    StatusMessage = $"Parsed {ParsedEntries.Count} entries. Click 'Preview Script' to review, then 'Execute All'.";
-                    _loggingService.Log($"Bulk CSV parsed: {ParsedEntries.Count} entries", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsParsedEntriesStatus,
+                        "Parsed {count} entries. Click 'Preview Script' to review, then 'Execute All'.",
+                        new Dictionary<string, object?> { ["count"] = ParsedEntries.Count });
+                    LogLocalized(
+                        UiTextKey.BulkOperationsParsedEntriesLog,
+                        "Bulk CSV parsed: {count} entries",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["count"] = ParsedEntries.Count });
                 }
                 else
                 {
-                    StatusMessage = "No valid entries found in CSV. Check the format.";
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsNoValidEntriesError,
+                        "No valid entries found in the CSV. Check the format.");
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Parse error: {ex.Message}";
-                _loggingService.Log($"Bulk CSV parse error: {ex.Message}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsParseErrorStatus,
+                    "Parse error: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                LogLocalized(
+                    UiTextKey.BulkOperationsParseErrorLog,
+                    "Bulk CSV parse error: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -189,7 +231,9 @@ namespace PhoneDesk.ViewModels
         {
             if (ParsedEntries.Count == 0)
             {
-                StatusMessage = "No entries to preview. Parse CSV first.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsNoEntriesToPreviewError,
+                    "No entries to preview. Parse CSV first.");
                 return;
             }
 
@@ -200,7 +244,10 @@ namespace PhoneDesk.ViewModels
             }
 
             ScriptPreview = _bulkBuilder.GenerateBulkScript(entries);
-            StatusMessage = $"Script preview generated for {entries.Count} entries.";
+            StatusMessage = GetText(
+                UiTextKey.BulkOperationsScriptPreviewGeneratedStatus,
+                "Script preview generated for {count} entries.",
+                new Dictionary<string, object?> { ["count"] = entries.Count });
         }
 
         private List<PhoneManagerVariables> CollectParsedVariables() =>
@@ -216,21 +263,35 @@ namespace PhoneDesk.ViewModels
         {
             if (_planBuilder == null)
             {
-                StatusMessage = "Plan preview is unavailable.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsPlanPreviewUnavailable,
+                    "Plan preview is unavailable.");
                 return;
             }
 
             if (ParsedEntries.Count == 0)
             {
-                StatusMessage = "No entries to plan. Parse CSV first.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsNoEntriesToPlanError,
+                    "No entries to plan. Parse CSV first.");
                 return;
             }
 
             Plan = _planBuilder.BuildBulkPlan(CollectParsedVariables());
             StatusMessage = Plan.InvalidEntryCount > 0
-                ? $"Plan generated: {Plan.ValidEntryCount} valid, {Plan.InvalidEntryCount} invalid of {Plan.EntryCount} rows. Fix issues or enable 'Skip invalid rows'."
-                : $"Plan generated: {Plan.EntryCount} rows, {Plan.TotalObjectCount} objects would be created/changed.";
-            _loggingService.Log($"Bulk dry-run plan generated: {Plan.EntryCount} rows ({Plan.InvalidEntryCount} invalid)", LogLevel.Info);
+                ? GetText(
+                    UiTextKey.BulkOperationsPlanGeneratedWithIssues,
+                    "Plan generated: {valid} valid, {invalid} invalid of {rows} rows. Fix the issues or enable 'Skip invalid rows'.",
+                    new Dictionary<string, object?> { ["valid"] = Plan.ValidEntryCount, ["invalid"] = Plan.InvalidEntryCount, ["rows"] = Plan.EntryCount })
+                : GetText(
+                    UiTextKey.BulkOperationsPlanGenerated,
+                    "Plan generated: {rows} rows, {objects} objects would be created or changed.",
+                    new Dictionary<string, object?> { ["rows"] = Plan.EntryCount, ["objects"] = Plan.TotalObjectCount });
+            LogLocalized(
+                UiTextKey.BulkOperationsPlanGeneratedLog,
+                "Bulk dry-run plan generated: {rows} rows ({invalid} invalid)",
+                LogLevel.Info,
+                new Dictionary<string, object?> { ["rows"] = Plan.EntryCount, ["invalid"] = Plan.InvalidEntryCount });
         }
 
         [RelayCommand]
@@ -243,13 +304,17 @@ namespace PhoneDesk.ViewModels
         {
             if (_planBuilder == null || _planExporter == null)
             {
-                StatusMessage = "Plan export is unavailable.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsPlanExportUnavailable,
+                    "Plan export is unavailable.");
                 return;
             }
 
             if (ParsedEntries.Count == 0)
             {
-                StatusMessage = "No entries to export. Parse CSV first.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsNoEntriesToExportError,
+                    "No entries to export. Parse CSV first.");
                 return;
             }
 
@@ -260,12 +325,21 @@ namespace PhoneDesk.ViewModels
             var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"bulk-dry-run-plan.{extension}", extension);
             if (saved != null)
             {
-                StatusMessage = $"Plan exported to {saved}";
-                _loggingService.Log($"Bulk dry-run plan exported to: {saved}", LogLevel.Info);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsPlanExportedStatus,
+                    "Plan exported to {path}",
+                    new Dictionary<string, object?> { ["path"] = saved });
+                LogLocalized(
+                    UiTextKey.BulkOperationsPlanExportedLog,
+                    "Bulk dry-run plan exported to: {path}",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["path"] = saved });
             }
             else
             {
-                StatusMessage = "Plan export cancelled.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsPlanExportCancelled,
+                    "Plan export cancelled.");
             }
         }
 
@@ -274,7 +348,9 @@ namespace PhoneDesk.ViewModels
         {
             if (ParsedEntries.Count == 0)
             {
-                StatusMessage = "No entries to execute. Parse CSV first.";
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsNoEntriesToExecuteError,
+                    "No entries to execute. Parse CSV first.");
                 return;
             }
 
@@ -292,19 +368,32 @@ namespace PhoneDesk.ViewModels
                 {
                     if (!SkipInvalidRows)
                     {
-                        StatusMessage = $"{Plan.InvalidEntryCount} of {Plan.EntryCount} row(s) are invalid. Fix them, or enable 'Skip invalid rows' to run only the valid rows.";
-                        _loggingService.Log($"Bulk execution blocked: {Plan.InvalidEntryCount} invalid rows and skip-invalid is off", LogLevel.Warning);
+                        StatusMessage = GetText(
+                            UiTextKey.BulkOperationsInvalidRowsBlockedStatus,
+                            "{invalid} of {rows} rows are invalid. Fix them, or enable 'Skip invalid rows' to run only the valid rows.",
+                            new Dictionary<string, object?> { ["invalid"] = Plan.InvalidEntryCount, ["rows"] = Plan.EntryCount });
+                        LogLocalized(
+                            UiTextKey.BulkOperationsInvalidRowsBlockedLog,
+                            "Bulk execution blocked: {invalid} invalid rows and skip-invalid is off",
+                            LogLevel.Warning,
+                            new Dictionary<string, object?> { ["invalid"] = Plan.InvalidEntryCount });
                         return;
                     }
 
                     var validEntries = Plan.ValidEntries.Select(e => entries[e.RowNumber - 1]).ToList();
                     if (validEntries.Count == 0)
                     {
-                        StatusMessage = "All rows are invalid. Nothing to execute.";
+                        StatusMessage = GetText(
+                            UiTextKey.BulkOperationsAllRowsInvalidStatus,
+                            "All rows are invalid. Nothing to execute.");
                         return;
                     }
 
-                    _loggingService.Log($"Bulk execution skipping {Plan.InvalidEntryCount} invalid row(s); running {validEntries.Count} valid row(s)", LogLevel.Warning);
+                    LogLocalized(
+                        UiTextKey.BulkOperationsInvalidRowsSkippedLog,
+                        "Bulk execution skipping {invalid} invalid rows; running {valid} valid rows",
+                        LogLevel.Warning,
+                        new Dictionary<string, object?> { ["invalid"] = Plan.InvalidEntryCount, ["valid"] = validEntries.Count });
                     entries = validEntries;
                 }
             }
@@ -315,13 +404,20 @@ namespace PhoneDesk.ViewModels
             if (_dialogService != null)
             {
                 var confirmed = await _dialogService.ShowConfirmationWithPreviewAsync(
-                    "Execute Bulk Operations",
-                    $"This will execute {entries.Count} complete phone system setups. This action creates M365 Groups, Resource Accounts, Call Queues, and Auto Attendants for all entries.",
+                    GetText(
+                        UiTextKey.BulkOperationsExecuteTitle,
+                        "Execute bulk operations"),
+                    GetText(
+                        UiTextKey.BulkOperationsExecuteMessage,
+                        "This executes {count} complete phone system setups. This action creates M365 groups, resource accounts, call queues, and auto attendants for all entries.",
+                        new Dictionary<string, object?> { ["count"] = entries.Count }),
                     bulkScript);
 
                 if (!confirmed)
                 {
-                    StatusMessage = "Bulk execution cancelled.";
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsExecuteCancelledStatus,
+                        "Bulk execution cancelled.");
                     return;
                 }
             }
@@ -334,8 +430,15 @@ namespace PhoneDesk.ViewModels
                 ProcessedCount = 0;
                 var log = new StringBuilder();
 
-                StatusMessage = $"Executing bulk operations for {entries.Count} entries...";
-                _loggingService.Log($"Bulk execution started: {entries.Count} entries", LogLevel.Info);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsExecutionStartedStatus,
+                    "Executing bulk operations for {count} entries...",
+                    new Dictionary<string, object?> { ["count"] = entries.Count });
+                LogLocalized(
+                    UiTextKey.BulkOperationsExecutionStartedLog,
+                    "Bulk execution started: {count} entries",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["count"] = entries.Count });
 
                 // Execute the entire script as one batch
                 var result = await ExecutePowerShellCommandAsync(bulkScript, "BulkOperations");
@@ -346,19 +449,36 @@ namespace PhoneDesk.ViewModels
 
                     if (result.HasErrorMarker)
                     {
-                        StatusMessage = "Bulk execution completed with errors. Check the log below.";
-                        _loggingService.Log("Bulk execution completed with errors", LogLevel.Warning);
+                        StatusMessage = GetText(
+                            UiTextKey.BulkOperationsExecutionCompletedWithErrorsStatus,
+                            "Bulk execution completed with errors. Check the log below.");
+                        LogLocalized(
+                            UiTextKey.BulkOperationsExecutionCompletedWithErrorsLog,
+                            "Bulk execution completed with errors",
+                            LogLevel.Warning);
                     }
                     else
                     {
-                        StatusMessage = $"Bulk execution completed successfully for {entries.Count} entries!";
-                        _loggingService.Log($"Bulk execution completed successfully: {entries.Count} entries", LogLevel.Info);
+                        StatusMessage = GetText(
+                            UiTextKey.BulkOperationsExecutionCompletedSuccessStatus,
+                            "Bulk execution completed successfully for {count} entries.",
+                            new Dictionary<string, object?> { ["count"] = entries.Count });
+                        LogLocalized(
+                            UiTextKey.BulkOperationsExecutionCompletedSuccessLog,
+                            "Bulk execution completed successfully: {count} entries",
+                            LogLevel.Info,
+                            new Dictionary<string, object?> { ["count"] = entries.Count });
                     }
                 }
                 else
                 {
-                    log.AppendLine("Script executed (no output returned).");
-                    StatusMessage = $"Bulk execution completed for {entries.Count} entries.";
+                    log.AppendLine(GetText(
+                        UiTextKey.BulkOperationsExecutionNoOutputLog,
+                        "Script executed (no output returned)."));
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsExecutionCompletedStatus,
+                        "Bulk execution completed for {count} entries.",
+                        new Dictionary<string, object?> { ["count"] = entries.Count });
                 }
 
                 ProcessedCount = TotalCount;
@@ -366,9 +486,19 @@ namespace PhoneDesk.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Bulk execution failed: {ex.Message}";
-                ExecutionLog += $"\nFATAL ERROR: {ex.Message}";
-                _loggingService.Log($"Bulk execution exception: {ex}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsExecutionFailedStatus,
+                    "Bulk execution failed: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                ExecutionLog += Environment.NewLine + GetText(
+                    UiTextKey.BulkOperationsExecutionFatalErrorPrefix,
+                    "FATAL ERROR: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                LogLocalized(
+                    UiTextKey.BulkOperationsExecutionFailedLog,
+                    "Bulk execution exception: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["details"] = ex.ToString() });
             }
             finally
             {
@@ -388,7 +518,9 @@ namespace PhoneDesk.ViewModels
 
                 if (topLevel == null)
                 {
-                    StatusMessage = "Cannot open file picker.";
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsFilePickerUnavailable,
+                        "Cannot open the file picker.");
                     return;
                 }
 
@@ -409,14 +541,28 @@ namespace PhoneDesk.ViewModels
                     await using var stream = await file.OpenWriteAsync();
                     await using var writer = new StreamWriter(stream, Encoding.UTF8);
                     await writer.WriteAsync(template);
-                    StatusMessage = $"Template exported to {file.Name}";
-                    _loggingService.Log($"Bulk CSV template exported to: {file.Name}", LogLevel.Info);
+                    StatusMessage = GetText(
+                        UiTextKey.BulkOperationsTemplateExportedStatus,
+                        "Template exported to {name}",
+                        new Dictionary<string, object?> { ["name"] = file.Name });
+                    LogLocalized(
+                        UiTextKey.BulkOperationsTemplateExportedLog,
+                        "Bulk CSV template exported to: {name}",
+                        LogLevel.Info,
+                        new Dictionary<string, object?> { ["name"] = file.Name });
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Export failed: {ex.Message}";
-                _loggingService.Log($"Bulk CSV template export failed: {ex.Message}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsTemplateExportFailedStatus,
+                    "Export failed: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                LogLocalized(
+                    UiTextKey.BulkOperationsTemplateExportFailedLog,
+                    "Bulk CSV template export failed: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
     }

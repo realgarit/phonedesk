@@ -55,7 +55,10 @@ namespace PhoneDesk.ViewModels
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _docBuilder = docBuilder;
-            _loggingService.Log("Documentation page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.DocumentationPageLoadedLog,
+                "Documentation page loaded",
+                LogLevel.Info);
         }
 
         [RelayCommand]
@@ -65,7 +68,9 @@ namespace PhoneDesk.ViewModels
             {
                 IsBusy = true;
                 IsExporting = true;
-                StatusMessage = "Gathering tenant documentation...";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationGatheringStatus,
+                    "Gathering tenant documentation...");
 
                 // Collect all data
                 var raList = new List<RaInfo>();
@@ -88,7 +93,10 @@ namespace PhoneDesk.ViewModels
                 string tenantName = "", tenantId = "", tenantCountry = "", tenantLang = "";
 
                 // 1. Tenant Info
-                StatusMessage = "Exporting tenant info... (1/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "tenant info", ["current"] = 1, ["total"] = 7 });
                 var tenantResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportTenantInfoCommand(), null, "ExportTenantInfo", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(tenantResult.Value))
                 {
@@ -109,43 +117,63 @@ namespace PhoneDesk.ViewModels
                 }
 
                 // 2. Resource Accounts + Associations
-                StatusMessage = "Exporting resource accounts... (2/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "resource accounts", ["current"] = 2, ["total"] = 7 });
                 var raResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportResourceAccountsCommand(), null, "ExportResourceAccounts", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(raResult.Value))
                     ParseResourceAccountData(raResult.Value, raList, assocList);
 
                 // 3. Auto Attendants
-                StatusMessage = "Exporting auto attendants... (3/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "auto attendants", ["current"] = 3, ["total"] = 7 });
                 var aaResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportAutoAttendantsCommand(), null, "ExportAutoAttendants", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(aaResult.Value))
                     ParseAutoAttendantData(aaResult.Value, aaList, menuOptions, callFlows, chaList, operatorList);
 
                 // 4. Call Queues
-                StatusMessage = "Exporting call queues... (4/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "call queues", ["current"] = 4, ["total"] = 7 });
                 var cqResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportCallQueuesCommand(), null, "ExportCallQueues", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(cqResult.Value))
                     ParseCallQueueData(cqResult.Value, cqList, agentList, overflowList, timeoutList, dlList);
 
                 // 5. Schedules
-                StatusMessage = "Exporting schedules... (5/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "schedules", ["current"] = 5, ["total"] = 7 });
                 var schedResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportSchedulesCommand(), null, "ExportSchedules", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(schedResult.Value))
                     ParseScheduleData(schedResult.Value, schedList, schedDateRanges, schedWeekly);
 
                 // 6. Phone Numbers
-                StatusMessage = "Exporting phone numbers... (6/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "phone numbers", ["current"] = 6, ["total"] = 7 });
                 var phoneResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportPhoneNumbersCommand(), null, "ExportPhoneNumbers", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(phoneResult.Value))
                     ParsePhoneData(phoneResult.Value, phoneList);
 
                 // 7. Voice Users
-                StatusMessage = "Exporting voice users... (7/7)";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportStepStatus,
+                    "Exporting {item}... ({current}/{total})",
+                    new Dictionary<string, object?> { ["item"] = "voice users", ["current"] = 7, ["total"] = 7 });
                 var userResult = await ExecutePowerShellCommandAsync(_docBuilder.GetExportVoiceUsersCommand(), null, "ExportVoiceUsers", allowThrottleRetry: true);
                 if (!string.IsNullOrEmpty(userResult.Value))
                     ParseUserData(userResult.Value, userList);
 
                 // Build the comprehensive documentation
-                StatusMessage = "Building documentation...";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationBuildingStatus,
+                    "Building documentation...");
                 var doc = new StringBuilder();
                 BuildDocumentation(doc, tenantName, tenantId, tenantCountry, tenantLang,
                     raList, aaList, cqList, menuOptions, callFlows, chaList, assocList,
@@ -153,13 +181,22 @@ namespace PhoneDesk.ViewModels
                     overflowList, timeoutList, operatorList, dlList);
 
                 DocumentationOutput = doc.ToString();
-                StatusMessage = "Documentation exported successfully. You can copy the text above.";
-                _loggingService.Log("Documentation exported successfully", LogLevel.Info);
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationExportSuccess,
+                    "Documentation exported successfully. You can copy the text above.");
+                LogLocalized(
+                    UiTextKey.DocumentationExportSuccessLog,
+                    "Documentation exported successfully",
+                    LogLevel.Info);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error: {ex.Message}";
-                _loggingService.Log($"Exception in ExportDocumentationAsync: {ex}", LogLevel.Error);
+                StatusMessage = FormatError(ex.Message);
+                LogLocalized(
+                    UiTextKey.RuntimeExceptionLog,
+                    "Exception in {context}: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["context"] = nameof(ExportDocumentationAsync), ["details"] = ex.ToString() });
             }
             finally
             {
@@ -173,7 +210,9 @@ namespace PhoneDesk.ViewModels
         {
             if (string.IsNullOrEmpty(DocumentationOutput))
             {
-                StatusMessage = "No documentation to copy. Export first.";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationNothingToCopyError,
+                    "No documentation to copy. Export first.");
                 return;
             }
 
@@ -188,17 +227,31 @@ namespace PhoneDesk.ViewModels
                     if (clipboard != null)
                     {
                         await clipboard.SetTextAsync(DocumentationOutput);
-                        StatusMessage = "Documentation copied to clipboard!";
-                        _loggingService.Log("Documentation copied to clipboard", LogLevel.Info);
+                        StatusMessage = GetText(
+                            UiTextKey.DocumentationCopiedStatus,
+                            "Documentation copied to clipboard.");
+                        LogLocalized(
+                            UiTextKey.DocumentationCopiedLog,
+                            "Documentation copied to clipboard",
+                            LogLevel.Info);
                         return;
                     }
                 }
-                StatusMessage = "Clipboard not available.";
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationClipboardUnavailable,
+                    "Clipboard not available.");
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Failed to copy: {ex.Message}";
-                _loggingService.Log($"Failed to copy documentation to clipboard: {ex.Message}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationCopyFailedStatus,
+                    "Failed to copy: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+                LogLocalized(
+                    UiTextKey.DocumentationCopyFailedLog,
+                    "Failed to copy documentation to clipboard: {error}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 

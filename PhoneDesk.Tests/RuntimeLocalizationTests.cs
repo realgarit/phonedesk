@@ -1,8 +1,11 @@
 using System.Reflection;
 using Moq;
+using PhoneDesk.Models;
 using PhoneDesk.Localization;
+using PhoneDesk.Planning;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Services.ScriptBuilders;
 using PhoneDesk.Tests.TestSupport;
 using PhoneDesk.ViewModels;
 
@@ -10,6 +13,140 @@ namespace PhoneDesk.Tests;
 
 public sealed class RuntimeLocalizationTests
 {
+    [Fact]
+    public async Task SwitchingLanguage_LocalizesAutoAttendantCreateSuccess_AndPreservesName()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.SetExecutionResult("SUCCESS: created");
+        harness.SharedStateService.SetupGet(s => s.AutoRefreshAfterOperations).Returns(false);
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+        {
+            Customer = "contoso",
+            CustomerGroupName = "tenant",
+            MsFallbackDomain = "@example.com",
+            LanguageId = "en-US",
+            TimeZoneId = "W. Europe Standard Time",
+            CsAppAaId = "app-aa-123"
+        });
+
+        var vm = new AutoAttendantsViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        vm.AutoAttendantName = "aa-Contoso";
+
+        await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
+        Assert.Equal("Auto attendant 'aa-Contoso' created successfully.", vm.StatusMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
+        Assert.Equal("Automatische Telefonzentrale 'aa-Contoso' wurde erfolgreich erstellt.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void SwitchingLanguage_LocalizesBulkPlanSummary_AndPreservesCounts()
+    {
+        var harness = new ViewModelTestHarness();
+        var vm = new BulkOperationsViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            new BulkOperationsScriptBuilder(harness.PowerShellCommandService.Object, CreateVerbatimSanitizer()),
+            planBuilder: new DryRunPlanBuilder(harness.ValidationService.Object),
+            translationService: harness.TranslationService);
+
+        vm.CsvContent = "Customer,CustomerGroupName,MsFallbackDomain,RaaAnrName,LanguageId,TimeZoneId,UsageLocation,PhoneNumber,PhoneNumberType,OpeningHours1Start,OpeningHours1End,OpeningHours2Start,OpeningHours2End\n"
+            + "contoso,hauptnummer,@contoso.onmicrosoft.com,haupt,de-DE,W. Europe Standard Time,CH,+41441234567,DirectRouting,08:00,12:00,13:00,17:00";
+
+        vm.ParseCsvCommand.Execute(null);
+        vm.GeneratePlanCommand.Execute(null);
+
+        Assert.Equal("Plan generated: 0 valid, 1 invalid of 1 rows. Fix the issues or enable 'Skip invalid rows'.", vm.StatusMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+        vm.GeneratePlanCommand.Execute(null);
+
+        Assert.Equal("Plan erstellt: 0 gültig, 1 ungültig von 1 Zeilen. Beheben Sie die Probleme oder aktivieren Sie 'Ungültige Zeilen überspringen'.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task SwitchingLanguage_LocalizesDocumentationSuccess_AndCopyStatus()
+    {
+        var harness = new ViewModelTestHarness();
+        var docBuilder = CreateDocumentationBuilder();
+        harness.SetExecutionResult(string.Empty);
+
+        var vm = new DocumentationViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            docBuilder.Object,
+            translationService: harness.TranslationService);
+
+        await vm.ExportDocumentationCommand.ExecuteAsync(null);
+        Assert.Equal("Documentation exported successfully. You can copy the text above.", vm.StatusMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+
+        await vm.CopyToClipboardCommand.ExecuteAsync(null);
+        Assert.Equal("Zwischenablage ist nicht verfügbar.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task SwitchingLanguage_LocalizesWizardStepCompletion_AndPreservesStepData()
+    {
+        var harness = new ViewModelTestHarness();
+        harness.PowerShellCommandService
+            .Setup(c => c.GetCreateM365GroupCommand(It.IsAny<string>()))
+            .Returns("New-CsGroup ...");
+
+        var vm = new WizardViewModel(
+            harness.PowerShellContextService.Object,
+            harness.PowerShellCommandService.Object,
+            harness.LoggingService.Object,
+            harness.SessionManager.Object,
+            harness.NavigationService.Object,
+            harness.ErrorHandlingService.Object,
+            harness.ValidationService.Object,
+            harness.SharedStateService.Object,
+            harness.DialogService.Object,
+            translationService: harness.TranslationService);
+
+        await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
+        vm.GoToNextStepCommand.Execute(null);
+        harness.SetExecutionResult("SUCCESS: created");
+
+        await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
+        Assert.Equal("Step 1 completed: Create M365 Group", vm.StatusMessage);
+
+        harness.TranslationService.CurrentLanguage = AppLanguage.German;
+        vm.RetryStepCommand.Execute(null);
+
+        await vm.ExecuteCurrentStepCommand.ExecuteAsync(null);
+        Assert.Equal("Schritt 1 abgeschlossen: Create M365 Group", vm.StatusMessage);
+    }
+
     [Fact]
     public async Task SwitchingLanguage_ChangesNextViewModelStatusMessage_AndPreservesInsertedTechnicalValue()
     {
@@ -207,6 +344,51 @@ public sealed class RuntimeLocalizationTests
         Assert.Equal(
             "Beim Ausführen des PowerShell-Befehls ist ein Fehler aufgetreten.\n\n{error}",
             german[UiTextKey.ErrorPowerShellMessage]);
+        Assert.Equal(
+            "Auto attendant '{name}' created successfully.",
+            english[UiTextKey.AutoAttendantsCreateAutoAttendantSuccess]);
+        Assert.Equal(
+            "Automatische Telefonzentrale '{name}' wurde erfolgreich erstellt.",
+            german[UiTextKey.AutoAttendantsCreateAutoAttendantSuccess]);
+        Assert.Equal(
+            "Plan generated: {rows} rows, {objects} objects would be created or changed.",
+            english[UiTextKey.BulkOperationsPlanGenerated]);
+        Assert.Equal(
+            "Plan erstellt: {rows} Zeilen, {objects} Objekte würden erstellt oder geändert.",
+            german[UiTextKey.BulkOperationsPlanGenerated]);
+        Assert.Equal(
+            "Documentation exported successfully. You can copy the text above.",
+            english[UiTextKey.DocumentationExportSuccess]);
+        Assert.Equal(
+            "Bericht wurde erfolgreich exportiert. Sie können den Text oben kopieren.",
+            german[UiTextKey.DocumentationExportSuccess]);
+        Assert.Equal(
+            "Step {step} completed: {title}",
+            english[UiTextKey.WizardStepCompletedStatus]);
+        Assert.Equal(
+            "Schritt {step} abgeschlossen: {title}",
+            german[UiTextKey.WizardStepCompletedStatus]);
+    }
+
+    private static Mock<IDocumentationScriptBuilder> CreateDocumentationBuilder()
+    {
+        var mock = new Mock<IDocumentationScriptBuilder>();
+        mock.Setup(d => d.GetExportTenantInfoCommand()).Returns("Get-TenantInfo");
+        mock.Setup(d => d.GetExportResourceAccountsCommand()).Returns("Get-ResourceAccounts");
+        mock.Setup(d => d.GetExportAutoAttendantsCommand()).Returns("Get-AutoAttendants");
+        mock.Setup(d => d.GetExportCallQueuesCommand()).Returns("Get-CallQueues");
+        mock.Setup(d => d.GetExportSchedulesCommand()).Returns("Get-Schedules");
+        mock.Setup(d => d.GetExportPhoneNumbersCommand()).Returns("Get-PhoneNumbers");
+        mock.Setup(d => d.GetExportVoiceUsersCommand()).Returns("Get-VoiceUsers");
+        return mock;
+    }
+
+    private static IPowerShellSanitizationService CreateVerbatimSanitizer()
+    {
+        var mock = new Mock<IPowerShellSanitizationService>();
+        mock.Setup(s => s.SanitizeString(It.IsAny<string>())).Returns<string>(x => x);
+        mock.Setup(s => s.SanitizeIdentifier(It.IsAny<string>())).Returns<string>(x => x);
+        return mock.Object;
     }
 
     private static void SetUpdateBannerState(MainWindowViewModel viewModel, string stateName, string version)

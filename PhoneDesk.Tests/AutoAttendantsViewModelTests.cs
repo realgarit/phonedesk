@@ -27,7 +27,7 @@ namespace PhoneDesk.Tests
 
             CreateViewModel(harness);
 
-            harness.LoggingService.Verify(l => l.Log("Auto Attendants page loaded", LogLevel.Info), Times.Once);
+            harness.LoggingService.Verify(l => l.Log("Auto attendants page loaded", LogLevel.Info), Times.Once);
         }
 
         // ---- RetrieveResourceAccountsAsync ----
@@ -47,7 +47,7 @@ namespace PhoneDesk.Tests
             Assert.Equal("raaa-upn@contoso.com", account.UserPrincipalName);
             Assert.Equal("Identity1", account.Identity);
             Assert.Equal("Switzerland", account.UsageLocation);
-            Assert.Equal("Found 1 resource accounts starting with 'raaa-'", vm.StatusMessage);
+            Assert.Equal("Loaded 1 resource accounts starting with 'raaa-'.", vm.StatusMessage);
             Assert.False(vm.IsBusy);
         }
 
@@ -76,7 +76,7 @@ namespace PhoneDesk.Tests
             await vm.RetrieveResourceAccountsCommand.ExecuteAsync(null);
 
             Assert.Empty(vm.ResourceAccounts);
-            Assert.Equal("Error: No output from PowerShell command", vm.StatusMessage);
+            Assert.Equal("Error: No output from the PowerShell command.", vm.StatusMessage);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace PhoneDesk.Tests
             Assert.Equal("Identity1", aa.Identity);
             Assert.Equal("en-US", aa.LanguageId);
             Assert.Equal("W. Europe Standard Time", aa.TimeZoneId);
-            Assert.Equal("Found 1 auto attendants containing 'aa-'", vm.StatusMessage);
+            Assert.Equal("Loaded 1 auto attendants containing 'aa-'.", vm.StatusMessage);
         }
 
         [Fact]
@@ -291,7 +291,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN and display name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN and display name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -309,7 +309,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Auto Attendant Application ID not found in variables", vm.StatusMessage);
+            Assert.Equal("Error: Auto attendant application ID was not found in Configuration.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -327,7 +327,7 @@ namespace PhoneDesk.Tests
             await vm.CreateResourceAccountCommand.ExecuteAsync(null);
 
             Assert.Equal(
-                "Error: MS Fallback Domain is not set or invalid. Please set a valid domain (e.g., @yourdomain.com) in Variables.",
+                "Error: Microsoft fallback domain is not set or is invalid. Set a valid domain such as @yourdomain.com in Configuration.",
                 vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
@@ -389,7 +389,7 @@ namespace PhoneDesk.Tests
 
             await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Auto attendant name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Auto attendant name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -429,9 +429,9 @@ namespace PhoneDesk.Tests
 
             await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error creating auto attendant", vm.StatusMessage);
+            Assert.Contains("Error creating the auto attendant", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create Auto Attendant"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create auto attendant"),
                 Times.Once);
         }
 
@@ -446,7 +446,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveAutoAttendantCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Auto attendant name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Auto attendant name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -465,7 +465,7 @@ namespace PhoneDesk.Tests
             // StatusMessage reflects the auto-refresh that runs immediately after a successful remove, so
             // the final message is the retrieve's, not the remove's. The remove success is still
             // observable via the log entry.
-            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("removed successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("deleted successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.AtLeast(2));
@@ -481,9 +481,9 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveAutoAttendantCommand.ExecuteAsync(null);
 
-            Assert.Contains("Error removing auto attendant", vm.StatusMessage);
+            Assert.Contains("Error deleting the auto attendant", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Remove Auto Attendant"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Delete auto attendant"),
                 Times.Once);
         }
 
@@ -514,7 +514,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveScheduleCommand.ExecuteAsync(string.Empty);
 
-            Assert.Equal("Error: Schedule name cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Schedule name cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -529,7 +529,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveScheduleCommand.ExecuteAsync("hd-Contoso");
 
-            Assert.Contains("removed successfully", vm.StatusMessage);
+            Assert.Contains("deleted successfully", vm.StatusMessage);
         }
 
         [Fact]
@@ -541,9 +541,9 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveScheduleCommand.ExecuteAsync("hd-Contoso");
 
-            Assert.Contains("Error removing schedule", vm.StatusMessage);
+            Assert.Contains("Error deleting the schedule", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(
-                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Remove Schedule"),
+                e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Delete schedule"),
                 Times.Once);
         }
 
@@ -558,7 +558,7 @@ namespace PhoneDesk.Tests
 
             await vm.RemoveResourceAccountCommand.ExecuteAsync(null);
 
-            Assert.Equal("Error: Resource account UPN cannot be empty", vm.StatusMessage);
+            Assert.Equal("Error: Resource account UPN cannot be empty.", vm.StatusMessage);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.Never);
@@ -576,7 +576,7 @@ namespace PhoneDesk.Tests
             // StatusMessage reflects the auto-refresh that runs immediately after a successful remove, so
             // the final message is the retrieve's, not the remove's. The remove success is still
             // observable via the log entry.
-            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("removed successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            harness.LoggingService.Verify(l => l.Log(It.Is<string>(m => m.Contains("deleted successfully")), It.IsAny<LogLevel>()), Times.AtLeastOnce);
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.AtLeast(2));

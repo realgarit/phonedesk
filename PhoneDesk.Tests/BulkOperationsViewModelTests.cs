@@ -149,7 +149,7 @@ namespace PhoneDesk.Tests
 
             Assert.Null(exception);
             Assert.Empty(vm.ParsedEntries);
-            Assert.Equal("No valid entries found in CSV. Check the format.", vm.StatusMessage);
+            Assert.Equal("No valid entries found in the CSV. Check the format.", vm.StatusMessage);
         }
 
         // ── ExecuteAll command gating and PowerShell paths ─────────────────

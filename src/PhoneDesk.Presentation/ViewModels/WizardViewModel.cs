@@ -175,7 +175,10 @@ namespace PhoneDesk.ViewModels
         {
             _planBuilder = planBuilder;
             _planExporter = planExporter;
-            _loggingService.Log("Wizard page loaded", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.WizardPageLoadedLog,
+                "Guided setup page loaded",
+                LogLevel.Info);
             InitializeSteps();
             UpdateCurrentStep();
         }
@@ -263,7 +266,9 @@ namespace PhoneDesk.ViewModels
                 return true;
             }
 
-            StatusMessage = "Complete or skip this step before moving on.";
+            StatusMessage = GetText(
+                UiTextKey.WizardCompleteOrSkipCurrentStepError,
+                "Complete or skip this step before moving on.");
             return false;
         }
 
@@ -422,6 +427,9 @@ namespace PhoneDesk.ViewModels
                 if (!AllProvisioningStepsCompleted())
                 {
                     StepResult = "Setup is not complete. Return to the skipped or incomplete steps before finishing.";
+                    StepResult = GetText(
+                        UiTextKey.WizardNotCompleteStatus,
+                        "Setup is not complete. Return to the skipped or incomplete steps before finishing.");
                     StatusMessage = StepResult;
                     return;
                 }
@@ -442,7 +450,9 @@ namespace PhoneDesk.ViewModels
             var script = GetScriptForStep(CurrentStep);
             if (string.IsNullOrEmpty(script))
             {
-                StatusMessage = "No script to execute for this step.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardNoScriptError,
+                    "No script is available for this step.");
                 return;
             }
 
@@ -451,7 +461,9 @@ namespace PhoneDesk.ViewModels
 
             if (result == null)
             {
-                StatusMessage = "Step cancelled.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardStepCancelledStatus,
+                    "Step cancelled.");
                 return;
             }
 
@@ -463,8 +475,15 @@ namespace PhoneDesk.ViewModels
                 step.Result = output;
                 StepFailed = true;
                 StepResult = output;
-                StatusMessage = $"Step {CurrentStep} failed. Review the output and retry or skip.";
-                _loggingService.Log($"Wizard step {CurrentStep} ({step.Title}) failed: {output}", LogLevel.Error);
+                StatusMessage = GetText(
+                    UiTextKey.WizardStepFailedStatus,
+                    "Step {step} failed. Review the output and retry or skip.",
+                    new Dictionary<string, object?> { ["step"] = CurrentStep });
+                LogLocalized(
+                    UiTextKey.WizardStepFailedLog,
+                    "Wizard step {step} ({title}) failed: {details}",
+                    LogLevel.Error,
+                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title, ["details"] = output });
             }
             else
             {
@@ -472,8 +491,15 @@ namespace PhoneDesk.ViewModels
                 step.Result = output;
                 StepCompleted = true;
                 StepResult = string.IsNullOrWhiteSpace(output) ? "Step completed successfully." : output;
-                StatusMessage = $"Step {CurrentStep} completed: {step.Title}";
-                _loggingService.Log($"Wizard step {CurrentStep} ({step.Title}) completed successfully", LogLevel.Info);
+                StatusMessage = GetText(
+                    UiTextKey.WizardStepCompletedStatus,
+                    "Step {step} completed: {title}",
+                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
+                LogLocalized(
+                    UiTextKey.WizardStepCompletedLog,
+                    "Wizard step {step} ({title}) completed successfully",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
             }
 
             OnPropertyChanged(nameof(CanExecuteStep));
@@ -509,8 +535,14 @@ namespace PhoneDesk.ViewModels
             {
                 var step = Steps[CurrentStep];
                 step.IsSkipped = true;
-                step.Result = "Skipped by user.";
-                _loggingService.Log($"Wizard step {CurrentStep} ({step.Title}) skipped", LogLevel.Warning);
+                step.Result = GetText(
+                    UiTextKey.WizardStepSkippedStatus,
+                    "Skipped by user.");
+                LogLocalized(
+                    UiTextKey.WizardStepSkippedLog,
+                    "Wizard step {step} ({title}) skipped",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["step"] = CurrentStep, ["title"] = step.Title });
                 CurrentStep++;
                 UpdateCurrentStep();
             }
@@ -557,7 +589,9 @@ namespace PhoneDesk.ViewModels
         {
             if (_planBuilder == null)
             {
-                StatusMessage = "Plan preview is unavailable.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanPreviewUnavailable,
+                    "Plan preview is unavailable.");
                 return;
             }
 
@@ -565,13 +599,22 @@ namespace PhoneDesk.ViewModels
             var entry = Plan.Entries.Count > 0 ? Plan.Entries[0] : null;
             if (entry != null && !entry.IsValid)
             {
-                StatusMessage = $"Plan generated with {entry.ValidationErrors.Count} validation issue(s). Review before executing.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanGeneratedWithIssues,
+                    "Plan generated with {count} validation issue(s). Review before executing.",
+                    new Dictionary<string, object?> { ["count"] = entry.ValidationErrors.Count });
             }
             else
             {
-                StatusMessage = $"Plan generated: {Plan.TotalObjectCount} objects would be created/changed.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanGenerated,
+                    "Plan generated: {objects} objects would be created or changed.",
+                    new Dictionary<string, object?> { ["objects"] = Plan.TotalObjectCount });
             }
-            _loggingService.Log("Wizard dry-run plan generated", LogLevel.Info);
+            LogLocalized(
+                UiTextKey.WizardPlanGeneratedLog,
+                "Wizard dry-run plan generated",
+                LogLevel.Info);
         }
 
         [RelayCommand]
@@ -584,7 +627,9 @@ namespace PhoneDesk.ViewModels
         {
             if (_planBuilder == null || _planExporter == null)
             {
-                StatusMessage = "Plan export is unavailable.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanExportUnavailable,
+                    "Plan export is unavailable.");
                 return;
             }
 
@@ -595,12 +640,21 @@ namespace PhoneDesk.ViewModels
             var saved = await DryRunPlanExportHelper.SavePlanAsync(content, $"wizard-dry-run-plan.{extension}", extension);
             if (saved != null)
             {
-                StatusMessage = $"Plan exported to {saved}";
-                _loggingService.Log($"Wizard dry-run plan exported to: {saved}", LogLevel.Info);
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanExportedStatus,
+                    "Plan exported to {path}",
+                    new Dictionary<string, object?> { ["path"] = saved });
+                LogLocalized(
+                    UiTextKey.WizardPlanExportedLog,
+                    "Wizard dry-run plan exported to: {path}",
+                    LogLevel.Info,
+                    new Dictionary<string, object?> { ["path"] = saved });
             }
             else
             {
-                StatusMessage = "Plan export cancelled.";
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanExportCancelled,
+                    "Plan export cancelled.");
             }
         }
 

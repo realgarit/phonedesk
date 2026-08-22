@@ -1,27 +1,36 @@
-## Task 6 report — Fix Round 1
+## Task 6 report — Cluster A residuals
 
-Date: 2026-08-21
+Date: 2026-08-22
 
-### Scope in this fix round
+### Scope in this cluster
 
-- Extended runtime localization regression coverage with:
-  - a call-queue license status/log language-switch case
-  - an update-banner language-switch case
-- Localized the call-queue license runtime sink and delete-call-queue confirmation/status text with typed `UiTextKey` entries and English/German catalog values.
-- Reworked the Task 6 screenshot harness so the script-preview and destructive-confirmation dialog title/message state is built from production localization keys instead of copied English/German strings.
-- Updated affected harness and call-queue tests to match the localized wording and context names used by the production code.
+- Localized the remaining fixed runtime sinks in cluster A for:
+  - `AutoAttendantsViewModel`
+  - `BulkOperationsViewModel`
+  - `DocumentationViewModel`
+  - `DashboardViewModel`
+  - `WizardViewModel`
+- Added typed `UiTextKey` entries plus English/German catalog parity for:
+  - fixed status messages
+  - fixed waiting/progress-style runtime wrappers
+  - fixed confirmation/context labels supplied by the ViewModels
+  - displayed fixed `_loggingService.Log(...)` wrappers
+- Preserved inserted technical/runtime values unchanged:
+  - names, UPNs, IDs, file names, paths, counts, validation details, and native PowerShell output
+- Kept frozen infrastructure/auth/script builders untouched.
+- Did not spend this cluster on screenshot changes.
 
 ### RED
 
-Added the extra `RuntimeLocalizationTests` coverage first, then ran:
+Added the extra runtime-localization coverage first, then ran:
 
 `dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~RuntimeLocalizationTests`
 
 Initial RED evidence:
 
-- missing `UiTextKey.CallQueuesAssignLicenseSuccess`
-- missing harness support for `MainWindowViewModel`
-- runtime test setup mismatch for computed `RacqUPN`
+- missing new `UiTextKey` members for the new Auto Attendants, Bulk Operations, Documentation, and Wizard runtime sinks
+- one initial test setup error for the bulk dry-run builder reference
+- one behavioral mismatch after compile where the bulk sample row was invalid and therefore exercised the “plan generated with issues” path
 
 ### GREEN
 
@@ -29,56 +38,64 @@ Focused runtime localization tests:
 
 `dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~RuntimeLocalizationTests`
 
-Result: Passed 6/6
+Result: Passed 10/10
 
-Focused regression slice:
+Focused affected ViewModel/runtime slice:
 
-`dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter "FullyQualifiedName~RuntimeLocalizationTests|FullyQualifiedName~ErrorHandlingServiceTests|FullyQualifiedName~MainWindowViewModelTests"`
+`dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter "FullyQualifiedName~RuntimeLocalizationTests|FullyQualifiedName~AutoAttendantsViewModelTests|FullyQualifiedName~BulkOperationsViewModelTests|FullyQualifiedName~DocumentationViewModelTests|FullyQualifiedName~DashboardViewModelTests|FullyQualifiedName~WizardViewModelTests"`
 
-Result: Passed 39/39
-
-Screenshot generator:
-
-`GENERATE_SCREENSHOTS=1 SCREENSHOT_OUT=C:/Users/realgar/.codex/visualizations/2026/08/21/task6-runtime-fix1 dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --no-restore --filter FullyQualifiedName~ScreenshotGenerator`
-
-Result: Passed 1/1
+Result: Passed 99/99
 
 Full solution:
 
 `dotnet test PhoneDesk.slnx --no-restore`
 
-Result: Passed 583/583
+Result: Passed 587/587
 
-### Screenshot verification
+### Runtime sink coverage in this cluster
 
-Output directory:
+- `AutoAttendantsViewModel`
+  - load resource-account status/log/result wrappers
+  - load auto-attendant status/log/result wrappers
+  - create resource-account validation/context/success/error/log wrappers
+  - create auto-attendant validation/context/success/error/log wrappers
+  - delete auto-attendant confirmation/context/success/error/log wrappers
+  - delete schedule confirmation/context/success/error/log wrappers
+  - delete resource-account confirmation/context/success/error/log wrappers
+- `BulkOperationsViewModel`
+  - template/import/parse/preview/plan/export/execute status wrappers
+  - invalid-row gating summaries
+  - execution confirmation title/message
+  - execution log wrappers for no-output and fatal-error text
+  - displayed fixed logging wrappers for page load, parse, plan, export, and execution
+- `DocumentationViewModel`
+  - gather/export-step/build/success/copy/clipboard/failure status wrappers
+  - displayed fixed logging wrappers for page load, export success, copy success, and copy failure
+- `DashboardViewModel`
+  - page-load log
+  - loading/loaded status wrappers
+  - localized `LastRefreshedText`/not-yet-loaded text with refresh on language change
+- `WizardViewModel`
+  - page-load log
+  - next-step guard, no-script, cancelled, failed, completed, and skipped runtime wrappers
+  - dry-run plan status/export wrappers
 
-`C:\Users\realgar\.codex\visualizations\2026\08\21\task6-runtime-fix1`
+### Screenshots
 
-Relevant Task 6 files generated:
+- Not updated in this cluster by request.
 
-- `task6-update-banner-en.png`
-- `task6-update-banner-de.png`
-- `task6-script-preview-en.png`
-- `task6-script-preview-de.png`
-- `task6-confirmation-en.png`
-- `task6-confirmation-de.png`
-- `task6-error-dialog-en.png`
-- `task6-error-dialog-de.png`
-
-Inspection note for this fix round:
-
-- the screenshot pass completed with the dialog title/body now sourced from production localization keys instead of copied strings
-- the expected Task 6 PNG set was regenerated successfully under the output folder above
-
-### Files changed in this fix round
+### Files changed in this cluster
 
 - `.superpowers/sdd/2026-08-21-i18n-german-plan/task-6-report.md`
-- `PhoneDesk.Tests/CallQueuesViewModelTests.cs`
+- `PhoneDesk.Tests/AutoAttendantsViewModelTests.cs`
+- `PhoneDesk.Tests/BulkOperationsViewModelTests.cs`
 - `PhoneDesk.Tests/RuntimeLocalizationTests.cs`
-- `PhoneDesk.Tests/ScreenshotGenerator.cs`
 - `PhoneDesk.Tests/TestSupport/ViewModelTestHarness.cs`
 - `src/PhoneDesk.Presentation/Localization/UiTextKey.cs`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.en.json`
 - `src/PhoneDesk.Presentation/Resources/Localization/Strings.de.json`
-- `src/PhoneDesk.Presentation/ViewModels/CallQueuesViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/AutoAttendantsViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/BulkOperationsViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/DashboardViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/DocumentationViewModel.cs`
+- `src/PhoneDesk.Presentation/ViewModels/WizardViewModel.cs`

@@ -5,9 +5,9 @@
          EnableNETAnalyzers and AnalysisLevel are inherited from Directory.Build.props. -->
     <OutputType>WinExe</OutputType>
     <RootNamespace>PhoneDesk</RootNamespace>
-    <Version>3.25.0</Version> <!-- x-release-please-version -->
-    <AssemblyVersion>3.25.0.0</AssemblyVersion> <!-- x-release-please-version -->
-    <FileVersion>3.25.0.0</FileVersion> <!-- x-release-please-version -->
+    <Version>3.26.0</Version> <!-- x-release-please-version -->
+    <AssemblyVersion>3.26.0.0</AssemblyVersion> <!-- x-release-please-version -->
+    <FileVersion>3.26.0.0</FileVersion> <!-- x-release-please-version -->
     
     <!-- Publish Settings for Framework-Dependent Deployment -->
     <PublishSingleFile>false</PublishSingleFile>

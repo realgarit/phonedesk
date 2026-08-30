@@ -56,12 +56,42 @@ public sealed class TenantAsCodeServiceTests
             {
                 BusinessHoursTemplate = document.Configuration.BusinessHoursTemplate with
                 {
-                    WeeklySchedule = new PortableDaySchedule[1],
-                },
-            },
+                    WeeklySchedule = new PortableDaySchedule[1]
+                }
+            }
         };
 
         Assert.Throws<InvalidDataException>(() => _service.SerializeConfiguration(document));
+    }
+
+    [Fact]
+    public void ConfigurationRoundTripsHolidayEndDateWithDefaultMidnightEndTime()
+    {
+        var document = CreateConfigurationDocument();
+        document = document with
+        {
+            Configuration = document.Configuration with
+            {
+                HolidayTemplate = document.Configuration.HolidayTemplate with
+                {
+                    Series = new[]
+                    {
+                        new PortableHolidayEntry(
+                            new DateOnly(2026, 12, 24),
+                            new TimeOnly(12, 0),
+                            "Christmas closure",
+                            new DateOnly(2026, 12, 27),
+                            null)
+                    }
+                }
+            }
+        };
+
+        var roundTrip = _service.DeserializeConfiguration(_service.SerializeConfiguration(document));
+
+        var holiday = Assert.Single(roundTrip.Configuration.HolidayTemplate.Series);
+        Assert.Equal(new DateOnly(2026, 12, 27), holiday.EndDate);
+        Assert.Null(holiday.EndTime);
     }
 
     [Fact]
@@ -73,8 +103,8 @@ public sealed class TenantAsCodeServiceTests
             Configuration = current.Configuration with
             {
                 General = current.Configuration.General with { Customer = "Fabrikam" },
-                CallQueueTemplate = current.Configuration.CallQueueTemplate with { OverflowThreshold = 42 },
-            },
+                CallQueueTemplate = current.Configuration.CallQueueTemplate with { OverflowThreshold = 42 }
+            }
         };
 
         var changes = _service.CompareConfigurations(current, imported);
@@ -126,7 +156,7 @@ public sealed class TenantAsCodeServiceTests
                 .Append(new TopologyResourceAccountSnapshot(
                     "Removed RA", "removed@contoso.example", "ra-removed", null,
                     ResourceAccountKind.CallQueue, true))
-                .ToArray(),
+                .ToArray()
         };
 
         var drift = _service.CompareTopology(snapshot, live);

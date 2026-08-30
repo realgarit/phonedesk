@@ -156,14 +156,9 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         var normalizedBusinessHours = businessHours with
         {
             WeeklySchedule = (businessHours.WeeklySchedule ?? Array.Empty<PortableDaySchedule>())
-                .OrderBy(day => Array.IndexOf(DayOrder, day.DayName), Comparer<int>.Create((left, right) =>
-                {
-                    var normalizedLeft = left < 0 ? int.MaxValue : left;
-                    var normalizedRight = right < 0 ? int.MaxValue : right;
-                    return normalizedLeft.CompareTo(normalizedRight);
-                }))
+                .OrderBy(day => GetDayOrder(day.DayName))
                 .ThenBy(day => day.DayName, StringComparer.Ordinal)
-                .ToArray(),
+                .ToArray()
         };
         var normalizedHoliday = holiday with
         {
@@ -171,15 +166,15 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 .OrderBy(entry => entry.Date)
                 .ThenBy(entry => entry.Time)
                 .ThenBy(entry => entry.Name, StringComparer.Ordinal)
-                .ToArray(),
+                .ToArray()
         };
         return document with
         {
             Configuration = document.Configuration with
             {
                 BusinessHoursTemplate = normalizedBusinessHours,
-                HolidayTemplate = normalizedHoliday,
-            },
+                HolidayTemplate = normalizedHoliday
+            }
         };
     }
 
@@ -226,16 +221,18 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
             {
                 throw new InvalidDataException("The holiday series contains an empty entry.");
             }
-            if (entry.EndDate.HasValue != entry.EndTime.HasValue)
-            {
-                throw new InvalidDataException("Holiday end date and end time must be provided together.");
-            }
-            if (entry.EndDate is { } endDate && entry.EndTime is { } endTime &&
-                endDate.ToDateTime(endTime) <= entry.Date.ToDateTime(entry.Time))
+            if (entry.EndDate is { } endDate &&
+                endDate.ToDateTime(entry.EndTime ?? TimeOnly.MinValue) <= entry.Date.ToDateTime(entry.Time))
             {
                 throw new InvalidDataException("A holiday end must be later than its start.");
             }
         }
+    }
+
+    private static int GetDayOrder(string dayName)
+    {
+        var index = Array.IndexOf(DayOrder, dayName);
+        return index < 0 ? int.MaxValue : index;
     }
 
     private static void CompareJsonNodes(
@@ -328,7 +325,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 {
                     ResourceAccountObjectIds = Sort(item.ResourceAccountObjectIds),
                     HolidayScheduleIds = Sort(item.HolidayScheduleIds),
-                    CallTargetObjectIds = Sort(item.CallTargetObjectIds),
+                    CallTargetObjectIds = Sort(item.CallTargetObjectIds)
                 })
                 .ToArray(),
             CallQueues = document.CallQueues
@@ -337,7 +334,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 {
                     AgentObjectIds = Sort(item.AgentObjectIds),
                     DistributionListIds = Sort(item.DistributionListIds),
-                    ResourceAccountObjectIds = Sort(item.ResourceAccountObjectIds),
+                    ResourceAccountObjectIds = Sort(item.ResourceAccountObjectIds)
                 })
                 .ToArray(),
             ResourceAccounts = document.ResourceAccounts
@@ -345,7 +342,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 .ToArray(),
             Groups = document.Groups
                 .OrderBy(item => item.Id, StringComparer.Ordinal)
-                .ToArray(),
+                .ToArray()
         };
 
     private static IReadOnlyList<string> Sort(IReadOnlyList<string>? values)

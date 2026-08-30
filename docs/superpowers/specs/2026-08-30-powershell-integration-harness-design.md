@@ -40,7 +40,7 @@ For MSAL, add an internal `IMsalPublicClient` adapter in Infrastructure. `MsalGr
 
 ### MSAL seam
 
-`IMsalPublicClient.cs` will define internal operations for listing cached accounts, attempting silent token acquisition, and interactive token acquisition. A small internal token result will carry only access-token and username strings. Silent acquisition will explicitly report whether interaction is required so tests need not manufacture MSAL exception objects.
+`IMsalPublicClient.cs` will define internal operations for listing and removing cached accounts, attempting silent token acquisition, and interactive token acquisition. A small internal token result will carry only access-token and username strings. Silent acquisition will explicitly report whether interaction is required so tests need not manufacture MSAL exception objects.
 
 `MsalPublicClient.cs` will wrap `IPublicClientApplication`. It will build the application with the current client ID, Azure public/common authority, and `http://localhost` redirect URI. It will translate only `MsalUiRequiredException` into the internal interaction-required result; all other MSAL exceptions will continue to reach `MsalGraphAuthenticationService` unchanged.
 
@@ -51,6 +51,7 @@ For MSAL, add an internal `IMsalPublicClient` adapter in Infrastructure. `MsalGr
 - an interaction-required silent result falls back to interactive acquisition;
 - the parent window handle is passed through unchanged;
 - empty tokens return the existing handled failure tuple; and
+- cached-account detection and sign-out enumerate and remove the same accounts as today; and
 - no test opens a browser or contacts Microsoft.
 
 Infrastructure will expose internal types only to `PhoneDesk.IntegrationTests` through `InternalsVisibleTo`; no public API will expand.

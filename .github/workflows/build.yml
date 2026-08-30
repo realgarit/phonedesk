@@ -211,6 +211,7 @@ jobs:
       # (no Main).
       env:
         RUNTIME: ${{ matrix.runtime }}
+      shell: bash
       run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
 
     - name: Import signing certificate (macOS)
@@ -443,6 +444,7 @@ jobs:
     - name: Publish (packaging smoke, not released)
       env:
         RUNTIME: ${{ matrix.runtime }}
+      shell: bash
       run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
 
     - name: Package smoke (macOS .app bundle)

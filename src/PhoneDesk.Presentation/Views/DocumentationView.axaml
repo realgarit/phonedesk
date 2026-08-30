@@ -59,6 +59,26 @@
                                 <TextBlock Text="{loc:Translate Key=CommonCopyToClipboard}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <Button Command="{Binding ExportTopologySnapshotCommand}"
+                                Classes="IconText"
+                                IsEnabled="{Binding !IsBusy}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="Save"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationExportTopologySnapshotAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding CompareTopologySnapshotCommand}"
+                                Classes="IconText"
+                                IsEnabled="{Binding !IsBusy}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowSync"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationCompareTopologySnapshotAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <!-- Status -->
@@ -77,7 +97,8 @@
                 <Border Grid.Row="1"
                         Margin="24,0,24,24"
                         Classes="sunken"
-                        Padding="0">
+                        Padding="0"
+                        IsVisible="{Binding !ShowTopologyDrift}">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
                         <TextBox Text="{Binding DocumentationOutput}"
@@ -90,6 +111,70 @@
                                  Padding="16"
                                  Watermark="{loc:Translate Key=DocumentationWatermark}"/>
                     </ScrollViewer>
+                </Border>
+
+                <!-- Offline topology drift result; no tenant query is made from this view. -->
+                <Border Grid.Row="1"
+                        Margin="24,0,24,24"
+                        Classes="sunken"
+                        Padding="16"
+                        IsVisible="{Binding ShowTopologyDrift}">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="12">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftTitle}"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding ComparedTopologyFileName}"
+                                           FontFamily="{StaticResource CodeFontFamily}"
+                                           FontSize="12"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftDescription}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ClearTopologyDriftCommand}"
+                                    Classes="IconText"
+                                    VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Dismiss"/>
+                                    <TextBlock Text="{loc:Translate Key=DocumentationCloseDriftAction}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <DataGrid ItemsSource="{Binding TopologyDriftEntries}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserResizeColumns="True"
+                                      GridLinesVisibility="Horizontal"
+                                      IsVisible="{Binding HasTopologyDriftEntries}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyChangeColumn}"
+                                                        Binding="{Binding ChangeLabel}" Width="Auto"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyObjectColumn}"
+                                                        Binding="{Binding DisplayName}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyPropertyColumn}"
+                                                        Binding="{Binding PropertyName}" Width="*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologySavedColumn}"
+                                                        Binding="{Binding SnapshotValue}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyLiveColumn}"
+                                                        Binding="{Binding LiveValue}" Width="1.5*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Border Classes="card"
+                                    Padding="24"
+                                    IsVisible="{Binding !HasTopologyDriftEntries}">
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftEmpty}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Border>
 
                 <!-- Info Footer -->

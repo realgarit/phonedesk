@@ -23,6 +23,7 @@ using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.ViewModels;
+using PhoneDesk.Portability;
 
 namespace PhoneDesk.Tests
 {
@@ -74,6 +75,8 @@ namespace PhoneDesk.Tests
             new("GetStarted", true, "get-started-ready-de.png", "ready-de"),
             new("Variables", true, "variables.png"),
             new("Variables", true, "variables-de.png", "ready-de"),
+            new("Variables", true, "config-import-preview-en.png", "issue71-config-import-en"),
+            new("Variables", true, "config-import-preview-de.png", "issue71-config-import-de"),
             new("Dashboard", true, "dashboard-de.png", "ready-de"),
             new("M365Groups", true, "m365-groups.png"),
             new("M365Groups", true, "task5-m365-groups-empty-en.png", "task5-m365-empty-en"),
@@ -100,6 +103,8 @@ namespace PhoneDesk.Tests
             new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
             new("Documentation", true, "documentation.png"),
             new("Documentation", true, "documentation-de.png", "ready-de"),
+            new("Documentation", true, "topology-drift-en.png", "issue71-topology-drift-en"),
+            new("Documentation", true, "topology-drift-de.png", "issue71-topology-drift-de"),
             new("History", true, "history-de.png", "ready-de"),
             new("Welcome", true, "task6-update-banner-en.png", "task6-update-banner-en"),
             new("Welcome", true, "task6-update-banner-de.png", "task6-update-banner-de"),
@@ -529,6 +534,40 @@ namespace PhoneDesk.Tests
                         new Dictionary<string, object?> { ["error"] = errorDetails });
                     break;
                     }
+
+                case VariablesViewModel variables when scenario.StartsWith("issue71-config-import", StringComparison.Ordinal):
+                    variables.PendingConfigurationFileName = "contoso-production.json";
+                    variables.PendingConfigurationChanges.Clear();
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.general.customer", "contoso", "fabrikam"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.general.usageLocation", "CH", "DE"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.callQueueTemplate.overflowThreshold", "10", "25"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.holidayTemplate.series", "2 entries", "4 entries"));
+                    variables.ShowConfigurationImportPreview = true;
+                    break;
+
+                case DocumentationViewModel documentation when scenario.StartsWith("issue71-topology-drift", StringComparison.Ordinal):
+                    documentation.SetTopologyDriftForDisplay(
+                        "contoso-baseline-20260801.json",
+                        new[]
+                        {
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "autoAttendant", "aa-1", "Main Reception",
+                                "languageId", "de-DE", "en-US"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "callQueue", "cq-1", "Support Queue",
+                                "agentAlertTime", "30", "45"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Added, "resourceAccount", "ra-2", "After-hours RA",
+                                null, null, null),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Removed, "group", "group-old", "Legacy Support",
+                                null, null, null),
+                        });
+                    break;
             }
         }
 

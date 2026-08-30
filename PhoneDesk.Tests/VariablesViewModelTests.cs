@@ -1,6 +1,8 @@
 using Moq;
 using PhoneDesk.Models;
 using PhoneDesk.Services;
+using PhoneDesk.Services.Interfaces;
+using PhoneDesk.Portability;
 using PhoneDesk.Tests.TestSupport;
 using PhoneDesk.ViewModels;
 
@@ -19,6 +21,23 @@ namespace PhoneDesk.Tests
                 harness.ValidationService.Object,
                 harness.SharedStateService.Object,
                 harness.DialogService.Object);
+
+        private static VariablesViewModel CreateViewModel(
+            ViewModelTestHarness harness,
+            ITenantAsCodeService tenantAsCodeService,
+            IPortabilityFileService portabilityFileService)
+            => new VariablesViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                harness.SharedStateService.Object,
+                harness.DialogService.Object,
+                tenantAsCodeService: tenantAsCodeService,
+                portabilityFileService: portabilityFileService);
 
         // ─────────────────────── Construction ───────────────────────
 
@@ -47,6 +66,118 @@ namespace PhoneDesk.Tests
             Assert.Equal("group-123", variables.CqOverflowActionTarget);
             Assert.Equal("group-123", variables.CqTimeoutActionTarget);
             Assert.Equal("group-123", variables.CqNoAgentActionTarget);
+        }
+
+        [Fact]
+        public async Task ImportPreviewsChangesAndDoesNotApplyUntilConfirmed()
+        {
+            var current = new PhoneManagerVariables { Customer = "Contoso", CustomerGroupName = "Support" };
+            var incoming = new PhoneManagerVariables { Customer = "Fabrikam", CustomerGroupName = "Support" };
+            var service = new TenantAsCodeService();
+            var json = service.SerializeConfiguration(PhoneManagerVariablesPortabilityMapper.ToDocument(incoming));
+            var files = new Mock<IPortabilityFileService>();
+            files.Setup(file => file.OpenJsonAsync(It.IsAny<string>()))
+                .ReturnsAsync(new PortableTextFile("fabrikam.json", "C:\\fabrikam.json", json));
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupProperty(state => state.Variables, current);
+            var vm = CreateViewModel(harness, service, files.Object);
+
+            await vm.LoadVariablesFromFileCommand.ExecuteAsync(null);
+
+            Assert.Same(current, harness.SharedStateService.Object.Variables);
+            Assert.Equal("Contoso", harness.SharedStateService.Object.Variables.Customer);
+            Assert.True(vm.ShowConfigurationImportPreview);
+            Assert.Equal("fabrikam.json", vm.PendingConfigurationFileName);
+            Assert.Contains(vm.PendingConfigurationChanges, change =>
+                change.Path == "configuration.general.customer" &&
+                change.CurrentValue == "Contoso" &&
+                change.ImportedValue == "Fabrikam");
+
+            vm.ApplyConfigurationImportCommand.Execute(null);
+
+            Assert.Equal("Fabrikam", harness.SharedStateService.Object.Variables.Customer);
+            Assert.False(vm.ShowConfigurationImportPreview);
+            Assert.Empty(vm.PendingConfigurationChanges);
+        }
+
+        [Fact]
+        public async Task ApplyImportPreservesExplicitlyEmptyCallQueueTargets()
+        {
+            var current = new PhoneManagerVariables { Customer = "Contoso" };
+            var incoming = new PhoneManagerVariables
+            {
+                Customer = "Fabrikam",
+                M365GroupId = "group-123",
+                CqOverflowActionTarget = null,
+                CqTimeoutActionTarget = null,
+                CqNoAgentActionTarget = null,
+            };
+            var service = new TenantAsCodeService();
+            var files = new Mock<IPortabilityFileService>();
+            files.Setup(file => file.OpenJsonAsync(It.IsAny<string>()))
+                .ReturnsAsync(new PortableTextFile(
+                    "fabrikam.json",
+                    "C:\\fabrikam.json",
+                    service.SerializeConfiguration(PhoneManagerVariablesPortabilityMapper.ToDocument(incoming))));
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupProperty(state => state.Variables, current);
+            var vm = CreateViewModel(harness, service, files.Object);
+
+            await vm.LoadVariablesFromFileCommand.ExecuteAsync(null);
+            vm.ApplyConfigurationImportCommand.Execute(null);
+
+            var applied = harness.SharedStateService.Object.Variables;
+            Assert.Equal("group-123", applied.M365GroupId);
+            Assert.Null(applied.CqOverflowActionTarget);
+            Assert.Null(applied.CqTimeoutActionTarget);
+            Assert.Null(applied.CqNoAgentActionTarget);
+        }
+
+        [Fact]
+        public async Task CancelImportLeavesCurrentVariablesUntouched()
+        {
+            var current = new PhoneManagerVariables { Customer = "Contoso" };
+            var incoming = new PhoneManagerVariables { Customer = "Fabrikam" };
+            var service = new TenantAsCodeService();
+            var files = new Mock<IPortabilityFileService>();
+            files.Setup(file => file.OpenJsonAsync(It.IsAny<string>()))
+                .ReturnsAsync(new PortableTextFile(
+                    "fabrikam.json",
+                    "C:\\fabrikam.json",
+                    service.SerializeConfiguration(PhoneManagerVariablesPortabilityMapper.ToDocument(incoming))));
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupProperty(state => state.Variables, current);
+            var vm = CreateViewModel(harness, service, files.Object);
+
+            await vm.LoadVariablesFromFileCommand.ExecuteAsync(null);
+            vm.CancelConfigurationImportCommand.Execute(null);
+
+            Assert.Same(current, harness.SharedStateService.Object.Variables);
+            Assert.Equal("Contoso", current.Customer);
+            Assert.False(vm.ShowConfigurationImportPreview);
+            Assert.Empty(vm.PendingConfigurationChanges);
+        }
+
+        [Fact]
+        public async Task ExportUsesSchemaServiceAndFileAbstraction()
+        {
+            var current = new PhoneManagerVariables { Customer = "Contoso" };
+            var service = new TenantAsCodeService();
+            var files = new Mock<IPortabilityFileService>();
+            files.Setup(file => file.SaveJsonAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("C:\\phonedesk-config-contoso.json");
+            var harness = new ViewModelTestHarness();
+            harness.SharedStateService.SetupProperty(state => state.Variables, current);
+            var vm = CreateViewModel(harness, service, files.Object);
+
+            await vm.SaveVariablesToFileCommand.ExecuteAsync(null);
+
+            files.Verify(file => file.SaveJsonAsync(
+                It.IsAny<string>(),
+                "phonedesk-config-Contoso.json",
+                It.Is<string>(json =>
+                    json.Contains("\"kind\": \"phonedesk.configuration\"", StringComparison.Ordinal) &&
+                    !json.Contains("token", StringComparison.OrdinalIgnoreCase))), Times.Once);
         }
 
         // ─────────────────────── Holiday time picker ───────────────────────

@@ -6,19 +6,31 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using PhoneDesk.Models;
-using System.IO;
-using System.Text.Json;
-using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using PhoneDesk.Helpers;
 using PhoneDesk.Localization;
 using System.Collections.Generic;
+using PhoneDesk.Portability;
 
 namespace PhoneDesk.ViewModels
 {
     public partial class VariablesViewModel : ViewModelBase
     {
         private PhoneManagerVariables? _subscribedVariables;
+        private readonly ITenantAsCodeService? _tenantAsCodeService;
+        private readonly IPortabilityFileService? _portabilityFileService;
+        private ConfigurationDocument? _pendingConfigurationDocument;
+        private bool _preserveImportedTargets;
+
+        [ObservableProperty]
+        private bool _showConfigurationImportPreview;
+
+        [ObservableProperty]
+        private string _pendingConfigurationFileName = string.Empty;
+
+        public ObservableCollection<ConfigurationChange> PendingConfigurationChanges { get; } = new();
+
+        public bool HasPendingConfigurationChanges => PendingConfigurationChanges.Count > 0;
 
         // Removed TeamsConnected and GraphConnected - no longer needed since lock was removed
 
@@ -191,10 +203,16 @@ namespace PhoneDesk.ViewModels
             ISharedStateService sharedStateService,
             IDialogService dialogService,
             IAuditLog? auditLog = null,
-            ITranslationService? translationService = null)
+            ITranslationService? translationService = null,
+            ITenantAsCodeService? tenantAsCodeService = null,
+            IPortabilityFileService? portabilityFileService = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
+            _tenantAsCodeService = tenantAsCodeService;
+            _portabilityFileService = portabilityFileService;
+            PendingConfigurationChanges.CollectionChanged += (_, _) =>
+                OnPropertyChanged(nameof(HasPendingConfigurationChanges));
             LogLocalized(UiTextKey.VariablesPageLoadedLog, "Variables page loaded", LogLevel.Info);
 
             // Subscribe to variable changes for Call Queue configuration visibility
@@ -273,8 +291,12 @@ namespace PhoneDesk.ViewModels
                     {
                         SubscribeToVariablesChanges(value);
                         
-                        // Prefill target fields if M365GroupId is already set
-                        PrefillCallQueueTargets();
+                        // Interactive edits keep the historical convenience prefill. Imports must
+                        // preserve explicitly empty targets so export -> import is lossless.
+                        if (!_preserveImportedTargets)
+                        {
+                            PrefillCallQueueTargets();
+                        }
                     }
                 }
             }
@@ -299,20 +321,23 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                var downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                downloadsPath = Path.Combine(downloadsPath, "Downloads");
-                
-                var fileName = $"PhoneManagerVariables_{DateTime.Now:yyyyMMdd_HHmmss}.json";
-                var filePath = Path.Combine(downloadsPath, fileName);
-
-                var jsonOptions = new JsonSerializerOptions
+                if (_tenantAsCodeService is null || _portabilityFileService is null)
                 {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
+                    throw new InvalidOperationException("Configuration portability services are unavailable.");
+                }
 
-                var json = JsonSerializer.Serialize(Variables, jsonOptions);
-                await File.WriteAllTextAsync(filePath, json);
+                var json = _tenantAsCodeService.SerializeConfiguration(
+                    PhoneManagerVariablesPortabilityMapper.ToDocument(Variables));
+                var customer = SanitizeFileName(Variables.Customer);
+                var fileName = $"phonedesk-config-{customer}.json";
+                var filePath = await _portabilityFileService.SaveJsonAsync(
+                    GetText(UiTextKey.VariablesSaveToFileAction, "Export configuration"),
+                    fileName,
+                    json);
+                if (filePath is null)
+                {
+                    return;
+                }
 
                 LogLocalized(
                     UiTextKey.VariablesSavedLog,
@@ -347,60 +372,30 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
-                var window = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
-                if (window?.MainWindow != null)
+                if (_tenantAsCodeService is null || _portabilityFileService is null)
                 {
-                    var storageProvider = window.MainWindow.StorageProvider;
-                    var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                    var suggestedLocation = await storageProvider.TryGetFolderFromPathAsync(new Uri(downloadsPath));
-                    
-                    var file = await storageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                    {
-                        Title = GetText(UiTextKey.VariablesLoadPickerTitle, "Load configuration from file"),
-                        FileTypeFilter = new[]
-                        {
-                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesJsonFiles, "JSON files")) { Patterns = new[] { "*.json" } },
-                            new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.VariablesAllFiles, "All files")) { Patterns = new[] { "*" } }
-                        },
-                        SuggestedStartLocation = suggestedLocation
-                    });
-
-                    if (file != null && file.Count > 0)
-                    {
-                        var fileName = file[0].Path.LocalPath;
-                        var json = await File.ReadAllTextAsync(fileName);
-                        var jsonOptions = new JsonSerializerOptions
-                        {
-                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                        };
-
-                        var loadedVariables = JsonSerializer.Deserialize<PhoneManagerVariables>(json, jsonOptions);
-                        
-                        if (loadedVariables != null)
-                        {
-                            Variables = loadedVariables;
-                            LogLocalized(
-                                UiTextKey.VariablesLoadedLog,
-                                "Configuration loaded from: {path}",
-                                LogLevel.Info,
-                                new Dictionary<string, object?> { ["path"] = fileName });
-                            await _errorHandlingService.ShowSuccess(
-                                GetText(
-                                    UiTextKey.VariablesLoadSuccessMessage,
-                                    "Configuration loaded successfully from:\n{path}",
-                                    new Dictionary<string, object?> { ["path"] = fileName }),
-                                GetText(UiTextKey.VariablesLoadSuccessTitle, "Load successful"));
-                        }
-                        else
-                        {
-                            await _errorHandlingService.HandleGenericError(
-                                GetText(
-                                    UiTextKey.VariablesLoadFailedMessage,
-                                    "Failed to load configuration from the selected file."),
-                                "LoadVariables");
-                        }
-                    }
+                    throw new InvalidOperationException("Configuration portability services are unavailable.");
                 }
+
+                var file = await _portabilityFileService.OpenJsonAsync(
+                    GetText(UiTextKey.VariablesLoadPickerTitle, "Import configuration from file"));
+                if (file is null)
+                {
+                    return;
+                }
+
+                var imported = _tenantAsCodeService.DeserializeConfiguration(file.Content);
+                var current = PhoneManagerVariablesPortabilityMapper.ToDocument(Variables);
+                var changes = _tenantAsCodeService.CompareConfigurations(current, imported);
+                _pendingConfigurationDocument = imported;
+                PendingConfigurationFileName = file.Name;
+                PendingConfigurationChanges.Clear();
+                foreach (var change in changes)
+                {
+                    PendingConfigurationChanges.Add(change);
+                }
+                OnPropertyChanged(nameof(HasPendingConfigurationChanges));
+                ShowConfigurationImportPreview = true;
             }
             catch (Exception ex)
             {
@@ -416,6 +411,53 @@ namespace PhoneDesk.ViewModels
                         new Dictionary<string, object?> { ["error"] = ex.Message }),
                     "LoadVariables");
             }
+        }
+
+        [RelayCommand]
+        private void ApplyConfigurationImport()
+        {
+            if (_pendingConfigurationDocument is null)
+            {
+                return;
+            }
+
+            _preserveImportedTargets = true;
+            try
+            {
+                Variables = PhoneManagerVariablesPortabilityMapper.FromDocument(_pendingConfigurationDocument);
+            }
+            finally
+            {
+                _preserveImportedTargets = false;
+            }
+            LogLocalized(
+                UiTextKey.VariablesLoadedLog,
+                "Configuration loaded from: {path}",
+                LogLevel.Info,
+                new Dictionary<string, object?> { ["path"] = PendingConfigurationFileName });
+            ClearPendingConfigurationImport();
+        }
+
+        [RelayCommand]
+        private void CancelConfigurationImport() => ClearPendingConfigurationImport();
+
+        private void ClearPendingConfigurationImport()
+        {
+            _pendingConfigurationDocument = null;
+            PendingConfigurationFileName = string.Empty;
+            PendingConfigurationChanges.Clear();
+            OnPropertyChanged(nameof(HasPendingConfigurationChanges));
+            ShowConfigurationImportPreview = false;
+        }
+
+        private static string SanitizeFileName(string? value)
+        {
+            var candidate = string.IsNullOrWhiteSpace(value) ? "tenant" : value.Trim();
+            foreach (var invalid in Path.GetInvalidFileNameChars())
+            {
+                candidate = candidate.Replace(invalid, '-');
+            }
+            return candidate;
         }
 
         [RelayCommand]

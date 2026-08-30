@@ -201,6 +201,9 @@ jobs:
     - name: Run tests
       run: dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --configuration Release --no-build --verbosity normal
 
+    - name: Run integration tests
+      run: dotnet test PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
+
     - name: Publish
       # Self-contained so users need no .NET runtime install.
       # OutputType is set in the project (WinExe). It must NOT be passed as a global -p:OutputType,
@@ -430,6 +433,9 @@ jobs:
 
     - name: Run tests
       run: dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Run integration tests
+      run: dotnet test PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
 
     - name: Publish (packaging smoke, not released)
       run: dotnet publish phonedesk.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true --output ./publish/${{ matrix.runtime }}

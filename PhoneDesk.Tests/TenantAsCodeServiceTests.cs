@@ -56,7 +56,7 @@ public sealed class TenantAsCodeServiceTests
             {
                 BusinessHoursTemplate = document.Configuration.BusinessHoursTemplate with
                 {
-                    WeeklySchedule = new PortableDaySchedule[] { null! },
+                    WeeklySchedule = new PortableDaySchedule[1],
                 },
             },
         };

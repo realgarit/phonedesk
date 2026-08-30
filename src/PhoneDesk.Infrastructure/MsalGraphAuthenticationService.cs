@@ -1,4 +1,5 @@
 using Microsoft.Identity.Client;
+using PhoneDesk.Services.Authentication;
 using PhoneDesk.Services.Interfaces;
 
 
@@ -12,11 +13,7 @@ namespace PhoneDesk.Services
     public class MsalGraphAuthenticationService : IMsalGraphAuthenticationService
     {
         private readonly ILoggingService _loggingService;
-        private readonly IPublicClientApplication _msalApp;
-        
-        // Microsoft Graph PowerShell SDK's default client ID
-        // This is the same client ID used by Connect-MgGraph
-        private const string ClientId = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
+        private readonly IMsalPublicClient _msalClient;
         
         // Required scopes for the app
         private static readonly string[] Scopes = new[]
@@ -28,17 +25,16 @@ namespace PhoneDesk.Services
         };
         
         public MsalGraphAuthenticationService(ILoggingService loggingService)
+            : this(loggingService, new MsalPublicClient())
+        {
+        }
+
+        internal MsalGraphAuthenticationService(
+            ILoggingService loggingService,
+            IMsalPublicClient msalClient)
         {
             _loggingService = loggingService;
-            
-            // Configure MSAL to use system browser for authentication
-            // This bypasses WAM entirely and works on all platforms
-            _msalApp = PublicClientApplicationBuilder
-                .Create(ClientId)
-                .WithAuthority(AzureCloudInstance.AzurePublic, "common")
-                .WithRedirectUri("http://localhost")  // Use localhost redirect for system browser
-                .Build();
-            
+            _msalClient = msalClient;
             _loggingService.Log("MSAL Graph authentication service initialized", LogLevel.Info);
         }
         
@@ -48,48 +44,35 @@ namespace PhoneDesk.Services
             {
                 _loggingService.Log("Starting MSAL interactive authentication...", LogLevel.Info);
                 
-                AuthenticationResult? result = null;
+                MsalTokenResult? result = null;
                 
                 // First, try silent authentication with cached accounts
-                var accounts = await _msalApp.GetAccountsAsync();
+                var accounts = await _msalClient.GetAccountsAsync();
                 var firstAccount = accounts.FirstOrDefault();
                 
                 if (firstAccount != null)
                 {
-                    try
-                    {
-                        _loggingService.Log($"Attempting silent authentication for cached account: {firstAccount.Username}", LogLevel.Info);
-                        result = await _msalApp.AcquireTokenSilent(Scopes, firstAccount).ExecuteAsync();
-                    }
-                    catch (MsalUiRequiredException)
+                    _loggingService.Log($"Attempting silent authentication for cached account: {firstAccount.Username}", LogLevel.Info);
+                    var silentResult = await _msalClient.AcquireTokenSilentAsync(Scopes, firstAccount);
+                    if (silentResult.RequiresInteraction)
                     {
                         _loggingService.Log("Silent authentication failed, falling back to interactive...", LogLevel.Info);
-                        // Silent auth failed, will do interactive below
                     }
+
+                    result = silentResult.Token;
                 }
                 
                 // If silent failed or no cached account, do interactive
                 if (result == null)
                 {
-                    var interactiveBuilder = _msalApp.AcquireTokenInteractive(Scopes);
-                    
-                    // Use system browser for authentication
-                    interactiveBuilder = interactiveBuilder.WithUseEmbeddedWebView(false);
-                    
-                    // Set parent window handle if provided (for Windows)
-                    if (parentWindowHandle.HasValue && parentWindowHandle.Value != IntPtr.Zero)
-                    {
-                        interactiveBuilder = interactiveBuilder.WithParentActivityOrWindow(parentWindowHandle.Value);
-                    }
-                    
                     _loggingService.Log("Opening browser for authentication...", LogLevel.Info);
-                    result = await interactiveBuilder.ExecuteAsync();
+                    result = await _msalClient.AcquireTokenInteractiveAsync(Scopes, parentWindowHandle);
                 }
                 
                 if (result != null && !string.IsNullOrEmpty(result.AccessToken))
                 {
-                    _loggingService.Log($"Authentication successful for account: {result.Account?.Username}", LogLevel.Success);
-                    return (true, result.AccessToken, result.Account?.Username, null);
+                    _loggingService.Log($"Authentication successful for account: {result.Username}", LogLevel.Success);
+                    return (true, result.AccessToken, result.Username, null);
                 }
                 
                 return (false, null, null, "Authentication completed but no token received");
@@ -117,10 +100,10 @@ namespace PhoneDesk.Services
         {
             try
             {
-                var accounts = await _msalApp.GetAccountsAsync();
+                var accounts = await _msalClient.GetAccountsAsync();
                 foreach (var account in accounts)
                 {
-                    await _msalApp.RemoveAsync(account);
+                    await _msalClient.RemoveAsync(account);
                     _loggingService.Log($"Removed cached account: {account.Username}", LogLevel.Info);
                 }
             }
@@ -132,7 +115,7 @@ namespace PhoneDesk.Services
         
         public async Task<bool> HasCachedAccountAsync()
         {
-            var accounts = await _msalApp.GetAccountsAsync();
+            var accounts = await _msalClient.GetAccountsAsync();
             return accounts.Any();
         }
     }

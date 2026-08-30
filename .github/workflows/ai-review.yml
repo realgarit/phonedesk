@@ -29,6 +29,7 @@ jobs:
         run: |
           python3 scripts/test_validate_ai_review.py
           python3 scripts/test_validate_semgrep_run.py
+          python3 scripts/test_format_review_comment.py
 
       - name: Compute PR diff
         env:

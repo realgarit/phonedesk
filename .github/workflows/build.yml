@@ -209,7 +209,9 @@ jobs:
       # OutputType is set in the project (WinExe). It must NOT be passed as a global -p:OutputType,
       # because that propagates to the referenced class libraries and makes them fail with CS5001
       # (no Main).
-      run: dotnet publish phonedesk.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true --output ./publish/${{ matrix.runtime }}
+      env:
+        RUNTIME: ${{ matrix.runtime }}
+      run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
 
     - name: Import signing certificate (macOS)
       if: startsWith(matrix.runtime, 'osx-')
@@ -230,12 +232,13 @@ jobs:
       env:
         VERSION: ${{ needs.validate-release.outputs.version }}
         KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        RUNTIME: ${{ matrix.runtime }}
       run: |
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
         chmod +x scripts/package-macos.sh
         SIGN_IDENTITY="Teams Phone Manager Self-Signed" \
-          ./scripts/package-macos.sh ./publish/${{ matrix.runtime }} "$VERSION" ./dist
-        ditto -c -k --keepParent "./dist/PhoneDesk.app" "./dist/phonedesk-${{ matrix.runtime }}.zip"
+          ./scripts/package-macos.sh "./publish/$RUNTIME" "$VERSION" ./dist
+        ditto -c -k --keepParent "./dist/PhoneDesk.app" "./dist/phonedesk-$RUNTIME.zip"
 
     - name: Package (Windows zip + Inno Setup installer)
       if: matrix.runtime == 'win-x64'
@@ -438,14 +441,18 @@ jobs:
       run: dotnet test PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
 
     - name: Publish (packaging smoke, not released)
-      run: dotnet publish phonedesk.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true --output ./publish/${{ matrix.runtime }}
+      env:
+        RUNTIME: ${{ matrix.runtime }}
+      run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
 
     - name: Package smoke (macOS .app bundle)
       if: startsWith(matrix.runtime, 'osx-')
+      env:
+        RUNTIME: ${{ matrix.runtime }}
       run: |
         chmod +x scripts/package-macos.sh
-        ./scripts/package-macos.sh ./publish/${{ matrix.runtime }} 0.0.0 ./dist
-        ditto -c -k --keepParent "./dist/PhoneDesk.app" "./dist/phonedesk-${{ matrix.runtime }}.zip"
+        ./scripts/package-macos.sh "./publish/$RUNTIME" 0.0.0 ./dist
+        ditto -c -k --keepParent "./dist/PhoneDesk.app" "./dist/phonedesk-$RUNTIME.zip"
 
     - name: Package smoke (Windows installer)
       if: matrix.runtime == 'win-x64'

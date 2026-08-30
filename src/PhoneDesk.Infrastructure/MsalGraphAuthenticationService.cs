@@ -25,10 +25,8 @@ namespace PhoneDesk.Services
         };
         
         public MsalGraphAuthenticationService(ILoggingService loggingService)
+            : this(loggingService, new MsalPublicClient())
         {
-            _loggingService = loggingService;
-            _msalClient = new MsalPublicClient();
-            _loggingService.Log("MSAL Graph authentication service initialized", LogLevel.Info);
         }
 
         internal MsalGraphAuthenticationService(

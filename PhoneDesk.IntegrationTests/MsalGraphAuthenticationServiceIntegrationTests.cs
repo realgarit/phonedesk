@@ -110,6 +110,60 @@ public sealed class MsalGraphAuthenticationServiceIntegrationTests
     }
 
     [Fact]
+    public async Task AuthenticationCancellationReturnsExistingHandledFailure()
+    {
+        var client = new FakeMsalPublicClient
+        {
+            InteractiveException = new MsalClientException("authentication_canceled", "cancelled by test")
+        };
+        var logger = new TestLoggingService();
+        var service = new MsalGraphAuthenticationService(logger, client);
+
+        var result = await service.AuthenticateAsync();
+
+        Assert.False(result.Success);
+        Assert.Equal("Authentication was canceled", result.ErrorMessage);
+        Assert.Contains(logger.Entries, entry =>
+            entry.Message == "Authentication was canceled by user" && entry.Level == PhoneDeskLogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task MsalServiceFailureReturnsExistingServiceError()
+    {
+        var client = new FakeMsalPublicClient
+        {
+            InteractiveException = new MsalServiceException("service_error", "service unavailable")
+        };
+        var logger = new TestLoggingService();
+        var service = new MsalGraphAuthenticationService(logger, client);
+
+        var result = await service.AuthenticateAsync();
+
+        Assert.False(result.Success);
+        Assert.Equal("MSAL service error: service unavailable", result.ErrorMessage);
+        Assert.Contains(logger.Entries, entry =>
+            entry.Message == "MSAL service error: service unavailable" && entry.Level == PhoneDeskLogLevel.Error);
+    }
+
+    [Fact]
+    public async Task UnexpectedAuthenticationFailureReturnsExistingGenericError()
+    {
+        var client = new FakeMsalPublicClient
+        {
+            InteractiveException = new InvalidOperationException("unexpected failure")
+        };
+        var logger = new TestLoggingService();
+        var service = new MsalGraphAuthenticationService(logger, client);
+
+        var result = await service.AuthenticateAsync();
+
+        Assert.False(result.Success);
+        Assert.Equal("Authentication error: unexpected failure", result.ErrorMessage);
+        Assert.Contains(logger.Entries, entry =>
+            entry.Message == "Authentication error: unexpected failure" && entry.Level == PhoneDeskLogLevel.Error);
+    }
+
+    [Fact]
     public async Task HasCachedAccountReflectsTheAdapterAccountList()
     {
         var emptyService = new MsalGraphAuthenticationService(
@@ -151,6 +205,7 @@ public sealed class MsalGraphAuthenticationServiceIntegrationTests
         public IReadOnlyList<IAccount> Accounts { get; init; } = Array.Empty<IAccount>();
         public MsalSilentTokenResult SilentResult { get; init; } = new(Token: null, RequiresInteraction: true);
         public MsalTokenResult? InteractiveResult { get; init; }
+        public Exception? InteractiveException { get; init; }
         public int SilentCalls { get; private set; }
         public int InteractiveCalls { get; private set; }
         public IReadOnlyList<string>? LastScopes { get; private set; }
@@ -176,6 +231,11 @@ public sealed class MsalGraphAuthenticationServiceIntegrationTests
             InteractiveCalls++;
             LastScopes = scopes;
             LastParentWindowHandle = parentWindowHandle;
+            if (InteractiveException is not null)
+            {
+                return Task.FromException<MsalTokenResult?>(InteractiveException);
+            }
+
             return Task.FromResult(InteractiveResult);
         }
 

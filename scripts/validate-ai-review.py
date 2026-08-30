@@ -15,6 +15,29 @@ INCONCLUSIVE_PATTERN = re.compile(
 )
 
 
+def _single_line(value: object, limit: int = 240) -> str:
+    text = " ".join(str(value).split())
+    return text[:limit]
+
+
+def _semgrep_error_summary(error: object) -> str:
+    if not isinstance(error, dict):
+        return _single_line(error)
+
+    spans = error.get("spans")
+    first_span = spans[0] if isinstance(spans, list) and spans else {}
+    path = error.get("path")
+    if not path and isinstance(first_span, dict):
+        path = first_span.get("file")
+
+    parts = [error.get("type") or error.get("level") or "scanner error"]
+    if path:
+        parts.append(path)
+    if error.get("message"):
+        parts.append(error["message"])
+    return ": ".join(_single_line(part) for part in parts)
+
+
 def _model_exit_code(status_path: Path) -> tuple[bool, int | None, str]:
     if not status_path.is_file():
         return False, None, "AI review is inconclusive: model status is missing."
@@ -87,7 +110,11 @@ def validate_paths(
     if not isinstance(semgrep_errors, list):
         return False, "Semgrep output is invalid; review cannot be considered clean."
     if semgrep_errors:
-        return False, "Semgrep output reports scanner errors; review cannot be considered clean."
+        detail = _semgrep_error_summary(semgrep_errors[0])
+        return (
+            False,
+            f"Semgrep output reports scanner errors ({detail}); review cannot be considered clean.",
+        )
 
     if semgrep_results:
         return False, f"Semgrep reported {len(semgrep_results)} finding(s)."

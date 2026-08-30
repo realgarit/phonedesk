@@ -55,10 +55,10 @@
     </None>
     <AvaloniaXaml Remove="Archive\**\*.axaml" />
 
-    <!-- Exclude test project from build -->
-    <Compile Remove="PhoneDesk.Tests\**\*.cs" />
-    <None Remove="PhoneDesk.Tests\**" />
-    <EmbeddedResource Remove="PhoneDesk.Tests\**" />
+    <!-- Exclude repository test projects from the root application glob. -->
+    <Compile Remove="PhoneDesk.*Tests\**\*.cs" />
+    <None Remove="PhoneDesk.*Tests\**" />
+    <EmbeddedResource Remove="PhoneDesk.*Tests\**" />
 
     <!-- Exclude standalone repository tools from the application project. -->
     <Compile Remove="tools\**\*.cs" />

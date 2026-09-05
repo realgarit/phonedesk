@@ -941,7 +941,7 @@
   "VariablesLoadedLog": "Configuration loaded from: {path}",
   "VariablesLoadSuccessMessage": "Configuration loaded successfully from:\n{path}",
   "VariablesLoadSuccessTitle": "Load successful",
-  "VariablesLoadFailedMessage": "Failed to load configuration from the selected file.",
+  "VariablesLoadFailedMessage": "Failed to load configuration from the selected file.\n\n{error}",
   "VariablesLoadFailedLog": "Error loading configuration: {error}",
   "DocumentationTopologySnapshotSavedStatus": "Topology snapshot saved to {path}.",
   "DocumentationTopologySnapshotFailedStatus": "Topology snapshot failed: {error}",

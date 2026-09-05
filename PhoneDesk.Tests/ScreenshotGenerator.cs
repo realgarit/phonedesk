@@ -101,6 +101,8 @@ namespace PhoneDesk.Tests
             new("BulkOperations", true, "bulk-operations.png"),
             new("BulkOperations", true, "task5-bulk-operations-error-en.png", "task5-bulk-error-en"),
             new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
+            new("Documentation", true, "documentation-empty-en.png", "task6-documentation-empty-en"),
+            new("Documentation", true, "documentation-empty-de.png", "task6-documentation-empty-de"),
             new("Documentation", true, "documentation.png"),
             new("Documentation", true, "documentation-de.png", "ready-de"),
             new("Documentation", true, "topology-drift-en.png", "issue71-topology-drift-en"),
@@ -198,6 +200,8 @@ namespace PhoneDesk.Tests
                     continue;
                 }
 
+                ((App)app).Services = provider;
+                app.Resources["TranslationCatalog"] = provider.GetRequiredService<ITranslationService>().Text;
                 app.RequestedThemeVariant = shot.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
                 if (string.Equals(previousPage, shot.Page, StringComparison.Ordinal))
                 {

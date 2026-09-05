@@ -49,11 +49,12 @@ switch ($BumpType) {
     }
 }
 
-$newVersion = "$major.$minor.$patch.$revision"
+$displayVersion = "$major.$minor.$patch"
+$newVersion = "$displayVersion.$revision"
 Write-Host "New version: $newVersion" -ForegroundColor Green
 
 # Update csproj file
-$csprojContent = $csprojContent -replace '<Version>[\d.]+</Version>', "<Version>$newVersion</Version>"
+$csprojContent = $csprojContent -replace '<Version>[\d.]+</Version>', "<Version>$displayVersion</Version>"
 $csprojContent = $csprojContent -replace '<AssemblyVersion>[\d.]+</AssemblyVersion>', "<AssemblyVersion>$newVersion</AssemblyVersion>"
 $csprojContent = $csprojContent -replace '<FileVersion>[\d.]+</FileVersion>', "<FileVersion>$newVersion</FileVersion>"
 Set-Content -Path $csprojPath -Value $csprojContent -NoNewline

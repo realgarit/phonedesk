@@ -206,12 +206,7 @@ jobs:
 
     - name: Test PowerShell release scripts
       shell: pwsh
-      run: |
-        if (-not (Get-Module -ListAvailable Pester | Where-Object Version -EQ '5.7.1')) {
-          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
-        }
-        Import-Module Pester -RequiredVersion 5.7.1
-        Invoke-Pester -Path scripts/tests -CI
+      run: ./scripts/test-powershell.ps1
 
 
     - name: Publish
@@ -453,12 +448,7 @@ jobs:
 
     - name: Test PowerShell release scripts
       shell: pwsh
-      run: |
-        if (-not (Get-Module -ListAvailable Pester | Where-Object Version -EQ '5.7.1')) {
-          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
-        }
-        Import-Module Pester -RequiredVersion 5.7.1
-        Invoke-Pester -Path scripts/tests -CI
+      run: ./scripts/test-powershell.ps1
 
 
     - name: Publish (packaging smoke, not released)

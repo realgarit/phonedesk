@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.27.2](https://github.com/realgarit/phonedesk/compare/v3.27.1...v3.27.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* explain Teams telephony for first-time operators ([915e03f](https://github.com/realgarit/phonedesk/commit/915e03f42778e248e8b4cd9a46726ef2543a5d3e))
+* explain Teams telephony for first-time operators ([df9edbe](https://github.com/realgarit/phonedesk/commit/df9edbef97b8d0e457c49106c942eca1bcc13efb))
+
 ## [3.27.1](https://github.com/realgarit/phonedesk/compare/v3.26.1...v3.27.1) (2026-09-05)
 
 

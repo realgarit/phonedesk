@@ -23,7 +23,7 @@ public sealed class TenantAsCodeServiceTests
         Assert.DoesNotContain("secret", first, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("token", first, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
-            new[] { "Monday", "Sunday" },
+            new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" },
             roundTrip.Configuration.BusinessHoursTemplate.WeeklySchedule.Select(day => day.DayName));
         Assert.Equal(
             new[] { new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 25) },
@@ -62,6 +62,19 @@ public sealed class TenantAsCodeServiceTests
         };
 
         Assert.Throws<InvalidDataException>(() => _service.SerializeConfiguration(document));
+    }
+
+    [Fact]
+    public void ConfigurationImportRejectsMissingWeekdays()
+    {
+        var json = _service.SerializeConfiguration(CreateConfigurationDocument());
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+        Assert.NotNull(node);
+        var schedule = node["configuration"]?["businessHoursTemplate"]?["weeklySchedule"]?.AsArray();
+        Assert.NotNull(schedule);
+        schedule.RemoveAt(0);
+        var exception = Assert.Throws<InvalidDataException>(() => _service.DeserializeConfiguration(node.ToJsonString()));
+        Assert.Contains("all seven days", exception.Message);
     }
 
     [Fact]
@@ -210,6 +223,11 @@ public sealed class TenantAsCodeServiceTests
                 {
                     new PortableDaySchedule("Sunday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
                     new PortableDaySchedule("Monday", true, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), true),
+                    new PortableDaySchedule("Saturday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
+                    new PortableDaySchedule("Friday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
+                    new PortableDaySchedule("Thursday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
+                    new PortableDaySchedule("Wednesday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
+                    new PortableDaySchedule("Tuesday", false, new TimeOnly(8, 0), new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(17, 0), false),
                 }),
             new HolidayTemplate(
                 "holidays", "We are closed", new DateOnly(2026, 1, 1), new TimeOnly(9, 0),

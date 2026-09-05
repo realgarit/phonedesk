@@ -90,6 +90,11 @@ public sealed class PhoneManagerVariablesPortabilityMapperTests
                 Hours2End = new TimeSpan(17, 0, 0),
                 HasSecondRange = true,
             },
+            new("Tuesday", isEnabled: false),
+            new("Wednesday", isEnabled: false),
+            new("Thursday", isEnabled: false),
+            new("Friday", isEnabled: false),
+            new("Saturday", isEnabled: false),
             new("Sunday", isEnabled: false)
             {
                 Hours1Start = new TimeSpan(9, 0, 0),

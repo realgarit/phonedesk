@@ -303,7 +303,7 @@ namespace PhoneDesk.Tests
             var sharedState = provider.GetRequiredService<ISharedStateService>();
             var translation = provider.GetRequiredService<ITranslationService>();
 
-            translation.CurrentLanguage = scenario.Contains("-de", StringComparison.Ordinal)
+            translation.CurrentLanguage = scenario.EndsWith("-de", StringComparison.Ordinal)
                 ? AppLanguage.German
                 : AppLanguage.English;
 

@@ -207,6 +207,10 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
 
         var days = document.Configuration.BusinessHoursTemplate.WeeklySchedule
             ?? throw new InvalidDataException("The weekly schedule is missing.");
+        if (days.Count != DayOrder.Length)
+        {
+            throw new InvalidDataException("The weekly schedule must contain all seven days, including disabled days.");
+        }
         if (days.Any(day => day is null || !DayOrder.Contains(day.DayName, StringComparer.Ordinal)) ||
             days.Select(day => day.DayName).Distinct(StringComparer.Ordinal).Count() != days.Count)
         {

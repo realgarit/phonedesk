@@ -34,13 +34,13 @@ namespace PhoneDesk.ViewModels
         public string SetupGuidance => CanProceed
             ? GetText(
                 UiTextKey.GetStartedSetupGuidanceReady,
-                "Everything is ready. Start configuration when you're ready.")
+                "Your connections are ready. Continue to Configuration.")
             : _lastSetupErrorKey is { } errorKey
                 ? GetText(errorKey, _lastSetupErrorFallback ?? string.Empty)
                 : !ModulesChecked
                     ? GetText(
                         UiTextKey.GetStartedSetupGuidanceStartModules,
-                        "Start here: check the bundled modules before connecting to a customer tenant.")
+                        "Start with Check modules below. This checks the components PhoneDesk needs to connect.")
                     : !TeamsConnected
                         ? GetText(
                             UiTextKey.GetStartedSetupGuidanceConnectTeams,
@@ -55,7 +55,7 @@ namespace PhoneDesk.ViewModels
                 "Your connections are ready. You can start the customer configuration now.")
             : GetText(
                 UiTextKey.GetStartedSetupGuidanceDetailBlocked,
-                "Setup becomes available only after all three checks pass.");
+                "Complete all three checks before running Guided Setup. You can already prepare the form in Configuration.");
 
         public string ModulesActionText => ModulesChecked
             ? GetText(UiTextKey.GetStartedCheckAgainAction, "Check again")

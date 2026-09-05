@@ -19,7 +19,9 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
-        <!-- Local styles removed, using App.axaml styles -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
         <Style Selector="fi|SymbolIcon.AnimatedArrow">
             <Style.Animations>
                 <Animation Duration="0:0:1" IterationCount="Infinite">
@@ -48,17 +50,17 @@
 
                 <!-- Page Header -->
                 <StackPanel Grid.Row="0" Margin="24,24,24,8">
-                    <StackPanel Orientation="Horizontal" Spacing="14">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                         <Border Classes="icon-badge">
                             <fi:SymbolIcon Symbol="Code"/>
                         </Border>
-                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                             <TextBlock Text="{loc:Translate Key=VariablesTitle}" Classes="page-title" Margin="0"/>
                             <TextBlock Text="{loc:Translate Key=VariablesSubtitle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
                     <TextBlock Text="{loc:Translate Key=VariablesWelcomeMessage}"
                                FontSize="13"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -84,30 +86,35 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,8,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerLegalNameWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerLegalNameWatermark}"
                                              Text="{Binding Variables.CustomerLegalName}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleAcmeCorp}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="4,8,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesMicrosoftFallbackDomainWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesMicrosoftFallbackDomainWatermark}"
                                              Text="{Binding Variables.MsFallbackDomain}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleFallbackDomain}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerCodeWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerCodeWatermark}"
                                              Text="{Binding Variables.Customer}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerCode}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,0,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerGroupNameWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerGroupNameWatermark}"
                                              Text="{Binding Variables.CustomerGroupName}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerGroupName}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesLanguageIdWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding LanguageOptions}"
                                               Text="{Binding Variables.LanguageId}"
@@ -118,6 +125,7 @@
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleLanguageId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,0,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesTimeZoneIdWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding TimeZoneOptions}"
                                               Text="{Binding Variables.TimeZoneId}"
@@ -128,6 +136,7 @@
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleTimeZoneId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesUsageLocationWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding UsageLocationOptions}"
                                               Text="{Binding Variables.UsageLocation}"

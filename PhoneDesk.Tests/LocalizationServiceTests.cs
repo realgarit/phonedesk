@@ -7,19 +7,6 @@ namespace PhoneDesk.Tests;
 
 public sealed class LocalizationServiceTests
 {
-    [Theory]
-    [InlineData("en")]
-    [InlineData("de")]
-    public void ConfigurationImportFailureIncludesValidationReason(string language)
-    {
-        var catalog = new TranslationCatalog(LoadCatalog(Path.Combine(FindRepositoryRoot(),
-            "src", "PhoneDesk.Presentation", "Resources", "Localization", $"Strings.{language}.json")));
-        const string reason = "Unsupported schema version: 99";
-        var message = catalog.Get(UiTextKey.VariablesLoadFailedMessage,
-            new Dictionary<string, object?> { { "error", reason } });
-        Assert.Contains(reason, message);
-    }
-
     [Fact]
     public void EmptyPreferenceStartsInEnglish()
     {

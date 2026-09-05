@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.27.1](https://github.com/realgarit/phonedesk/compare/v3.26.1...v3.27.1) (2026-09-05)
+
+
+### Features
+
+* add tenant configuration portability and drift ([67f9719](https://github.com/realgarit/phonedesk/commit/67f9719a6199599526e7af0740b39ae8909d0b4b))
+* add tenant configuration portability and drift ([e02eec8](https://github.com/realgarit/phonedesk/commit/e02eec8a746811f0c70510750e24bc02f4dbcef2))
+
+
+### Bug Fixes
+
+* clarify portability actions and test release scripts ([aa68670](https://github.com/realgarit/phonedesk/commit/aa68670b1916a93305b13025f1d43f058596dcb9))
+* clarify setup screens and reject incomplete schedules ([d6dd11b](https://github.com/realgarit/phonedesk/commit/d6dd11b8f08d1168912cdf81a1f76c98e7e9204b))
+* finish configuration readability for 3.27.1 ([f290a80](https://github.com/realgarit/phonedesk/commit/f290a80a55b3337aaa47b0943c38e7e70c287143))
+* keep CI script validation portable and parseable ([0657579](https://github.com/realgarit/phonedesk/commit/0657579eaf8e22736845b9d758398f2a7fae78d4))
+* keep configuration labels and wizard step names visible ([135163d](https://github.com/realgarit/phonedesk/commit/135163d537ff4dd640886fde93e0ce25c356aa4d))
+* preserve optional holiday end times ([f3f81e2](https://github.com/realgarit/phonedesk/commit/f3f81e22a791a7e8637761b681c6aa0e2e399d16))
+* reject incomplete imported weekly schedules ([370b3f3](https://github.com/realgarit/phonedesk/commit/370b3f3bf8a730216b94add77a09fa71fb12488c))
+
 ## [3.26.1](https://github.com/realgarit/phonedesk/compare/v3.26.0...v3.26.1) (2026-08-22)
 
 

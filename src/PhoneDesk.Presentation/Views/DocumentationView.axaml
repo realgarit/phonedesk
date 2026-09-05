@@ -27,11 +27,11 @@
 
                 <!-- Header -->
                 <StackPanel Grid.Row="0" Margin="24,24,24,16">
-                    <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,0,0,16">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" Margin="0,0,0,16">
                         <Border Classes="icon-badge">
                             <fi:SymbolIcon Symbol="DocumentText"/>
                         </Border>
-                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                             <TextBlock Text="{loc:Translate Key=DocumentationTitle}"
                                      Classes="page-title"
                                      Margin="0"/>
@@ -39,11 +39,11 @@
                                      TextWrapping="Wrap"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="12">
+                    <WrapPanel Orientation="Horizontal" IsEnabled="{Binding !IsBusy}">
                         <Button Command="{Binding ExportDocumentationCommand}"
-                                Classes="accent IconText"
+                                Classes="accent IconText" Margin="0,0,12,8"
                                 IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowDownload"/>
@@ -52,17 +52,41 @@
                         </Button>
 
                         <Button Command="{Binding CopyToClipboardCommand}"
-                                Classes="IconText"
+                                Classes="IconText" Margin="0,0,12,8"
                                 IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Copy"/>
                                 <TextBlock Text="{loc:Translate Key=CommonCopyToClipboard}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                    </StackPanel>
+
+                        <Button Command="{Binding ExportTopologySnapshotCommand}"
+                                Classes="IconText" Margin="0,0,12,8"
+                                IsEnabled="{Binding HasCachedTopology}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="Save"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationExportTopologySnapshotAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding CompareTopologySnapshotCommand}"
+                                Classes="IconText" Margin="0,0,12,8"
+                                IsEnabled="{Binding HasCachedTopology}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowSync"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationCompareTopologySnapshotAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <TextBlock Text="{loc:Translate Key=DocumentationTopologyLoadDashboardStatus}"
+                               IsVisible="{Binding !HasCachedTopology}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
                     <!-- Status -->
-                    <TextBlock Text="{Binding StatusMessage}"
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
                              Margin="0,12,0,0"
                              FontSize="13"
                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -77,7 +101,8 @@
                 <Border Grid.Row="1"
                         Margin="24,0,24,24"
                         Classes="sunken"
-                        Padding="0">
+                        Padding="0"
+                        IsVisible="{Binding !ShowTopologyDrift}">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
                         <TextBox Text="{Binding DocumentationOutput}"
@@ -92,19 +117,83 @@
                     </ScrollViewer>
                 </Border>
 
+                <!-- Offline topology drift result; no tenant query is made from this view. -->
+                <Border Grid.Row="1"
+                        Margin="24,0,24,24"
+                        Classes="sunken"
+                        Padding="16"
+                        IsVisible="{Binding ShowTopologyDrift}">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="12">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftTitle}"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding ComparedTopologyFileName}"
+                                           FontFamily="{StaticResource CodeFontFamily}"
+                                           FontSize="12"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftDescription}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ClearTopologyDriftCommand}"
+                                    Classes="IconText"
+                                    VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Dismiss"/>
+                                    <TextBlock Text="{loc:Translate Key=DocumentationCloseDriftAction}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <DataGrid ItemsSource="{Binding TopologyDriftEntries}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserResizeColumns="True"
+                                      GridLinesVisibility="Horizontal"
+                                      IsVisible="{Binding HasTopologyDriftEntries}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyChangeColumn}"
+                                                        Binding="{Binding ChangeLabel}" Width="Auto"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyObjectColumn}"
+                                                        Binding="{Binding DisplayName}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyPropertyColumn}"
+                                                        Binding="{Binding PropertyName}" Width="*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologySavedColumn}"
+                                                        Binding="{Binding SnapshotValue}" Width="1.5*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyLiveColumn}"
+                                                        Binding="{Binding LiveValue}" Width="1.5*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Border Classes="card"
+                                    Padding="24"
+                                    IsVisible="{Binding !HasTopologyDriftEntries}">
+                                <TextBlock Text="{loc:Translate Key=DocumentationTopologyDriftEmpty}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+
                 <!-- Info Footer -->
                 <Border Grid.Row="2"
                         Background="{DynamicResource SurfaceSunkenBrush}"
                         CornerRadius="0,0,12,12"
                         Padding="24,12">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                         <fi:SymbolIcon Symbol="Info" FontSize="14"
                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="{loc:Translate Key=DocumentationFooter}"
+                        <TextBlock Grid.Column="1" TextWrapping="Wrap" Text="{loc:Translate Key=DocumentationFooter}"
                                  FontSize="12"
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  VerticalAlignment="Center"/>
-                    </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>

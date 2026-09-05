@@ -69,6 +69,7 @@ class Program
         
         // UI Services (singleton - manages UI state)
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IPortabilityFileService, PortabilityFileService>();
         services.AddSingleton<IPageViewModelFactory, PageViewModelFactory>();
 
         // Throttling resilience (foundations #62): shared options + retry policy, per-run bulk pacer.
@@ -97,6 +98,7 @@ class Program
         // configuration inputs the frozen script builders consume.
         services.AddTransient<IDryRunPlanBuilder, DryRunPlanBuilder>();
         services.AddTransient<IDryRunPlanExporter, DryRunPlanExporter>();
+        services.AddTransient<ITenantAsCodeService, TenantAsCodeService>();
 
         // Tenant dashboard (issue #64): read-only topology assembly + session-lifetime cache.
         // The assembler is a pure transformation; the cache is a singleton so the retrieved snapshot

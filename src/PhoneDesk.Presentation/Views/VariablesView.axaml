@@ -540,6 +540,83 @@
                 </StackPanel>
             </Grid>
         </Border>
+        <!-- Configuration import preview: parsing never mutates shared state; Apply is the only commit path. -->
+        <Border IsVisible="{Binding ShowConfigurationImportPreview}"
+                Background="#80000000"
+                ZIndex="1200"
+                PointerPressed="ConfigurationImportBackdrop_PointerPressed">
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="24"
+                  PointerPressed="ConfigurationImportCard_PointerPressed">
+                <Border Classes="dialog" Width="900" MaxWidth="960" MaxHeight="620">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="14">
+                        <StackPanel Grid.Row="0" Spacing="6">
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewTitle}"
+                                       Classes="dialog-title"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewDescription}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewFileLabel}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding PendingConfigurationFileName}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <Grid Grid.Row="2">
+                            <DataGrid ItemsSource="{Binding PendingConfigurationChanges}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserResizeColumns="True"
+                                      GridLinesVisibility="Horizontal"
+                                      MaxHeight="390"
+                                      IsVisible="{Binding HasPendingConfigurationChanges}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportPathColumn}"
+                                                        Binding="{Binding DisplayPath}" Width="2*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportCurrentColumn}"
+                                                        Binding="{Binding CurrentValue}" Width="2*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportNewColumn}"
+                                                        Binding="{Binding ImportedValue}" Width="2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Border Classes="sunken"
+                                    Padding="20"
+                                    IsVisible="{Binding !HasPendingConfigurationChanges}">
+                                <TextBlock Text="{loc:Translate Key=VariablesImportNoChanges}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Row="3"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    Spacing="12">
+                            <Button Command="{Binding CancelConfigurationImportCommand}"
+                                    Classes="IconText">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Dismiss"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ApplyConfigurationImportCommand}"
+                                    Classes="accent IconText"
+                                    IsEnabled="{Binding HasPendingConfigurationChanges}">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Checkmark"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesApplyImportAction}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
         <!-- Holiday Time Picker Dialog - Border overlay -->
         <Border IsVisible="{Binding ShowHolidayTimePicker}"
                 Background="#80000000"

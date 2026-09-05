@@ -204,6 +204,11 @@ jobs:
     - name: Run integration tests
       run: dotnet test PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
 
+    - name: Test PowerShell release scripts
+      shell: pwsh
+      run: ./scripts/test-powershell.ps1
+
+
     - name: Publish
       # Self-contained so users need no .NET runtime install.
       # OutputType is set in the project (WinExe). It must NOT be passed as a global -p:OutputType,
@@ -440,6 +445,11 @@ jobs:
 
     - name: Run integration tests
       run: dotnet test PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj --configuration Release --no-build --verbosity normal
+
+    - name: Test PowerShell release scripts
+      shell: pwsh
+      run: ./scripts/test-powershell.ps1
+
 
     - name: Publish (packaging smoke, not released)
       env:

@@ -27,7 +27,7 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,0,0,32">
+    <ScrollViewer Name="ReadinessScroll" HorizontalScrollBarVisibility="Disabled" Padding="0,0,0,32">
         <StackPanel Margin="32" MaxWidth="850" HorizontalAlignment="Center" Spacing="24">
 
             <!-- Header Section -->
@@ -76,6 +76,15 @@
                     </Button>
                 </Grid>
             </Border>
+
+            <Expander Name="SetupChecklist" HorizontalAlignment="Stretch"
+                      Header="{loc:Translate Key=GetStartedChecklistTitle}">
+                <StackPanel Spacing="12" Margin="12">
+                    <TextBlock Text="{loc:Translate Key=GetStartedChecklistAccount}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:Translate Key=GetStartedChecklistPlan}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:Translate Key=GetStartedChecklistScope}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Expander>
 
             <!-- Step 1: PowerShell Modules -->
             <Border Classes="card interactive" AutomationProperties.Name="{Binding ModulesStatusText}">
@@ -289,7 +298,7 @@
                         </Style.Animations>
                     </Style>
                 </Border.Styles>
-                <Grid ColumnDefinitions="*,Auto" Margin="8">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Margin="8">
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <fi:SymbolIcon Symbol="CheckmarkCircle" Foreground="{DynamicResource SystemFillColorSuccessBrush}" FontSize="24"/>
@@ -297,7 +306,7 @@
                                      FontSize="18"
                                      FontWeight="SemiBold"/>
                         </StackPanel>
-                        <TextBlock Text="{loc:Translate Key=GetStartedAllSystemsReadyDescription}"
+                        <TextBlock Text="{loc:Translate Key=GetStartedAllSystemsReadyDescription}" TextWrapping="Wrap"
                                  FontSize="14"
                                  Opacity="0.7"/>
                     </StackPanel>

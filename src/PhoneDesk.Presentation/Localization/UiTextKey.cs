@@ -2,6 +2,20 @@ namespace PhoneDesk.Localization;
 
 public enum UiTextKey
 {
+    WelcomeBasicsTitle,
+    WelcomeCallExample,
+    WelcomeAttendantTitle,
+    WelcomeAttendantBody,
+    WelcomeQueueTitle,
+    WelcomeQueueBody,
+    WelcomeResourceTitle,
+    WelcomeResourceBody,
+    WelcomeTenantTitle,
+    WelcomeTenantBody,
+    GetStartedChecklistTitle,
+    GetStartedChecklistAccount,
+    GetStartedChecklistPlan,
+    GetStartedChecklistScope,
     CommonOpen,
     MainBrandForMicrosoftTeams,
     MainUpdateBadge,

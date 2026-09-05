@@ -55,7 +55,7 @@ namespace PhoneDesk.Tests
 
             var vm = CreateViewModel(harness);
 
-            Assert.Contains("bundled modules", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Check modules", vm.SetupGuidance, StringComparison.OrdinalIgnoreCase);
             Assert.Equal("Check modules first", vm.TeamsActionText);
             Assert.Equal("Check modules first", vm.GraphActionText);
         }

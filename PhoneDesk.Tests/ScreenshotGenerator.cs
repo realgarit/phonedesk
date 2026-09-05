@@ -70,8 +70,15 @@ namespace PhoneDesk.Tests
             new("Welcome", true, "shell-settings-en.png", "settings-en"),
             new("Welcome", true, "shell-settings-de.png", "settings-de"),
             new("Welcome", true, "welcome.png"),
+            new("Welcome", true, "welcome-de.png", "novice-de"),
+            new("Welcome", true, "welcome-basics-en.png", "novice-basics-en"),
+            new("Welcome", true, "welcome-basics-de.png", "novice-basics-de"),
+            new("GetStarted", true, "get-started-checklist-en.png", "novice-checklist-en"),
+            new("GetStarted", true, "get-started-checklist-de.png", "novice-checklist-de"),
             new("GetStarted", true, "get-started.png"),
             new("GetStarted", true, "get-started-ready.png", "ready"),
+            new("GetStarted", true, "get-started-connections-en.png", "ready-connections-en"),
+            new("GetStarted", true, "get-started-connections-de.png", "ready-connections-de"),
             new("GetStarted", true, "get-started-ready-de.png", "ready-de"),
             new("Variables", true, "variables.png"),
             new("Variables", true, "variables-de.png", "ready-de"),
@@ -348,6 +355,31 @@ namespace PhoneDesk.Tests
             }
 
             mainWindowViewModel.IsSettingsOpen = false;
+            if (scenario.StartsWith("ready-connections", StringComparison.Ordinal))
+            {
+                var scroll = window.GetVisualDescendants().OfType<ScrollViewer>().Single(e => e.Name == "ReadinessScroll");
+                scroll.ScrollToEnd();
+                PumpRender();
+                return;
+            }
+            foreach (var help in window.GetVisualDescendants().OfType<Expander>()
+                .Where(e => e.Name == "TelephonyBasics" || e.Name == "SetupChecklist"))
+            {
+                help.IsExpanded = false;
+            }
+            if (scenario.StartsWith("novice-basics", StringComparison.Ordinal)
+                || scenario.StartsWith("novice-checklist", StringComparison.Ordinal))
+            {
+                var name = scenario.StartsWith("novice-basics", StringComparison.Ordinal)
+                    ? "TelephonyBasics" : "SetupChecklist";
+                var expander = window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == name);
+                expander.IsExpanded = true;
+                PumpRender();
+                expander.BringIntoView();
+                PumpRender();
+                return;
+            }
+
             if (scenario.StartsWith("task6-update-banner", StringComparison.Ordinal))
             {
                 var stateType = typeof(MainWindowViewModel).GetNestedType("UpdateBannerState", BindingFlags.NonPublic)

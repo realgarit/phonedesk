@@ -71,7 +71,6 @@ Write-Host "✓ Updated app.manifest" -ForegroundColor Green
 $constantsPath = Join-Path $repoRoot "src/PhoneDesk.Domain/ConstantsService.cs"
 $constantsContent = Get-Content $constantsPath -Raw
 # Use 3-part version for display (major.minor.patch)
-$displayVersion = "$major.$minor.$patch"
 $constantsContent = $constantsContent -replace 'public const string Version = "Version [\d.]+";', "public const string Version = `"Version $displayVersion`";"
 Set-Content -Path $constantsPath -Value $constantsContent -NoNewline
 Write-Host "✓ Updated ConstantsService.cs" -ForegroundColor Green

@@ -16,7 +16,7 @@ public sealed class LocalizationServiceTests
             "src", "PhoneDesk.Presentation", "Resources", "Localization", $"Strings.{language}.json")));
         const string reason = "Unsupported schema version: 99";
         var message = catalog.Get(UiTextKey.VariablesLoadFailedMessage,
-            new Dictionary<string, object?> { ["error"] = reason });
+            new Dictionary<string, object?> { { "error", reason } });
         Assert.Contains(reason, message);
     }
 

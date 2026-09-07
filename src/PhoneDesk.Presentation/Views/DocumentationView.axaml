@@ -62,7 +62,7 @@
 
                         <Button Command="{Binding ExportTopologySnapshotCommand}"
                                 Classes="IconText" Margin="0,0,12,8"
-                                IsEnabled="{Binding HasCachedTopology}">
+                                IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Save"/>
                                 <TextBlock Text="{loc:Translate Key=DocumentationExportTopologySnapshotAction}"
@@ -72,7 +72,7 @@
 
                         <Button Command="{Binding CompareTopologySnapshotCommand}"
                                 Classes="IconText" Margin="0,0,12,8"
-                                IsEnabled="{Binding HasCachedTopology}">
+                                IsEnabled="{Binding !IsBusy}">
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="ArrowSync"/>
                                 <TextBlock Text="{loc:Translate Key=DocumentationCompareTopologySnapshotAction}"
@@ -81,8 +81,8 @@
                         </Button>
                     </WrapPanel>
 
-                    <TextBlock Text="{loc:Translate Key=DocumentationTopologyLoadDashboardStatus}"
-                               IsVisible="{Binding !HasCachedTopology}" TextWrapping="Wrap"
+                    <TextBlock Text="{loc:Translate Key=DocumentationTopologyLiveReadHint}"
+                               TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
                     <!-- Status -->
@@ -117,7 +117,7 @@
                     </ScrollViewer>
                 </Border>
 
-                <!-- Offline topology drift result; no tenant query is made from this view. -->
+                <!-- Drift result from a saved snapshot and a newly collected live tenant snapshot. -->
                 <Border Grid.Row="1"
                         Margin="24,0,24,24"
                         Classes="sunken"
@@ -160,13 +160,13 @@
                                     <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyChangeColumn}"
                                                         Binding="{Binding ChangeLabel}" Width="Auto"/>
                                     <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyObjectColumn}"
-                                                        Binding="{Binding DisplayName}" Width="1.5*"/>
+                                                        Binding="{Binding DisplayName}" Width="2*"/>
                                     <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyPropertyColumn}"
-                                                        Binding="{Binding PropertyName}" Width="*"/>
+                                                        Binding="{Binding PropertyName}" Width="0.9*"/>
                                     <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologySavedColumn}"
-                                                        Binding="{Binding SnapshotValue}" Width="1.5*"/>
+                                                        Binding="{Binding SnapshotValue}" Width="1.25*"/>
                                     <DataGridTextColumn Header="{loc:Translate Key=DocumentationTopologyLiveColumn}"
-                                                        Binding="{Binding LiveValue}" Width="1.5*"/>
+                                                        Binding="{Binding LiveValue}" Width="1.25*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                             <Border Classes="card"

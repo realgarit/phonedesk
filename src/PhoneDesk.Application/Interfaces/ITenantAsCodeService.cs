@@ -12,8 +12,15 @@ public interface ITenantAsCodeService
         ConfigurationDocument imported);
 
     string SerializeTopology(TenantTopology topology);
+    TopologySnapshotDocument CreateTopologySnapshot(
+        TenantTopology topology,
+        TenantDocumentationSnapshot documentation);
+    string SerializeTopology(TopologySnapshotDocument document);
     TopologySnapshotDocument DeserializeTopology(string json);
     IReadOnlyList<TopologyDriftEntry> CompareTopology(
         TopologySnapshotDocument snapshot,
         TenantTopology liveTopology);
+    IReadOnlyList<TopologyDriftEntry> CompareTopology(
+        TopologySnapshotDocument snapshot,
+        TopologySnapshotDocument liveSnapshot);
 }

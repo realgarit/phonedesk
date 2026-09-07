@@ -21,7 +21,8 @@ namespace PhoneDesk.ViewModels
         private readonly IDocumentationScriptBuilder _docBuilder;
         private readonly ITenantAsCodeService? _tenantAsCodeService;
         private readonly IPortabilityFileService? _portabilityFileService;
-        private readonly ITenantTopologyCache? _topologyCache;
+        private readonly ITenantDocumentationSnapshotParser? _snapshotParser;
+        private readonly ITenantTopologyAssembler? _topologyAssembler;
         private IReadOnlyList<TopologyDriftEntry> _topologyDrift = Array.Empty<TopologyDriftEntry>();
         private bool _disposed;
 
@@ -40,8 +41,6 @@ namespace PhoneDesk.ViewModels
         public ObservableCollection<TopologyDriftDisplayEntry> TopologyDriftEntries { get; } = new();
 
         public bool HasTopologyDriftEntries => TopologyDriftEntries.Count > 0;
-
-        public bool HasCachedTopology => _topologyCache?.HasValue == true;
 
         // Internal data structures for topology building
         private record RaInfo(string Name, string Upn, string ObjectId, string AppId, string Phone);
@@ -74,14 +73,16 @@ namespace PhoneDesk.ViewModels
             ITranslationService? translationService = null,
             ITenantAsCodeService? tenantAsCodeService = null,
             IPortabilityFileService? portabilityFileService = null,
-            ITenantTopologyCache? topologyCache = null)
+            ITenantDocumentationSnapshotParser? snapshotParser = null,
+            ITenantTopologyAssembler? topologyAssembler = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _docBuilder = docBuilder;
             _tenantAsCodeService = tenantAsCodeService;
             _portabilityFileService = portabilityFileService;
-            _topologyCache = topologyCache;
+            _snapshotParser = snapshotParser;
+            _topologyAssembler = topologyAssembler;
             TopologyDriftEntries.CollectionChanged += (_, _) =>
                 OnPropertyChanged(nameof(HasTopologyDriftEntries));
             if (_translationService is not null)
@@ -97,15 +98,21 @@ namespace PhoneDesk.ViewModels
         [RelayCommand]
         private async Task ExportTopologySnapshotAsync()
         {
-            if (!TryGetTopology(out var topology))
+            if (!HasSnapshotServices())
             {
                 return;
             }
 
             try
             {
-                var json = _tenantAsCodeService!.SerializeTopology(topology);
-                var timestamp = topology.RetrievedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'");
+                IsBusy = true;
+                IsExporting = true;
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationTopologyGatheringStatus,
+                    "Reading the complete tenant snapshot...");
+                var snapshot = await CollectLiveTopologySnapshotAsync();
+                var json = _tenantAsCodeService!.SerializeTopology(snapshot);
+                var timestamp = snapshot.RetrievedAtUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'");
                 var location = await _portabilityFileService!.SaveJsonAsync(
                     GetText(UiTextKey.DocumentationExportTopologySnapshotAction, "Export topology snapshot"),
                     $"phonedesk-topology-{timestamp}.json",
@@ -127,12 +134,17 @@ namespace PhoneDesk.ViewModels
                     "Topology snapshot failed: {error}",
                     new Dictionary<string, object?> { ["error"] = ex.Message });
             }
+            finally
+            {
+                IsBusy = false;
+                IsExporting = false;
+            }
         }
 
         [RelayCommand]
         private async Task CompareTopologySnapshotAsync()
         {
-            if (!TryGetTopology(out var topology))
+            if (!HasSnapshotServices())
             {
                 return;
             }
@@ -147,7 +159,13 @@ namespace PhoneDesk.ViewModels
                 }
 
                 var snapshot = _tenantAsCodeService!.DeserializeTopology(file.Content);
-                var drift = _tenantAsCodeService.CompareTopology(snapshot, topology);
+                IsBusy = true;
+                IsExporting = true;
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationTopologyGatheringStatus,
+                    "Reading the complete tenant snapshot...");
+                var liveSnapshot = await CollectLiveTopologySnapshotAsync();
+                var drift = _tenantAsCodeService.CompareTopology(snapshot, liveSnapshot);
                 SetTopologyDriftForDisplay(file.Name, drift);
                 StatusMessage = drift.Count == 0
                     ? GetText(UiTextKey.DocumentationTopologyNoDriftStatus, "No topology drift detected.")
@@ -162,6 +180,11 @@ namespace PhoneDesk.ViewModels
                     UiTextKey.DocumentationTopologyComparisonFailedStatus,
                     "Topology comparison failed: {error}",
                     new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
+            finally
+            {
+                IsBusy = false;
+                IsExporting = false;
             }
         }
 
@@ -232,18 +255,91 @@ namespace PhoneDesk.ViewModels
             public string? LiveValue => Entry.LiveValue;
         }
 
-        private bool TryGetTopology(out TenantTopology topology)
+        private bool HasSnapshotServices()
         {
-            topology = _topologyCache?.Current ?? TenantTopology.Empty;
-            if (_tenantAsCodeService is not null && _portabilityFileService is not null && _topologyCache?.Current is not null)
+            if (_tenantAsCodeService is not null && _portabilityFileService is not null &&
+                _snapshotParser is not null && _topologyAssembler is not null)
             {
                 return true;
             }
 
             StatusMessage = GetText(
-                UiTextKey.DocumentationTopologyLoadDashboardStatus,
-                "Load the tenant topology on the Dashboard before using snapshot actions.");
+                UiTextKey.DocumentationTopologyServicesUnavailableStatus,
+                "Tenant snapshot services are unavailable.");
             return false;
+        }
+
+        private async Task<TopologySnapshotDocument> CollectLiveTopologySnapshotAsync()
+        {
+            var tenant = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportTenantInfoCommand(),
+                "SnapshotTenantInfo");
+            var resourceAccounts = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportResourceAccountsCommand(),
+                "SnapshotResourceAccounts");
+            var autoAttendants = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportAutoAttendantsCommand(),
+                "SnapshotAutoAttendants");
+            var callQueues = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportCallQueuesCommand(),
+                "SnapshotCallQueues");
+            var schedules = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportSchedulesCommand(),
+                "SnapshotSchedules");
+            var phoneNumbers = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportPhoneNumbersCommand(),
+                "SnapshotPhoneNumbers");
+            var voiceUsers = await ExecuteCompleteSnapshotReadAsync(
+                _docBuilder.GetExportVoiceUsersCommand(),
+                "SnapshotVoiceUsers");
+            var topologyRaw = await ExecuteCompleteSnapshotReadAsync(
+                _powerShellCommandService.GetRetrieveTenantTopologyCommand(),
+                "SnapshotTopology");
+            if (!topologyRaw.Contains("SUCCESS: Tenant topology retrieved", StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("The live tenant topology query did not emit its completion marker.");
+            }
+
+            var retrievedAtUtc = DateTimeOffset.UtcNow;
+            var documentation = _snapshotParser!.Parse(new TenantDocumentationRawData(
+                tenant,
+                resourceAccounts,
+                autoAttendants,
+                callQueues,
+                schedules,
+                phoneNumbers,
+                voiceUsers));
+            var topology = _topologyAssembler!.Assemble(topologyRaw, retrievedAtUtc);
+            return _tenantAsCodeService!.CreateTopologySnapshot(topology, documentation);
+        }
+
+        private async Task<string> ExecuteCompleteSnapshotReadAsync(string command, string context)
+        {
+            var result = await ExecutePowerShellCommandAsync(
+                command,
+                environmentVariables: null,
+                context,
+                allowThrottleRetry: true);
+            if (!result.IsSuccess)
+            {
+                throw new InvalidDataException(
+                    result.ErrorMessage ?? $"The {context} query did not complete successfully.");
+            }
+
+            var output = result.Value ?? string.Empty;
+            var diagnostic = output
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .FirstOrDefault(line =>
+                    line.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("TOPERR:", StringComparison.OrdinalIgnoreCase));
+            if (diagnostic is not null)
+            {
+                throw new InvalidDataException(
+                    $"The live tenant snapshot is incomplete: {diagnostic}");
+            }
+            return output;
         }
 
         [RelayCommand]

@@ -407,7 +407,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 {
                     Associations = SortBy(
                         item.Associations,
-                        association => $"{association.ConfigurationType}\u001f{association.ConfigurationId}")
+                        association => $"{association.ConfigurationType}\u001f{association.ConfigurationId}\u001f{association.Occurrence}")
                 })
                 .ToArray(),
             AutoAttendants = SortBy(documentation.AutoAttendants, item => item.Identity),
@@ -603,7 +603,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         {
             ValidateUniqueItems(
                 item.Associations ?? throw MissingNested("resource-account associations"),
-                association => association.ConfigurationType,
+                association => $"{association.ConfigurationType}\u001f{association.ConfigurationId}\u001f{association.Occurrence}",
                 "resource-account association");
         }
         ValidateParentResolution(documentation.AutoAttendantMenuOptions, documentation.AutoAttendants,
@@ -634,7 +634,9 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
             item => item.ScheduleName, item => item.ScheduleId,
             parent => parent.Name, parent => parent.Id, "schedule weekly range");
 
-        var occurrences = documentation.AutoAttendantMenuOptions.Select(item => item.Occurrence)
+        var occurrences = documentation.ResourceAccounts.SelectMany(item => item.Associations)
+            .Select(item => item.Occurrence)
+            .Concat(documentation.AutoAttendantMenuOptions.Select(item => item.Occurrence))
             .Concat(documentation.AutoAttendantCallFlows.Select(item => item.Occurrence))
             .Concat(documentation.AutoAttendantScheduleAssociations.Select(item => item.Occurrence))
             .Concat(documentation.AutoAttendantOperators.Select(item => item.Occurrence))
@@ -919,10 +921,19 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
     private static IReadOnlyList<InventoryComparable> ResourceAccountAssociations(TenantDocumentationSnapshot data)
         => data.ResourceAccounts
             .SelectMany(account => account.Associations.Select(association => Comparable(
-                $"{account.ObjectId}\u001f{association.ConfigurationType}",
+                ResourceAssociationIdentity(account, association),
                 $"{account.Name} / {association.ConfigurationType}",
                 ("configurationId", association.ConfigurationId))))
             .ToArray();
+
+    private static string ResourceAssociationIdentity(
+        ResourceAccountInventorySnapshot account,
+        ResourceAccountAssociationSnapshot association)
+        => JoinKey(
+            account.ObjectId,
+            association.ConfigurationType,
+            association.ConfigurationId,
+            association.Occurrence);
 
     private static IReadOnlyList<InventoryComparable> AutoAttendantMenuOptions(TenantDocumentationSnapshot data)
         => data.AutoAttendantMenuOptions

@@ -209,7 +209,8 @@ public sealed record ResourceAccountInventorySnapshot(
 
 public sealed record ResourceAccountAssociationSnapshot(
     string ConfigurationId,
-    string ConfigurationType);
+    string ConfigurationType,
+    int Occurrence);
 
 public sealed record AutoAttendantInventorySnapshot(
     string Name,

@@ -301,6 +301,34 @@ public sealed class TenantAsCodeServiceTests
     }
 
     [Fact]
+    public void MultipleSameTypeResourceAssociationsCompareWithoutIdentityCollisions()
+    {
+        var parser = new TenantDocumentationSnapshotParser();
+        var baseRaw = TenantDocumentationSnapshotParserTests.CreateRawData();
+        var savedRaw = baseRaw with
+        {
+            ResourceAccounts = ResourceAccountRows("cq-1", "cq-2")
+        };
+        var liveRaw = baseRaw with
+        {
+            ResourceAccounts = ResourceAccountRows("cq-1", "cq-3")
+        };
+        var topology = CreateLiveTopology();
+        var saved = _service.CreateTopologySnapshot(topology, parser.Parse(savedRaw));
+        var live = _service.CreateTopologySnapshot(topology, parser.Parse(liveRaw));
+
+        var associationDrift = _service.CompareTopology(saved, live)
+            .Where(item => item.ObjectType == "resourceAccountAssociation")
+            .ToArray();
+
+        Assert.Contains(associationDrift, item =>
+            item.Kind == TopologyDriftKind.Removed && item.ObjectId.Contains("cq-2", StringComparison.Ordinal));
+        Assert.Contains(associationDrift, item =>
+            item.Kind == TopologyDriftKind.Added && item.ObjectId.Contains("cq-3", StringComparison.Ordinal));
+        Assert.DoesNotContain(associationDrift, item => item.Kind == TopologyDriftKind.Changed);
+    }
+
+    [Fact]
     public void TopologyComparisonReportsAddedRemovedAndChangedProperties()
     {
         var live = CreateLiveTopology();
@@ -421,4 +449,13 @@ public sealed class TenantAsCodeServiceTests
            $"DOCDATA_AA_MENU: Reception|DefaultCallFlow|1|Transfer|{firstTarget}\n" +
            $"DOCDATA_AA_MENU: Reception|DefaultCallFlow|1|Transfer|{secondTarget}\n" +
            "DOCDATA_AA_END";
+
+    private static string ResourceAccountRows(string firstConfigurationId, string secondConfigurationId)
+        => "DOCDATA_RA_START\n" +
+           "DOCDATA_RA: Reception RA|reception@contoso.example|ra-1|cq-app|+41440000000\n" +
+           "DOCDATA_RA_END\n" +
+           "DOCDATA_ASSOC_START\n" +
+           $"DOCDATA_ASSOC: Reception RA|ra-1|{firstConfigurationId}|CallQueue\n" +
+           $"DOCDATA_ASSOC: Reception RA|ra-1|{secondConfigurationId}|CallQueue\n" +
+           "DOCDATA_ASSOC_END";
 }

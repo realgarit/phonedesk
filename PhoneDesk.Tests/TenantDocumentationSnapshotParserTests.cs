@@ -16,7 +16,9 @@ public sealed class TenantDocumentationSnapshotParserTests
 
         var resourceAccount = Assert.Single(snapshot.ResourceAccounts);
         Assert.Equal("ra-1", resourceAccount.ObjectId);
-        Assert.Equal("cq-1", Assert.Single(resourceAccount.Associations).ConfigurationId);
+        var association = Assert.Single(resourceAccount.Associations);
+        Assert.Equal("cq-1", association.ConfigurationId);
+        Assert.Equal(0, association.Occurrence);
 
         var autoAttendant = Assert.Single(snapshot.AutoAttendants);
         Assert.Equal("aa-1", autoAttendant.Identity);

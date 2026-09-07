@@ -18,15 +18,16 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
         RequireMarkers(rawData.VoiceUsers, "DOCDATA_USER_START", "DOCDATA_USER_END");
 
         var tenant = ParseTenant(rawData.Tenant);
-        var associations = ParseRows(rawData.ResourceAccounts, "DOCDATA_ASSOC:", 4)
-            .Select(parts => new AssociationRow(parts[1], parts[2], parts[3]))
-            .ToArray();
+        var associations = ParseWithOccurrences(
+            rawData.ResourceAccounts, "DOCDATA_ASSOC:", 4,
+            (parts, occurrence) => new AssociationRow(parts[1], parts[2], parts[3], occurrence));
         var resourceAccounts = ParseRows(rawData.ResourceAccounts, "DOCDATA_RA:", 5)
             .Select(parts => new ResourceAccountInventorySnapshot(
                 parts[0], parts[1], parts[2], parts[3], parts[4],
                 associations
                     .Where(item => string.Equals(item.ResourceAccountId, parts[2], StringComparison.Ordinal))
-                    .Select(item => new ResourceAccountAssociationSnapshot(item.ConfigurationId, item.ConfigurationType))
+                    .Select(item => new ResourceAccountAssociationSnapshot(
+                        item.ConfigurationId, item.ConfigurationType, item.Occurrence))
                     .ToArray()))
             .ToArray();
         EnsureParents(
@@ -240,5 +241,9 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
 
     private static string JoinKey(params string[] parts) => string.Join('\u001f', parts);
 
-    private sealed record AssociationRow(string ResourceAccountId, string ConfigurationId, string ConfigurationType);
+    private sealed record AssociationRow(
+        string ResourceAccountId,
+        string ConfigurationId,
+        string ConfigurationType,
+        int Occurrence);
 }

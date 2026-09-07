@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.28.0](https://github.com/realgarit/phonedesk/compare/v3.27.2...v3.28.0) (2026-09-07)
+
+
+### Features
+
+* complete live tenant snapshots for issue [#71](https://github.com/realgarit/phonedesk/issues/71) ([d0f3566](https://github.com/realgarit/phonedesk/commit/d0f356694d0503d59ca924e9b001c981b1875d1e))
+* complete live tenant topology snapshots ([1f7c3cb](https://github.com/realgarit/phonedesk/commit/1f7c3cb970eac9089b476dd2ed5d3974c3f54bc5))
+
+
+### Bug Fixes
+
+* preserve duplicate tenant object names ([18d28b2](https://github.com/realgarit/phonedesk/commit/18d28b282bb73a6c03468c3b49afd6e3af843acc))
+* stabilize ambiguous snapshot detail identity ([b4fea0b](https://github.com/realgarit/phonedesk/commit/b4fea0b2a6fb167791c95d8310c6347282b12bb3))
+* support multiple resource associations ([94de781](https://github.com/realgarit/phonedesk/commit/94de781be26ab410972b333ed31555c3c8f107b5))
+
 ## [3.27.2](https://github.com/realgarit/phonedesk/compare/v3.27.1...v3.27.2) (2026-09-05)
 
 

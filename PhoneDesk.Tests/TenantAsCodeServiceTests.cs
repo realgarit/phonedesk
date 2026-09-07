@@ -202,7 +202,7 @@ public sealed class TenantAsCodeServiceTests
         var secondPhone = new PhoneNumberInventorySnapshot(
             "+41310000000", "CallingPlan", "user-2", "Assigned", "Activated", "Bern", "Voice");
         var secondAgent = new CallQueueAgentSnapshot(
-            "Support", "agent-0", "False", "Grace Hopper", "grace@contoso.example", 0);
+            "Support", "cq-1", "agent-0", "False", "Grace Hopper", "grace@contoso.example", 0);
         var forward = parsed with
         {
             PhoneNumbers = parsed.PhoneNumbers.Append(secondPhone).ToArray(),
@@ -270,6 +270,34 @@ public sealed class TenantAsCodeServiceTests
             item.PropertyName == "targetId" &&
             item.SnapshotValue == "cq-1" &&
             item.LiveValue == "cq-2");
+    }
+
+    [Fact]
+    public void AmbiguousDuplicateNameDetailsUseAddedRemovedRowsInsteadOfMisattributedChanges()
+    {
+        var parser = new TenantDocumentationSnapshotParser();
+        var baseRaw = TenantDocumentationSnapshotParserTests.CreateRawData();
+        var savedRaw = baseRaw with
+        {
+            AutoAttendants = DuplicateNameAutoAttendantRows("cq-1", "cq-2")
+        };
+        var liveRaw = baseRaw with
+        {
+            AutoAttendants = DuplicateNameAutoAttendantRows("cq-1", "cq-3")
+        };
+        var topology = CreateLiveTopology();
+        var saved = _service.CreateTopologySnapshot(topology, parser.Parse(savedRaw));
+        var live = _service.CreateTopologySnapshot(topology, parser.Parse(liveRaw));
+
+        var menuDrift = _service.CompareTopology(saved, live)
+            .Where(item => item.ObjectType == "autoAttendantMenuOption")
+            .ToArray();
+
+        Assert.Contains(menuDrift, item =>
+            item.Kind == TopologyDriftKind.Removed && item.ObjectId.Contains("cq-2", StringComparison.Ordinal));
+        Assert.Contains(menuDrift, item =>
+            item.Kind == TopologyDriftKind.Added && item.ObjectId.Contains("cq-3", StringComparison.Ordinal));
+        Assert.DoesNotContain(menuDrift, item => item.Kind == TopologyDriftKind.Changed);
     }
 
     [Fact]
@@ -385,4 +413,12 @@ public sealed class TenantAsCodeServiceTests
             },
             Array.Empty<OrphanFinding>(),
             new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero));
+
+    private static string DuplicateNameAutoAttendantRows(string firstTarget, string secondTarget)
+        => "DOCDATA_AA_START\n" +
+           "DOCDATA_AA: Reception|aa-1|de-DE|Europe/Zurich|Female|Default\n" +
+           "DOCDATA_AA: Reception|aa-2|en-US|Europe/London|Male|Default\n" +
+           $"DOCDATA_AA_MENU: Reception|DefaultCallFlow|1|Transfer|{firstTarget}\n" +
+           $"DOCDATA_AA_MENU: Reception|DefaultCallFlow|1|Transfer|{secondTarget}\n" +
+           "DOCDATA_AA_END";
 }

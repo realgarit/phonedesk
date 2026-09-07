@@ -221,6 +221,7 @@ public sealed record AutoAttendantInventorySnapshot(
 
 public sealed record AutoAttendantMenuOptionSnapshot(
     string AutoAttendantName,
+    string? AutoAttendantIdentity,
     string FlowName,
     string Key,
     string Action,
@@ -229,12 +230,14 @@ public sealed record AutoAttendantMenuOptionSnapshot(
 
 public sealed record AutoAttendantCallFlowSnapshot(
     string AutoAttendantName,
+    string? AutoAttendantIdentity,
     string FlowName,
     string MenuName,
     int Occurrence);
 
 public sealed record AutoAttendantScheduleAssociationSnapshot(
     string AutoAttendantName,
+    string? AutoAttendantIdentity,
     string Type,
     string ScheduleId,
     string CallFlowId,
@@ -242,6 +245,7 @@ public sealed record AutoAttendantScheduleAssociationSnapshot(
 
 public sealed record AutoAttendantOperatorSnapshot(
     string AutoAttendantName,
+    string? AutoAttendantIdentity,
     string Type,
     string TargetId,
     int Occurrence);
@@ -260,6 +264,7 @@ public sealed record CallQueueInventorySnapshot(
 
 public sealed record CallQueueAgentSnapshot(
     string CallQueueName,
+    string? CallQueueIdentity,
     string ObjectId,
     string OptIn,
     string DisplayName,
@@ -268,11 +273,13 @@ public sealed record CallQueueAgentSnapshot(
 
 public sealed record CallQueueDistributionListSnapshot(
     string CallQueueName,
+    string? CallQueueIdentity,
     string GroupId,
     int Occurrence);
 
 public sealed record QueueThresholdActionSnapshot(
     string CallQueueName,
+    string? CallQueueIdentity,
     string Kind,
     string Action,
     string TargetId,
@@ -287,12 +294,14 @@ public sealed record ScheduleInventorySnapshot(
 
 public sealed record ScheduleDateRangeSnapshot(
     string ScheduleName,
+    string? ScheduleId,
     string Start,
     string End,
     int Occurrence);
 
 public sealed record ScheduleWeeklyRangeSnapshot(
     string ScheduleName,
+    string? ScheduleId,
     string Day,
     string Start,
     string End,

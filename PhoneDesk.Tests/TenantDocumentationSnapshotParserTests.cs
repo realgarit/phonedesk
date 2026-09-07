@@ -20,7 +20,9 @@ public sealed class TenantDocumentationSnapshotParserTests
 
         var autoAttendant = Assert.Single(snapshot.AutoAttendants);
         Assert.Equal("aa-1", autoAttendant.Identity);
-        Assert.Equal("cq-1", Assert.Single(snapshot.AutoAttendantMenuOptions).TargetId);
+        var menuOption = Assert.Single(snapshot.AutoAttendantMenuOptions);
+        Assert.Equal("aa-1", menuOption.AutoAttendantIdentity);
+        Assert.Equal("cq-1", menuOption.TargetId);
         Assert.Equal("After hours", Assert.Single(snapshot.AutoAttendantCallFlows).FlowName);
         Assert.Equal("schedule-1", Assert.Single(snapshot.AutoAttendantScheduleAssociations).ScheduleId);
         Assert.Equal("operator-1", Assert.Single(snapshot.AutoAttendantOperators).TargetId);
@@ -74,6 +76,7 @@ public sealed class TenantDocumentationSnapshotParserTests
         Assert.Equal(new[] { "aa-1", "aa-2" }, snapshot.AutoAttendants.Select(item => item.Identity));
         var menu = Assert.Single(snapshot.AutoAttendantMenuOptions);
         Assert.Equal("Reception", menu.AutoAttendantName);
+        Assert.Null(menu.AutoAttendantIdentity);
         Assert.Equal(0, menu.Occurrence);
     }
 

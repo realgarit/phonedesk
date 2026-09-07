@@ -202,21 +202,16 @@ public sealed class TenantAsCodeServiceTests
         var secondPhone = new PhoneNumberInventorySnapshot(
             "+41310000000", "CallingPlan", "user-2", "Assigned", "Activated", "Bern", "Voice");
         var secondAgent = new CallQueueAgentSnapshot(
-            "agent-0", "False", "Grace Hopper", "grace@contoso.example");
+            "Support", "agent-0", "False", "Grace Hopper", "grace@contoso.example", 0);
         var forward = parsed with
         {
             PhoneNumbers = parsed.PhoneNumbers.Append(secondPhone).ToArray(),
-            CallQueues = parsed.CallQueues
-                .Select(queue => queue with { Agents = queue.Agents.Append(secondAgent).ToArray() })
-                .ToArray()
+            CallQueueAgents = parsed.CallQueueAgents.Append(secondAgent).ToArray()
         };
         var reversed = forward with
         {
             PhoneNumbers = forward.PhoneNumbers.Reverse().ToArray(),
-            CallQueues = forward.CallQueues
-                .Select(queue => queue with { Agents = queue.Agents.Reverse().ToArray() })
-                .Reverse()
-                .ToArray()
+            CallQueueAgents = forward.CallQueueAgents.Reverse().ToArray()
         };
 
         var firstJson = _service.SerializeTopology(_service.CreateTopologySnapshot(topology, forward));
@@ -229,7 +224,7 @@ public sealed class TenantAsCodeServiceTests
             normalized.Documentation!.PhoneNumbers.Select(number => number.Number));
         Assert.Equal(
             new[] { "agent-0", "agent-1" },
-            Assert.Single(normalized.Documentation.CallQueues).Agents.Select(agent => agent.ObjectId));
+            normalized.Documentation.CallQueueAgents.Select(agent => agent.ObjectId));
     }
 
     [Fact]
@@ -243,11 +238,11 @@ public sealed class TenantAsCodeServiceTests
             AutoAttendants = savedDocumentation.AutoAttendants
                 .Select(item => item with
                 {
-                    Voice = "Male",
-                    MenuOptions = item.MenuOptions
-                        .Select(option => option with { TargetId = "cq-2" })
-                        .ToArray()
+                    Voice = "Male"
                 })
+                .ToArray(),
+            AutoAttendantMenuOptions = savedDocumentation.AutoAttendantMenuOptions
+                .Select(option => option with { TargetId = "cq-2" })
                 .ToArray(),
             PhoneNumbers = savedDocumentation.PhoneNumbers
                 .Select(item => item with { City = "Bern" })

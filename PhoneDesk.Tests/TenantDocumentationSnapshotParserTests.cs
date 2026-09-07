@@ -20,21 +20,21 @@ public sealed class TenantDocumentationSnapshotParserTests
 
         var autoAttendant = Assert.Single(snapshot.AutoAttendants);
         Assert.Equal("aa-1", autoAttendant.Identity);
-        Assert.Equal("cq-1", Assert.Single(autoAttendant.MenuOptions).TargetId);
-        Assert.Equal("After hours", Assert.Single(autoAttendant.CallFlows).FlowName);
-        Assert.Equal("schedule-1", Assert.Single(autoAttendant.ScheduleAssociations).ScheduleId);
-        Assert.Equal("operator-1", Assert.IsType<AutoAttendantOperatorSnapshot>(autoAttendant.Operator).TargetId);
+        Assert.Equal("cq-1", Assert.Single(snapshot.AutoAttendantMenuOptions).TargetId);
+        Assert.Equal("After hours", Assert.Single(snapshot.AutoAttendantCallFlows).FlowName);
+        Assert.Equal("schedule-1", Assert.Single(snapshot.AutoAttendantScheduleAssociations).ScheduleId);
+        Assert.Equal("operator-1", Assert.Single(snapshot.AutoAttendantOperators).TargetId);
 
         var callQueue = Assert.Single(snapshot.CallQueues);
-        Assert.Equal("agent-1", Assert.Single(callQueue.Agents).ObjectId);
-        Assert.Equal("group-1", Assert.Single(callQueue.DistributionListIds));
-        Assert.Equal("voicemail-1", Assert.IsType<QueueThresholdActionSnapshot>(callQueue.Overflow).TargetId);
-        Assert.Equal("disconnect-1", Assert.IsType<QueueThresholdActionSnapshot>(callQueue.Timeout).TargetId);
+        Assert.Equal("agent-1", Assert.Single(snapshot.CallQueueAgents).ObjectId);
+        Assert.Equal("group-1", Assert.Single(snapshot.CallQueueDistributionLists).GroupId);
+        Assert.Equal("voicemail-1", Assert.Single(snapshot.CallQueueActions, action => action.Kind == "overflow").TargetId);
+        Assert.Equal("disconnect-1", Assert.Single(snapshot.CallQueueActions, action => action.Kind == "timeout").TargetId);
 
         var schedule = Assert.Single(snapshot.Schedules);
         Assert.Equal("schedule-1", schedule.Id);
-        Assert.Single(schedule.DateRanges);
-        Assert.Single(schedule.WeeklyRanges);
+        Assert.Single(snapshot.ScheduleDateRanges);
+        Assert.Single(snapshot.ScheduleWeeklyRanges);
 
         Assert.Equal("+41440000000", Assert.Single(snapshot.PhoneNumbers).Number);
         Assert.Equal("user@contoso.example", Assert.Single(snapshot.VoiceUsers).UserPrincipalName);
@@ -54,6 +54,27 @@ public sealed class TenantDocumentationSnapshotParserTests
         var error = Assert.Throws<InvalidDataException>(() => _parser.Parse(raw));
 
         Assert.Contains("unknown parent", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ParsePreservesDuplicateParentNamesWithoutDuplicatingChildRows()
+    {
+        var raw = CreateRawData() with
+        {
+            AutoAttendants =
+                "DOCDATA_AA_START\n" +
+                "DOCDATA_AA: Reception|aa-1|de-DE|Europe/Zurich|Female|Default\n" +
+                "DOCDATA_AA: Reception|aa-2|en-US|Europe/London|Male|Default\n" +
+                "DOCDATA_AA_MENU: Reception|DefaultCallFlow|1|Transfer|cq-1\n" +
+                "DOCDATA_AA_END"
+        };
+
+        var snapshot = _parser.Parse(raw);
+
+        Assert.Equal(new[] { "aa-1", "aa-2" }, snapshot.AutoAttendants.Select(item => item.Identity));
+        var menu = Assert.Single(snapshot.AutoAttendantMenuOptions);
+        Assert.Equal("Reception", menu.AutoAttendantName);
+        Assert.Equal(0, menu.Occurrence);
     }
 
     internal static TenantDocumentationRawData CreateRawData()

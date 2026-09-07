@@ -410,47 +410,56 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                         association => $"{association.ConfigurationType}\u001f{association.ConfigurationId}")
                 })
                 .ToArray(),
-            AutoAttendants = documentation.AutoAttendants
-                .OrderBy(item => item.Identity, StringComparer.Ordinal)
-                .Select(item => item with
-                {
-                    MenuOptions = item.MenuOptions
-                        .OrderBy(option => option.FlowName, StringComparer.Ordinal)
-                        .ThenBy(option => option.Key, StringComparer.Ordinal)
-                        .ThenBy(option => option.Action, StringComparer.Ordinal)
-                        .ThenBy(option => option.TargetId, StringComparer.Ordinal)
-                        .ToArray(),
-                    CallFlows = SortBy(item.CallFlows, flow => flow.FlowName),
-                    ScheduleAssociations = item.ScheduleAssociations
-                        .OrderBy(association => association.Type, StringComparer.Ordinal)
-                        .ThenBy(association => association.ScheduleId, StringComparer.Ordinal)
-                        .ThenBy(association => association.CallFlowId, StringComparer.Ordinal)
-                        .ToArray()
-                })
+            AutoAttendants = SortBy(documentation.AutoAttendants, item => item.Identity),
+            AutoAttendantMenuOptions = documentation.AutoAttendantMenuOptions
+                .OrderBy(item => item.AutoAttendantName, StringComparer.Ordinal)
+                .ThenBy(item => item.FlowName, StringComparer.Ordinal)
+                .ThenBy(item => item.Key, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
                 .ToArray(),
-            CallQueues = documentation.CallQueues
-                .OrderBy(item => item.Identity, StringComparer.Ordinal)
-                .Select(item => item with
-                {
-                    Agents = SortBy(item.Agents, agent => agent.ObjectId),
-                    DistributionListIds = Sort(item.DistributionListIds)
-                })
+            AutoAttendantCallFlows = documentation.AutoAttendantCallFlows
+                .OrderBy(item => item.AutoAttendantName, StringComparer.Ordinal)
+                .ThenBy(item => item.FlowName, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
                 .ToArray(),
-            Schedules = documentation.Schedules
-                .OrderBy(item => item.Id, StringComparer.Ordinal)
-                .Select(item => item with
-                {
-                    DateRanges = item.DateRanges
-                        .OrderBy(range => range.Start, StringComparer.Ordinal)
-                        .ThenBy(range => range.End, StringComparer.Ordinal)
-                        .ToArray(),
-                    WeeklyRanges = item.WeeklyRanges
-                        .OrderBy(range => GetDayOrder(range.Day))
-                        .ThenBy(range => range.Day, StringComparer.Ordinal)
-                        .ThenBy(range => range.Start, StringComparer.Ordinal)
-                        .ThenBy(range => range.End, StringComparer.Ordinal)
-                        .ToArray()
-                })
+            AutoAttendantScheduleAssociations = documentation.AutoAttendantScheduleAssociations
+                .OrderBy(item => item.AutoAttendantName, StringComparer.Ordinal)
+                .ThenBy(item => item.Type, StringComparer.Ordinal)
+                .ThenBy(item => item.ScheduleId, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            AutoAttendantOperators = documentation.AutoAttendantOperators
+                .OrderBy(item => item.AutoAttendantName, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            CallQueues = SortBy(documentation.CallQueues, item => item.Identity),
+            CallQueueAgents = documentation.CallQueueAgents
+                .OrderBy(item => item.CallQueueName, StringComparer.Ordinal)
+                .ThenBy(item => item.ObjectId, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            CallQueueDistributionLists = documentation.CallQueueDistributionLists
+                .OrderBy(item => item.CallQueueName, StringComparer.Ordinal)
+                .ThenBy(item => item.GroupId, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            CallQueueActions = documentation.CallQueueActions
+                .OrderBy(item => item.CallQueueName, StringComparer.Ordinal)
+                .ThenBy(item => item.Kind, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            Schedules = SortBy(documentation.Schedules, item => item.Id),
+            ScheduleDateRanges = documentation.ScheduleDateRanges
+                .OrderBy(item => item.ScheduleName, StringComparer.Ordinal)
+                .ThenBy(item => item.Start, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
+                .ToArray(),
+            ScheduleWeeklyRanges = documentation.ScheduleWeeklyRanges
+                .OrderBy(item => item.ScheduleName, StringComparer.Ordinal)
+                .ThenBy(item => GetDayOrder(item.Day))
+                .ThenBy(item => item.Day, StringComparer.Ordinal)
+                .ThenBy(item => item.Start, StringComparer.Ordinal)
+                .ThenBy(item => item.Occurrence)
                 .ToArray(),
             PhoneNumbers = SortBy(documentation.PhoneNumbers, number => number.Number),
             VoiceUsers = SortBy(documentation.VoiceUsers, user => user.UserPrincipalName)
@@ -508,8 +517,13 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
     private static void ValidateDocumentation(TenantDocumentationSnapshot documentation)
     {
         if (documentation.Tenant is null || documentation.ResourceAccounts is null ||
-            documentation.AutoAttendants is null || documentation.CallQueues is null ||
-            documentation.Schedules is null || documentation.PhoneNumbers is null ||
+            documentation.AutoAttendants is null || documentation.AutoAttendantMenuOptions is null ||
+            documentation.AutoAttendantCallFlows is null || documentation.AutoAttendantScheduleAssociations is null ||
+            documentation.AutoAttendantOperators is null || documentation.CallQueues is null ||
+            documentation.CallQueueAgents is null || documentation.CallQueueDistributionLists is null ||
+            documentation.CallQueueActions is null || documentation.Schedules is null ||
+            documentation.ScheduleDateRanges is null || documentation.ScheduleWeeklyRanges is null ||
+            documentation.PhoneNumbers is null ||
             documentation.VoiceUsers is null)
         {
             throw new InvalidDataException("The tenant documentation snapshot is missing a required section.");
@@ -525,6 +539,42 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         ValidateUniqueItems(documentation.Schedules, item => item.Id, "documented schedule");
         ValidateUniqueItems(documentation.PhoneNumbers, item => item.Number, "documented phone number");
         ValidateUniqueItems(documentation.VoiceUsers, item => item.UserPrincipalName, "documented voice user");
+        ValidateUniqueItems(
+            documentation.AutoAttendantMenuOptions,
+            item => $"{item.AutoAttendantName}\u001f{item.FlowName}\u001f{item.Key}\u001f{item.Occurrence}",
+            "documented auto-attendant menu option");
+        ValidateUniqueItems(
+            documentation.AutoAttendantCallFlows,
+            item => $"{item.AutoAttendantName}\u001f{item.FlowName}\u001f{item.Occurrence}",
+            "documented auto-attendant call flow");
+        ValidateUniqueItems(
+            documentation.AutoAttendantScheduleAssociations,
+            item => $"{item.AutoAttendantName}\u001f{item.Type}\u001f{item.ScheduleId}\u001f{item.Occurrence}",
+            "documented auto-attendant schedule association");
+        ValidateUniqueItems(
+            documentation.AutoAttendantOperators,
+            item => $"{item.AutoAttendantName}\u001f{item.Occurrence}",
+            "documented auto-attendant operator");
+        ValidateUniqueItems(
+            documentation.CallQueueAgents,
+            item => $"{item.CallQueueName}\u001f{item.ObjectId}\u001f{item.Occurrence}",
+            "documented call-queue agent");
+        ValidateUniqueItems(
+            documentation.CallQueueDistributionLists,
+            item => $"{item.CallQueueName}\u001f{item.GroupId}\u001f{item.Occurrence}",
+            "documented call-queue distribution list");
+        ValidateUniqueItems(
+            documentation.CallQueueActions,
+            item => $"{item.CallQueueName}\u001f{item.Kind}\u001f{item.Occurrence}",
+            "documented call-queue action");
+        ValidateUniqueItems(
+            documentation.ScheduleDateRanges,
+            item => $"{item.ScheduleName}\u001f{item.Start}\u001f{item.Occurrence}",
+            "documented schedule date range");
+        ValidateUniqueItems(
+            documentation.ScheduleWeeklyRanges,
+            item => $"{item.ScheduleName}\u001f{item.Day}\u001f{item.Start}\u001f{item.Occurrence}",
+            "documented schedule weekly range");
 
         foreach (var item in documentation.ResourceAccounts)
         {
@@ -533,49 +583,54 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 association => association.ConfigurationType,
                 "resource-account association");
         }
-        foreach (var item in documentation.AutoAttendants)
+        ValidateReferences(
+            documentation.AutoAttendantMenuOptions.Select(item => item.AutoAttendantName)
+                .Concat(documentation.AutoAttendantCallFlows.Select(item => item.AutoAttendantName))
+                .Concat(documentation.AutoAttendantScheduleAssociations.Select(item => item.AutoAttendantName))
+                .Concat(documentation.AutoAttendantOperators.Select(item => item.AutoAttendantName)),
+            documentation.AutoAttendants.Select(item => item.Name),
+            "auto-attendant detail");
+        ValidateReferences(
+            documentation.CallQueueAgents.Select(item => item.CallQueueName)
+                .Concat(documentation.CallQueueDistributionLists.Select(item => item.CallQueueName))
+                .Concat(documentation.CallQueueActions.Select(item => item.CallQueueName)),
+            documentation.CallQueues.Select(item => item.Name),
+            "call-queue detail");
+        ValidateReferences(
+            documentation.ScheduleDateRanges.Select(item => item.ScheduleName)
+                .Concat(documentation.ScheduleWeeklyRanges.Select(item => item.ScheduleName)),
+            documentation.Schedules.Select(item => item.Name),
+            "schedule detail");
+
+        var occurrences = documentation.AutoAttendantMenuOptions.Select(item => item.Occurrence)
+            .Concat(documentation.AutoAttendantCallFlows.Select(item => item.Occurrence))
+            .Concat(documentation.AutoAttendantScheduleAssociations.Select(item => item.Occurrence))
+            .Concat(documentation.AutoAttendantOperators.Select(item => item.Occurrence))
+            .Concat(documentation.CallQueueAgents.Select(item => item.Occurrence))
+            .Concat(documentation.CallQueueDistributionLists.Select(item => item.Occurrence))
+            .Concat(documentation.CallQueueActions.Select(item => item.Occurrence))
+            .Concat(documentation.ScheduleDateRanges.Select(item => item.Occurrence))
+            .Concat(documentation.ScheduleWeeklyRanges.Select(item => item.Occurrence));
+        if (occurrences.Any(value => value < 0))
         {
-            ValidateUniqueItems(
-                item.MenuOptions ?? throw MissingNested("auto-attendant menu options"),
-                option => $"{option.FlowName}\u001f{option.Key}",
-                "auto-attendant menu option");
-            ValidateUniqueItems(
-                item.CallFlows ?? throw MissingNested("auto-attendant call flows"),
-                flow => flow.FlowName,
-                "auto-attendant call flow");
-            ValidateUniqueItems(
-                item.ScheduleAssociations ?? throw MissingNested("auto-attendant schedule associations"),
-                association => $"{association.Type}\u001f{association.ScheduleId}",
-                "auto-attendant schedule association");
-        }
-        foreach (var item in documentation.CallQueues)
-        {
-            ValidateUniqueItems(
-                item.Agents ?? throw MissingNested("call-queue agents"),
-                agent => agent.ObjectId,
-                "call-queue agent");
-            if (item.DistributionListIds is null ||
-                item.DistributionListIds.Any(string.IsNullOrWhiteSpace) ||
-                item.DistributionListIds.Distinct(StringComparer.Ordinal).Count() != item.DistributionListIds.Count)
-            {
-                throw new InvalidDataException("Call-queue distribution-list identifiers must be present and unique.");
-            }
-        }
-        foreach (var item in documentation.Schedules)
-        {
-            ValidateUniqueItems(
-                item.DateRanges ?? throw MissingNested("schedule date ranges"),
-                range => range.Start,
-                "schedule date range");
-            ValidateUniqueItems(
-                item.WeeklyRanges ?? throw MissingNested("schedule weekly ranges"),
-                range => $"{range.Day}\u001f{range.Start}\u001f{range.End}",
-                "schedule weekly range");
+            throw new InvalidDataException("Snapshot occurrence indexes cannot be negative.");
         }
     }
 
     private static InvalidDataException MissingNested(string description)
         => new($"The tenant documentation snapshot is missing {description}.");
+
+    private static void ValidateReferences(
+        IEnumerable<string> childParentNames,
+        IEnumerable<string> parentNames,
+        string description)
+    {
+        var parents = parentNames.ToHashSet(StringComparer.Ordinal);
+        if (childParentNames.Any(name => !parents.Contains(name)))
+        {
+            throw new InvalidDataException($"The tenant documentation snapshot contains an orphaned {description} row.");
+        }
+    }
 
     private static void ValidateUniqueItems<T>(
         IReadOnlyList<T> items,
@@ -823,95 +878,84 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> AutoAttendantMenuOptions(TenantDocumentationSnapshot data)
-        => data.AutoAttendants
-            .SelectMany(attendant => attendant.MenuOptions.Select(option => Comparable(
-                $"{attendant.Identity}\u001f{option.FlowName}\u001f{option.Key}",
-                $"{attendant.Name} / {option.FlowName} / {option.Key}",
+        => data.AutoAttendantMenuOptions
+            .Select(option => Comparable(
+                $"{option.AutoAttendantName}\u001f{option.FlowName}\u001f{option.Key}\u001f{option.Occurrence}",
+                $"{option.AutoAttendantName} / {option.FlowName} / {option.Key}",
                 ("action", option.Action),
-                ("targetId", option.TargetId))))
+                ("targetId", option.TargetId)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> AutoAttendantCallFlows(TenantDocumentationSnapshot data)
-        => data.AutoAttendants
-            .SelectMany(attendant => attendant.CallFlows.Select(flow => Comparable(
-                $"{attendant.Identity}\u001f{flow.FlowName}",
-                $"{attendant.Name} / {flow.FlowName}",
-                ("menuName", flow.MenuName))))
+        => data.AutoAttendantCallFlows
+            .Select(flow => Comparable(
+                $"{flow.AutoAttendantName}\u001f{flow.FlowName}\u001f{flow.Occurrence}",
+                $"{flow.AutoAttendantName} / {flow.FlowName}",
+                ("menuName", flow.MenuName)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> AutoAttendantScheduleAssociations(TenantDocumentationSnapshot data)
-        => data.AutoAttendants
-            .SelectMany(attendant => attendant.ScheduleAssociations.Select(association => Comparable(
-                $"{attendant.Identity}\u001f{association.Type}\u001f{association.ScheduleId}",
-                $"{attendant.Name} / {association.Type}",
+        => data.AutoAttendantScheduleAssociations
+            .Select(association => Comparable(
+                $"{association.AutoAttendantName}\u001f{association.Type}\u001f{association.ScheduleId}\u001f{association.Occurrence}",
+                $"{association.AutoAttendantName} / {association.Type}",
                 ("scheduleId", association.ScheduleId),
-                ("callFlowId", association.CallFlowId))))
+                ("callFlowId", association.CallFlowId)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> AutoAttendantOperators(TenantDocumentationSnapshot data)
-        => data.AutoAttendants
-            .Where(attendant => attendant.Operator is not null)
-            .Select(attendant => Comparable(
-                attendant.Identity,
-                $"{attendant.Name} / operator",
-                ("type", attendant.Operator!.Type),
-                ("targetId", attendant.Operator.TargetId)))
+        => data.AutoAttendantOperators
+            .Select(item => Comparable(
+                $"{item.AutoAttendantName}\u001f{item.Occurrence}",
+                $"{item.AutoAttendantName} / operator",
+                ("type", item.Type),
+                ("targetId", item.TargetId)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> CallQueueAgents(TenantDocumentationSnapshot data)
-        => data.CallQueues
-            .SelectMany(queue => queue.Agents.Select(agent => Comparable(
-                $"{queue.Identity}\u001f{agent.ObjectId}",
-                $"{queue.Name} / {agent.DisplayName}",
+        => data.CallQueueAgents
+            .Select(agent => Comparable(
+                $"{agent.CallQueueName}\u001f{agent.ObjectId}\u001f{agent.Occurrence}",
+                $"{agent.CallQueueName} / {agent.DisplayName}",
                 ("optIn", agent.OptIn),
                 ("displayName", agent.DisplayName),
-                ("userPrincipalName", agent.UserPrincipalName))))
+                ("userPrincipalName", agent.UserPrincipalName)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> CallQueueDistributionLists(TenantDocumentationSnapshot data)
-        => data.CallQueues
-            .SelectMany(queue => queue.DistributionListIds.Select(groupId => Comparable(
-                $"{queue.Identity}\u001f{groupId}",
-                $"{queue.Name} / {groupId}")))
+        => data.CallQueueDistributionLists
+            .Select(item => Comparable(
+                $"{item.CallQueueName}\u001f{item.GroupId}\u001f{item.Occurrence}",
+                $"{item.CallQueueName} / {item.GroupId}"))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> CallQueueActions(TenantDocumentationSnapshot data)
-        => data.CallQueues
-            .SelectMany(queue => new[]
-            {
-                queue.Overflow is null ? null : Comparable(
-                    $"{queue.Identity}\u001foverflow",
-                    $"{queue.Name} / overflow",
-                    ("action", queue.Overflow.Action),
-                    ("targetId", queue.Overflow.TargetId),
-                    ("threshold", queue.Overflow.Threshold)),
-                queue.Timeout is null ? null : Comparable(
-                    $"{queue.Identity}\u001ftimeout",
-                    $"{queue.Name} / timeout",
-                    ("action", queue.Timeout.Action),
-                    ("targetId", queue.Timeout.TargetId),
-                    ("threshold", queue.Timeout.Threshold))
-            })
-            .OfType<InventoryComparable>()
+        => data.CallQueueActions
+            .Select(item => Comparable(
+                $"{item.CallQueueName}\u001f{item.Kind}\u001f{item.Occurrence}",
+                $"{item.CallQueueName} / {item.Kind}",
+                ("action", item.Action),
+                ("targetId", item.TargetId),
+                ("threshold", item.Threshold)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> ScheduleDateRanges(TenantDocumentationSnapshot data)
-        => data.Schedules
-            .SelectMany(schedule => schedule.DateRanges.Select(range => Comparable(
-                $"{schedule.Id}\u001f{range.Start}",
-                $"{schedule.Name} / {range.Start}",
+        => data.ScheduleDateRanges
+            .Select(range => Comparable(
+                $"{range.ScheduleName}\u001f{range.Start}\u001f{range.Occurrence}",
+                $"{range.ScheduleName} / {range.Start}",
                 ("start", range.Start),
-                ("end", range.End))))
+                ("end", range.End)))
             .ToArray();
 
     private static IReadOnlyList<InventoryComparable> ScheduleWeeklyRanges(TenantDocumentationSnapshot data)
-        => data.Schedules
-            .SelectMany(schedule => schedule.WeeklyRanges.Select(range => Comparable(
-                $"{schedule.Id}\u001f{range.Day}\u001f{range.Start}",
-                $"{schedule.Name} / {range.Day} / {range.Start}",
+        => data.ScheduleWeeklyRanges
+            .Select(range => Comparable(
+                $"{range.ScheduleName}\u001f{range.Day}\u001f{range.Start}\u001f{range.Occurrence}",
+                $"{range.ScheduleName} / {range.Day} / {range.Start}",
                 ("day", range.Day),
                 ("start", range.Start),
-                ("end", range.End))))
+                ("end", range.End)))
             .ToArray();
 
     private static InventoryComparable Comparable(

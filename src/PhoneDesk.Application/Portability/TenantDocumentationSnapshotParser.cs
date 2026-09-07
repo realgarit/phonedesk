@@ -34,107 +34,82 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
             resourceAccounts.Select(item => item.ObjectId),
             "resource-account association");
 
-        var menuOptions = ParseRows(rawData.AutoAttendants, "DOCDATA_AA_MENU:", 5)
-            .Select(parts => new AutoAttendantMenuRow(parts[0], parts[1], parts[2], parts[3], parts[4]))
-            .ToArray();
-        var callFlows = ParseRows(rawData.AutoAttendants, "DOCDATA_AA_CF:", 3)
-            .Select(parts => new AutoAttendantCallFlowRow(parts[0], parts[1], parts[2]))
-            .ToArray();
-        var scheduleAssociations = ParseRows(rawData.AutoAttendants, "DOCDATA_AA_CHA:", 4)
-            .Select(parts => new AutoAttendantScheduleRow(parts[0], parts[1], parts[2], parts[3]))
-            .ToArray();
-        var operators = ParseRows(rawData.AutoAttendants, "DOCDATA_AA_OP:", 3)
-            .Select(parts => new AutoAttendantOperatorRow(parts[0], parts[1], parts[2]))
-            .ToArray();
         var autoAttendants = ParseRows(rawData.AutoAttendants, "DOCDATA_AA:", 6)
             .Select(parts => new AutoAttendantInventorySnapshot(
-                parts[0], parts[1], parts[2], parts[3], parts[4], parts[5],
-                menuOptions
-                    .Where(item => string.Equals(item.AutoAttendantName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new AutoAttendantMenuOptionSnapshot(item.FlowName, item.Key, item.Action, item.TargetId))
-                    .ToArray(),
-                callFlows
-                    .Where(item => string.Equals(item.AutoAttendantName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new AutoAttendantCallFlowSnapshot(item.FlowName, item.MenuName))
-                    .ToArray(),
-                scheduleAssociations
-                    .Where(item => string.Equals(item.AutoAttendantName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new AutoAttendantScheduleAssociationSnapshot(item.Type, item.ScheduleId, item.CallFlowId))
-                    .ToArray(),
-                operators
-                    .Where(item => string.Equals(item.AutoAttendantName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new AutoAttendantOperatorSnapshot(item.Type, item.TargetId))
-                    .SingleOrDefault()))
+                parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]))
             .ToArray();
-        EnsureUniqueParentNames(autoAttendants.Select(item => item.Name), "auto attendant");
+        var menuOptions = ParseWithOccurrences(
+            rawData.AutoAttendants, "DOCDATA_AA_MENU:", 5,
+            parts => JoinKey(parts[0], parts[1], parts[2]),
+            (parts, occurrence) => new AutoAttendantMenuOptionSnapshot(
+                parts[0], parts[1], parts[2], parts[3], parts[4], occurrence));
+        var callFlows = ParseWithOccurrences(
+            rawData.AutoAttendants, "DOCDATA_AA_CF:", 3,
+            parts => JoinKey(parts[0], parts[1]),
+            (parts, occurrence) => new AutoAttendantCallFlowSnapshot(
+                parts[0], parts[1], parts[2], occurrence));
+        var scheduleAssociations = ParseWithOccurrences(
+            rawData.AutoAttendants, "DOCDATA_AA_CHA:", 4,
+            parts => JoinKey(parts[0], parts[1], parts[2]),
+            (parts, occurrence) => new AutoAttendantScheduleAssociationSnapshot(
+                parts[0], parts[1], parts[2], parts[3], occurrence));
+        var operators = ParseWithOccurrences(
+            rawData.AutoAttendants, "DOCDATA_AA_OP:", 3,
+            parts => parts[0],
+            (parts, occurrence) => new AutoAttendantOperatorSnapshot(
+                parts[0], parts[1], parts[2], occurrence));
         var autoAttendantNames = autoAttendants.Select(item => item.Name).ToArray();
         EnsureParents(menuOptions.Select(item => item.AutoAttendantName), autoAttendantNames, "auto-attendant menu option");
         EnsureParents(callFlows.Select(item => item.AutoAttendantName), autoAttendantNames, "auto-attendant call flow");
         EnsureParents(scheduleAssociations.Select(item => item.AutoAttendantName), autoAttendantNames, "auto-attendant schedule association");
         EnsureParents(operators.Select(item => item.AutoAttendantName), autoAttendantNames, "auto-attendant operator");
 
-        var agents = ParseRows(rawData.CallQueues, "DOCDATA_CQ_AGENT:", 3)
-            .Select(parts => new CallQueueAgentRow(
-                parts[0], parts[1], parts[2],
-                parts.Length >= 4 ? parts[3] : parts[1],
-                parts.Length >= 5 ? parts[4] : string.Empty))
-            .ToArray();
-        var distributionLists = ParseRows(rawData.CallQueues, "DOCDATA_CQ_DL:", 2)
-            .Select(parts => new CallQueueDistributionListRow(parts[0], parts[1]))
-            .ToArray();
-        var overflows = ParseRows(rawData.CallQueues, "DOCDATA_CQ_OVERFLOW:", 4)
-            .Select(parts => new QueueActionRow(parts[0], parts[1], parts[2], parts[3]))
-            .ToArray();
-        var timeouts = ParseRows(rawData.CallQueues, "DOCDATA_CQ_TIMEOUT:", 4)
-            .Select(parts => new QueueActionRow(parts[0], parts[1], parts[2], parts[3]))
-            .ToArray();
         var callQueues = ParseRows(rawData.CallQueues, "DOCDATA_CQ:", 10)
             .Select(parts => new CallQueueInventorySnapshot(
                 parts[0], parts[1], parts[2], parts[3], parts[4], ParseCount(parts[5], "call-queue agent"),
-                parts[6], parts[7], parts[8], parts[9],
-                agents
-                    .Where(item => string.Equals(item.CallQueueName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new CallQueueAgentSnapshot(item.ObjectId, item.OptIn, item.DisplayName, item.UserPrincipalName))
-                    .ToArray(),
-                distributionLists
-                    .Where(item => string.Equals(item.CallQueueName, parts[0], StringComparison.Ordinal))
-                    .Select(item => item.GroupId)
-                    .ToArray(),
-                overflows
-                    .Where(item => string.Equals(item.CallQueueName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new QueueThresholdActionSnapshot(item.Action, item.TargetId, item.Threshold))
-                    .SingleOrDefault(),
-                timeouts
-                    .Where(item => string.Equals(item.CallQueueName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new QueueThresholdActionSnapshot(item.Action, item.TargetId, item.Threshold))
-                    .SingleOrDefault()))
+                parts[6], parts[7], parts[8], parts[9]))
             .ToArray();
-        EnsureUniqueParentNames(callQueues.Select(item => item.Name), "call queue");
+        var agents = ParseWithOccurrences(
+            rawData.CallQueues, "DOCDATA_CQ_AGENT:", 3,
+            parts => JoinKey(parts[0], parts[1]),
+            (parts, occurrence) => new CallQueueAgentSnapshot(
+                parts[0], parts[1], parts[2],
+                parts.Length >= 4 ? parts[3] : parts[1],
+                parts.Length >= 5 ? parts[4] : string.Empty,
+                occurrence));
+        var distributionLists = ParseWithOccurrences(
+            rawData.CallQueues, "DOCDATA_CQ_DL:", 2,
+            parts => JoinKey(parts[0], parts[1]),
+            (parts, occurrence) => new CallQueueDistributionListSnapshot(parts[0], parts[1], occurrence));
+        var overflows = ParseWithOccurrences(
+            rawData.CallQueues, "DOCDATA_CQ_OVERFLOW:", 4,
+            parts => parts[0],
+            (parts, occurrence) => new QueueThresholdActionSnapshot(
+                parts[0], "overflow", parts[1], parts[2], parts[3], occurrence));
+        var timeouts = ParseWithOccurrences(
+            rawData.CallQueues, "DOCDATA_CQ_TIMEOUT:", 4,
+            parts => parts[0],
+            (parts, occurrence) => new QueueThresholdActionSnapshot(
+                parts[0], "timeout", parts[1], parts[2], parts[3], occurrence));
         var callQueueNames = callQueues.Select(item => item.Name).ToArray();
         EnsureParents(agents.Select(item => item.CallQueueName), callQueueNames, "call-queue agent");
         EnsureParents(distributionLists.Select(item => item.CallQueueName), callQueueNames, "call-queue distribution list");
         EnsureParents(overflows.Select(item => item.CallQueueName), callQueueNames, "call-queue overflow action");
         EnsureParents(timeouts.Select(item => item.CallQueueName), callQueueNames, "call-queue timeout action");
 
-        var dateRanges = ParseRows(rawData.Schedules, "DOCDATA_SCHED_DR:", 3)
-            .Select(parts => new ScheduleDateRangeRow(parts[0], parts[1], parts[2]))
-            .ToArray();
-        var weeklyRanges = ParseRows(rawData.Schedules, "DOCDATA_SCHED_WK:", 4)
-            .Select(parts => new ScheduleWeeklyRangeRow(parts[0], parts[1], parts[2], parts[3]))
-            .ToArray();
         var schedules = ParseRows(rawData.Schedules, "DOCDATA_SCHED:", 4)
             .Select(parts => new ScheduleInventorySnapshot(
-                parts[0], parts[1], parts[2], ParseCount(parts[3], "schedule date-range"),
-                dateRanges
-                    .Where(item => string.Equals(item.ScheduleName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new ScheduleDateRangeSnapshot(item.Start, item.End))
-                    .ToArray(),
-                weeklyRanges
-                    .Where(item => string.Equals(item.ScheduleName, parts[0], StringComparison.Ordinal))
-                    .Select(item => new ScheduleWeeklyRangeSnapshot(item.Day, item.Start, item.End))
-                    .ToArray()))
+                parts[0], parts[1], parts[2], ParseCount(parts[3], "schedule date-range")))
             .ToArray();
-        EnsureUniqueParentNames(schedules.Select(item => item.Name), "schedule");
+        var dateRanges = ParseWithOccurrences(
+            rawData.Schedules, "DOCDATA_SCHED_DR:", 3,
+            parts => JoinKey(parts[0], parts[1]),
+            (parts, occurrence) => new ScheduleDateRangeSnapshot(parts[0], parts[1], parts[2], occurrence));
+        var weeklyRanges = ParseWithOccurrences(
+            rawData.Schedules, "DOCDATA_SCHED_WK:", 4,
+            parts => JoinKey(parts[0], parts[1], parts[2]),
+            (parts, occurrence) => new ScheduleWeeklyRangeSnapshot(
+                parts[0], parts[1], parts[2], parts[3], occurrence));
         var scheduleNames = schedules.Select(item => item.Name).ToArray();
         EnsureParents(dateRanges.Select(item => item.ScheduleName), scheduleNames, "schedule date range");
         EnsureParents(weeklyRanges.Select(item => item.ScheduleName), scheduleNames, "schedule weekly range");
@@ -152,8 +127,17 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
             tenant,
             resourceAccounts,
             autoAttendants,
+            menuOptions,
+            callFlows,
+            scheduleAssociations,
+            operators,
             callQueues,
+            agents,
+            distributionLists,
+            overflows.Concat(timeouts).ToArray(),
             schedules,
+            dateRanges,
+            weeklyRanges,
             phoneNumbers,
             voiceUsers);
     }
@@ -167,6 +151,26 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
         }
         var parts = rows[0];
         return new TenantInformationSnapshot(parts[0], parts[1], parts[2], parts[3]);
+    }
+
+    private static IReadOnlyList<T> ParseWithOccurrences<T>(
+        string raw,
+        string prefix,
+        int minimumFields,
+        Func<string[], string> getBaseIdentity,
+        Func<string[], int, T> create)
+    {
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+        var results = new List<T>();
+        foreach (var parts in ParseRows(raw, prefix, minimumFields)
+                     .OrderBy(row => string.Join('\u001f', row), StringComparer.Ordinal))
+        {
+            var baseIdentity = getBaseIdentity(parts);
+            occurrences.TryGetValue(baseIdentity, out var occurrence);
+            results.Add(create(parts, occurrence));
+            occurrences[baseIdentity] = occurrence + 1;
+        }
+        return results;
     }
 
     private static IReadOnlyList<string[]> ParseRows(string raw, string prefix, int minimumFields)
@@ -223,25 +227,7 @@ public sealed class TenantDocumentationSnapshotParser : ITenantDocumentationSnap
         }
     }
 
-    private static void EnsureUniqueParentNames(IEnumerable<string> names, string description)
-    {
-        var values = names.ToArray();
-        if (values.Any(string.IsNullOrWhiteSpace) ||
-            values.Distinct(StringComparer.Ordinal).Count() != values.Length)
-        {
-            throw new InvalidDataException(
-                $"The frozen report format requires unique, non-empty {description} names for a complete snapshot.");
-        }
-    }
+    private static string JoinKey(params string[] parts) => string.Join('\u001f', parts);
 
     private sealed record AssociationRow(string ResourceAccountId, string ConfigurationId, string ConfigurationType);
-    private sealed record AutoAttendantMenuRow(string AutoAttendantName, string FlowName, string Key, string Action, string TargetId);
-    private sealed record AutoAttendantCallFlowRow(string AutoAttendantName, string FlowName, string MenuName);
-    private sealed record AutoAttendantScheduleRow(string AutoAttendantName, string Type, string ScheduleId, string CallFlowId);
-    private sealed record AutoAttendantOperatorRow(string AutoAttendantName, string Type, string TargetId);
-    private sealed record CallQueueAgentRow(string CallQueueName, string ObjectId, string OptIn, string DisplayName, string UserPrincipalName);
-    private sealed record CallQueueDistributionListRow(string CallQueueName, string GroupId);
-    private sealed record QueueActionRow(string CallQueueName, string Action, string TargetId, string Threshold);
-    private sealed record ScheduleDateRangeRow(string ScheduleName, string Start, string End);
-    private sealed record ScheduleWeeklyRangeRow(string ScheduleName, string Day, string Start, string End);
 }

@@ -179,8 +179,17 @@ public sealed record TenantDocumentationSnapshot(
     TenantInformationSnapshot Tenant,
     IReadOnlyList<ResourceAccountInventorySnapshot> ResourceAccounts,
     IReadOnlyList<AutoAttendantInventorySnapshot> AutoAttendants,
+    IReadOnlyList<AutoAttendantMenuOptionSnapshot> AutoAttendantMenuOptions,
+    IReadOnlyList<AutoAttendantCallFlowSnapshot> AutoAttendantCallFlows,
+    IReadOnlyList<AutoAttendantScheduleAssociationSnapshot> AutoAttendantScheduleAssociations,
+    IReadOnlyList<AutoAttendantOperatorSnapshot> AutoAttendantOperators,
     IReadOnlyList<CallQueueInventorySnapshot> CallQueues,
+    IReadOnlyList<CallQueueAgentSnapshot> CallQueueAgents,
+    IReadOnlyList<CallQueueDistributionListSnapshot> CallQueueDistributionLists,
+    IReadOnlyList<QueueThresholdActionSnapshot> CallQueueActions,
     IReadOnlyList<ScheduleInventorySnapshot> Schedules,
+    IReadOnlyList<ScheduleDateRangeSnapshot> ScheduleDateRanges,
+    IReadOnlyList<ScheduleWeeklyRangeSnapshot> ScheduleWeeklyRanges,
     IReadOnlyList<PhoneNumberInventorySnapshot> PhoneNumbers,
     IReadOnlyList<VoiceUserInventorySnapshot> VoiceUsers);
 
@@ -208,30 +217,34 @@ public sealed record AutoAttendantInventorySnapshot(
     string Language,
     string TimeZone,
     string Voice,
-    string DefaultFlow,
-    IReadOnlyList<AutoAttendantMenuOptionSnapshot> MenuOptions,
-    IReadOnlyList<AutoAttendantCallFlowSnapshot> CallFlows,
-    IReadOnlyList<AutoAttendantScheduleAssociationSnapshot> ScheduleAssociations,
-    AutoAttendantOperatorSnapshot? Operator);
+    string DefaultFlow);
 
 public sealed record AutoAttendantMenuOptionSnapshot(
+    string AutoAttendantName,
     string FlowName,
     string Key,
     string Action,
-    string TargetId);
+    string TargetId,
+    int Occurrence);
 
 public sealed record AutoAttendantCallFlowSnapshot(
+    string AutoAttendantName,
     string FlowName,
-    string MenuName);
+    string MenuName,
+    int Occurrence);
 
 public sealed record AutoAttendantScheduleAssociationSnapshot(
+    string AutoAttendantName,
     string Type,
     string ScheduleId,
-    string CallFlowId);
+    string CallFlowId,
+    int Occurrence);
 
 public sealed record AutoAttendantOperatorSnapshot(
+    string AutoAttendantName,
     string Type,
-    string TargetId);
+    string TargetId,
+    int Occurrence);
 
 public sealed record CallQueueInventorySnapshot(
     string Name,
@@ -243,39 +256,47 @@ public sealed record CallQueueInventorySnapshot(
     string OverflowThreshold,
     string TimeoutThreshold,
     string OverflowAction,
-    string TimeoutAction,
-    IReadOnlyList<CallQueueAgentSnapshot> Agents,
-    IReadOnlyList<string> DistributionListIds,
-    QueueThresholdActionSnapshot? Overflow,
-    QueueThresholdActionSnapshot? Timeout);
+    string TimeoutAction);
 
 public sealed record CallQueueAgentSnapshot(
+    string CallQueueName,
     string ObjectId,
     string OptIn,
     string DisplayName,
-    string UserPrincipalName);
+    string UserPrincipalName,
+    int Occurrence);
+
+public sealed record CallQueueDistributionListSnapshot(
+    string CallQueueName,
+    string GroupId,
+    int Occurrence);
 
 public sealed record QueueThresholdActionSnapshot(
+    string CallQueueName,
+    string Kind,
     string Action,
     string TargetId,
-    string Threshold);
+    string Threshold,
+    int Occurrence);
 
 public sealed record ScheduleInventorySnapshot(
     string Name,
     string Id,
     string Type,
-    int DateCount,
-    IReadOnlyList<ScheduleDateRangeSnapshot> DateRanges,
-    IReadOnlyList<ScheduleWeeklyRangeSnapshot> WeeklyRanges);
+    int DateCount);
 
 public sealed record ScheduleDateRangeSnapshot(
+    string ScheduleName,
     string Start,
-    string End);
+    string End,
+    int Occurrence);
 
 public sealed record ScheduleWeeklyRangeSnapshot(
+    string ScheduleName,
     string Day,
     string Start,
-    string End);
+    string End,
+    int Occurrence);
 
 public sealed record PhoneNumberInventorySnapshot(
     string Number,

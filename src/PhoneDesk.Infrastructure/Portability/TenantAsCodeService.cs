@@ -51,8 +51,29 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
     public string SerializeTopology(TenantTopology topology)
     {
         ArgumentNullException.ThrowIfNull(topology);
-        var document = CreateTopologyDocument(topology);
-        return NormalizeNewlines(JsonSerializer.Serialize(document, JsonOptions));
+        return SerializeTopology(CreateTopologyDocument(
+            topology,
+            documentation: null,
+            PortabilitySchema.TopologyLegacyVersion));
+    }
+
+    public TopologySnapshotDocument CreateTopologySnapshot(
+        TenantTopology topology,
+        TenantDocumentationSnapshot documentation)
+    {
+        ArgumentNullException.ThrowIfNull(topology);
+        ArgumentNullException.ThrowIfNull(documentation);
+        return CreateTopologyDocument(
+            topology,
+            documentation,
+            PortabilitySchema.TopologyCurrentVersion);
+    }
+
+    public string SerializeTopology(TopologySnapshotDocument document)
+    {
+        ValidateTopology(document);
+        var normalized = NormalizeTopology(document);
+        return NormalizeNewlines(JsonSerializer.Serialize(normalized, JsonOptions));
     }
 
     public TopologySnapshotDocument DeserializeTopology(string json)
@@ -67,9 +88,21 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         TenantTopology liveTopology)
     {
         ArgumentNullException.ThrowIfNull(liveTopology);
+        var live = CreateTopologyDocument(
+            liveTopology,
+            documentation: null,
+            PortabilitySchema.TopologyLegacyVersion);
+        return CompareTopology(snapshot, live);
+    }
+
+    public IReadOnlyList<TopologyDriftEntry> CompareTopology(
+        TopologySnapshotDocument snapshot,
+        TopologySnapshotDocument liveSnapshot)
+    {
         ValidateTopology(snapshot);
+        ValidateTopology(liveSnapshot);
         snapshot = NormalizeTopology(snapshot);
-        var live = CreateTopologyDocument(liveTopology);
+        var live = NormalizeTopology(liveSnapshot);
         var results = new List<TopologyDriftEntry>();
 
         CompareObjects(
@@ -104,6 +137,11 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
             item => item.DisplayName,
             GroupProperties,
             results);
+
+        if (snapshot.Documentation is not null && live.Documentation is not null)
+        {
+            CompareDocumentation(snapshot.Documentation, live.Documentation, results);
+        }
 
         return results;
     }
@@ -276,7 +314,10 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         return node.ToJsonString(ComparisonOptions);
     }
 
-    private static TopologySnapshotDocument CreateTopologyDocument(TenantTopology topology)
+    private static TopologySnapshotDocument CreateTopologyDocument(
+        TenantTopology topology,
+        TenantDocumentationSnapshot? documentation,
+        int schemaVersion)
     {
         if (topology.AutoAttendants is null || topology.CallQueues is null ||
             topology.ResourceAccounts is null || topology.Groups is null)
@@ -285,7 +326,7 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         }
 
         var document = new TopologySnapshotDocument(
-            PortabilitySchema.CurrentVersion,
+            schemaVersion,
             PortabilitySchema.TopologyKind,
             topology.RetrievedAtUtc,
             topology.AutoAttendants.Select(item => new TopologyAutoAttendantSnapshot(
@@ -315,7 +356,8 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 item.DisplayName,
                 item.Id,
                 item.MailNickname,
-                item.Description)).ToArray());
+                item.Description)).ToArray(),
+            documentation);
         ValidateTopology(document);
         return NormalizeTopology(document);
     }
@@ -346,18 +388,89 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 .ToArray(),
             Groups = document.Groups
                 .OrderBy(item => item.Id, StringComparer.Ordinal)
-                .ToArray()
+                .ToArray(),
+            Documentation = NormalizeDocumentation(document.Documentation)
         };
+
+    private static TenantDocumentationSnapshot? NormalizeDocumentation(TenantDocumentationSnapshot? documentation)
+    {
+        if (documentation is null)
+        {
+            return null;
+        }
+
+        return documentation with
+        {
+            ResourceAccounts = documentation.ResourceAccounts
+                .OrderBy(item => item.ObjectId, StringComparer.Ordinal)
+                .Select(item => item with
+                {
+                    Associations = SortBy(
+                        item.Associations,
+                        association => $"{association.ConfigurationType}\u001f{association.ConfigurationId}")
+                })
+                .ToArray(),
+            AutoAttendants = documentation.AutoAttendants
+                .OrderBy(item => item.Identity, StringComparer.Ordinal)
+                .Select(item => item with
+                {
+                    MenuOptions = item.MenuOptions
+                        .OrderBy(option => option.FlowName, StringComparer.Ordinal)
+                        .ThenBy(option => option.Key, StringComparer.Ordinal)
+                        .ThenBy(option => option.Action, StringComparer.Ordinal)
+                        .ThenBy(option => option.TargetId, StringComparer.Ordinal)
+                        .ToArray(),
+                    CallFlows = SortBy(item.CallFlows, flow => flow.FlowName),
+                    ScheduleAssociations = item.ScheduleAssociations
+                        .OrderBy(association => association.Type, StringComparer.Ordinal)
+                        .ThenBy(association => association.ScheduleId, StringComparer.Ordinal)
+                        .ThenBy(association => association.CallFlowId, StringComparer.Ordinal)
+                        .ToArray()
+                })
+                .ToArray(),
+            CallQueues = documentation.CallQueues
+                .OrderBy(item => item.Identity, StringComparer.Ordinal)
+                .Select(item => item with
+                {
+                    Agents = SortBy(item.Agents, agent => agent.ObjectId),
+                    DistributionListIds = Sort(item.DistributionListIds)
+                })
+                .ToArray(),
+            Schedules = documentation.Schedules
+                .OrderBy(item => item.Id, StringComparer.Ordinal)
+                .Select(item => item with
+                {
+                    DateRanges = item.DateRanges
+                        .OrderBy(range => range.Start, StringComparer.Ordinal)
+                        .ThenBy(range => range.End, StringComparer.Ordinal)
+                        .ToArray(),
+                    WeeklyRanges = item.WeeklyRanges
+                        .OrderBy(range => GetDayOrder(range.Day))
+                        .ThenBy(range => range.Day, StringComparer.Ordinal)
+                        .ThenBy(range => range.Start, StringComparer.Ordinal)
+                        .ThenBy(range => range.End, StringComparer.Ordinal)
+                        .ToArray()
+                })
+                .ToArray(),
+            PhoneNumbers = SortBy(documentation.PhoneNumbers, number => number.Number),
+            VoiceUsers = SortBy(documentation.VoiceUsers, user => user.UserPrincipalName)
+        };
+    }
+
+    private static IReadOnlyList<T> SortBy<T>(IReadOnlyList<T> values, Func<T, string> getKey)
+        => values.OrderBy(getKey, StringComparer.Ordinal).ToArray();
 
     private static IReadOnlyList<string> Sort(IReadOnlyList<string>? values)
         => (values ?? Array.Empty<string>()).OrderBy(value => value, StringComparer.Ordinal).ToArray();
 
     private static void ValidateTopology(TopologySnapshotDocument document)
     {
-        if (document.SchemaVersion != PortabilitySchema.CurrentVersion)
+        if (document.SchemaVersion is not PortabilitySchema.TopologyLegacyVersion and
+            not PortabilitySchema.TopologyCurrentVersion)
         {
             throw new InvalidDataException(
-                $"Unsupported topology schema version {document.SchemaVersion}; expected {PortabilitySchema.CurrentVersion}.");
+                $"Unsupported topology schema version {document.SchemaVersion}; expected " +
+                $"{PortabilitySchema.TopologyLegacyVersion} or {PortabilitySchema.TopologyCurrentVersion}.");
         }
         if (!string.Equals(document.Kind, PortabilitySchema.TopologyKind, StringComparison.Ordinal))
         {
@@ -381,7 +494,88 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
         {
             throw new InvalidDataException("A topology object is missing a required identifier collection.");
         }
+
+        if (document.SchemaVersion == PortabilitySchema.TopologyCurrentVersion && document.Documentation is null)
+        {
+            throw new InvalidDataException("Topology schema version 2 requires tenant documentation data.");
+        }
+        if (document.Documentation is not null)
+        {
+            ValidateDocumentation(document.Documentation);
+        }
     }
+
+    private static void ValidateDocumentation(TenantDocumentationSnapshot documentation)
+    {
+        if (documentation.Tenant is null || documentation.ResourceAccounts is null ||
+            documentation.AutoAttendants is null || documentation.CallQueues is null ||
+            documentation.Schedules is null || documentation.PhoneNumbers is null ||
+            documentation.VoiceUsers is null)
+        {
+            throw new InvalidDataException("The tenant documentation snapshot is missing a required section.");
+        }
+        if (string.IsNullOrWhiteSpace(documentation.Tenant.Id))
+        {
+            throw new InvalidDataException("The tenant documentation snapshot requires a tenant identifier.");
+        }
+
+        ValidateUniqueItems(documentation.ResourceAccounts, item => item.ObjectId, "documented resource account");
+        ValidateUniqueItems(documentation.AutoAttendants, item => item.Identity, "documented auto attendant");
+        ValidateUniqueItems(documentation.CallQueues, item => item.Identity, "documented call queue");
+        ValidateUniqueItems(documentation.Schedules, item => item.Id, "documented schedule");
+        ValidateUniqueItems(documentation.PhoneNumbers, item => item.Number, "documented phone number");
+        ValidateUniqueItems(documentation.VoiceUsers, item => item.UserPrincipalName, "documented voice user");
+
+        foreach (var item in documentation.ResourceAccounts)
+        {
+            ValidateUniqueItems(
+                item.Associations ?? throw MissingNested("resource-account associations"),
+                association => association.ConfigurationType,
+                "resource-account association");
+        }
+        foreach (var item in documentation.AutoAttendants)
+        {
+            ValidateUniqueItems(
+                item.MenuOptions ?? throw MissingNested("auto-attendant menu options"),
+                option => $"{option.FlowName}\u001f{option.Key}",
+                "auto-attendant menu option");
+            ValidateUniqueItems(
+                item.CallFlows ?? throw MissingNested("auto-attendant call flows"),
+                flow => flow.FlowName,
+                "auto-attendant call flow");
+            ValidateUniqueItems(
+                item.ScheduleAssociations ?? throw MissingNested("auto-attendant schedule associations"),
+                association => $"{association.Type}\u001f{association.ScheduleId}",
+                "auto-attendant schedule association");
+        }
+        foreach (var item in documentation.CallQueues)
+        {
+            ValidateUniqueItems(
+                item.Agents ?? throw MissingNested("call-queue agents"),
+                agent => agent.ObjectId,
+                "call-queue agent");
+            if (item.DistributionListIds is null ||
+                item.DistributionListIds.Any(string.IsNullOrWhiteSpace) ||
+                item.DistributionListIds.Distinct(StringComparer.Ordinal).Count() != item.DistributionListIds.Count)
+            {
+                throw new InvalidDataException("Call-queue distribution-list identifiers must be present and unique.");
+            }
+        }
+        foreach (var item in documentation.Schedules)
+        {
+            ValidateUniqueItems(
+                item.DateRanges ?? throw MissingNested("schedule date ranges"),
+                range => range.Start,
+                "schedule date range");
+            ValidateUniqueItems(
+                item.WeeklyRanges ?? throw MissingNested("schedule weekly ranges"),
+                range => $"{range.Day}\u001f{range.Start}\u001f{range.End}",
+                "schedule weekly range");
+        }
+    }
+
+    private static InvalidDataException MissingNested(string description)
+        => new($"The tenant documentation snapshot is missing {description}.");
 
     private static void ValidateUniqueItems<T>(
         IReadOnlyList<T> items,
@@ -490,6 +684,318 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
             ["displayName"] = item.DisplayName,
             ["mailNickname"] = item.MailNickname,
             ["description"] = item.Description,
+        };
+
+    private static void CompareDocumentation(
+        TenantDocumentationSnapshot snapshot,
+        TenantDocumentationSnapshot live,
+        ICollection<TopologyDriftEntry> results)
+    {
+        CompareObjects(
+            "tenant",
+            new[] { snapshot.Tenant },
+            new[] { live.Tenant },
+            item => item.Id,
+            item => item.Name,
+            TenantProperties,
+            results);
+        CompareObjects(
+            "resourceAccountInventory",
+            snapshot.ResourceAccounts,
+            live.ResourceAccounts,
+            item => item.ObjectId,
+            item => item.Name,
+            ResourceAccountInventoryProperties,
+            results);
+        CompareObjects(
+            "autoAttendantInventory",
+            snapshot.AutoAttendants,
+            live.AutoAttendants,
+            item => item.Identity,
+            item => item.Name,
+            AutoAttendantInventoryProperties,
+            results);
+        CompareObjects(
+            "callQueueInventory",
+            snapshot.CallQueues,
+            live.CallQueues,
+            item => item.Identity,
+            item => item.Name,
+            CallQueueInventoryProperties,
+            results);
+        CompareObjects(
+            "schedule",
+            snapshot.Schedules,
+            live.Schedules,
+            item => item.Id,
+            item => item.Name,
+            ScheduleInventoryProperties,
+            results);
+        CompareObjects(
+            "phoneNumber",
+            snapshot.PhoneNumbers,
+            live.PhoneNumbers,
+            item => item.Number,
+            item => item.Number,
+            PhoneNumberProperties,
+            results);
+        CompareObjects(
+            "voiceUser",
+            snapshot.VoiceUsers,
+            live.VoiceUsers,
+            item => item.UserPrincipalName,
+            item => item.Name,
+            VoiceUserProperties,
+            results);
+
+        CompareInventoryChildren(
+            "resourceAccountAssociation",
+            ResourceAccountAssociations(snapshot),
+            ResourceAccountAssociations(live),
+            results);
+        CompareInventoryChildren(
+            "autoAttendantMenuOption",
+            AutoAttendantMenuOptions(snapshot),
+            AutoAttendantMenuOptions(live),
+            results);
+        CompareInventoryChildren(
+            "autoAttendantCallFlow",
+            AutoAttendantCallFlows(snapshot),
+            AutoAttendantCallFlows(live),
+            results);
+        CompareInventoryChildren(
+            "autoAttendantScheduleAssociation",
+            AutoAttendantScheduleAssociations(snapshot),
+            AutoAttendantScheduleAssociations(live),
+            results);
+        CompareInventoryChildren(
+            "autoAttendantOperator",
+            AutoAttendantOperators(snapshot),
+            AutoAttendantOperators(live),
+            results);
+        CompareInventoryChildren(
+            "callQueueAgent",
+            CallQueueAgents(snapshot),
+            CallQueueAgents(live),
+            results);
+        CompareInventoryChildren(
+            "callQueueDistributionList",
+            CallQueueDistributionLists(snapshot),
+            CallQueueDistributionLists(live),
+            results);
+        CompareInventoryChildren(
+            "callQueueAction",
+            CallQueueActions(snapshot),
+            CallQueueActions(live),
+            results);
+        CompareInventoryChildren(
+            "scheduleDateRange",
+            ScheduleDateRanges(snapshot),
+            ScheduleDateRanges(live),
+            results);
+        CompareInventoryChildren(
+            "scheduleWeeklyRange",
+            ScheduleWeeklyRanges(snapshot),
+            ScheduleWeeklyRanges(live),
+            results);
+    }
+
+    private static void CompareInventoryChildren(
+        string objectType,
+        IReadOnlyList<InventoryComparable> snapshot,
+        IReadOnlyList<InventoryComparable> live,
+        ICollection<TopologyDriftEntry> results)
+        => CompareObjects(
+            objectType,
+            snapshot,
+            live,
+            item => item.Id,
+            item => item.DisplayName,
+            item => item.Properties,
+            results);
+
+    private static IReadOnlyList<InventoryComparable> ResourceAccountAssociations(TenantDocumentationSnapshot data)
+        => data.ResourceAccounts
+            .SelectMany(account => account.Associations.Select(association => Comparable(
+                $"{account.ObjectId}\u001f{association.ConfigurationType}",
+                $"{account.Name} / {association.ConfigurationType}",
+                ("configurationId", association.ConfigurationId))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> AutoAttendantMenuOptions(TenantDocumentationSnapshot data)
+        => data.AutoAttendants
+            .SelectMany(attendant => attendant.MenuOptions.Select(option => Comparable(
+                $"{attendant.Identity}\u001f{option.FlowName}\u001f{option.Key}",
+                $"{attendant.Name} / {option.FlowName} / {option.Key}",
+                ("action", option.Action),
+                ("targetId", option.TargetId))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> AutoAttendantCallFlows(TenantDocumentationSnapshot data)
+        => data.AutoAttendants
+            .SelectMany(attendant => attendant.CallFlows.Select(flow => Comparable(
+                $"{attendant.Identity}\u001f{flow.FlowName}",
+                $"{attendant.Name} / {flow.FlowName}",
+                ("menuName", flow.MenuName))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> AutoAttendantScheduleAssociations(TenantDocumentationSnapshot data)
+        => data.AutoAttendants
+            .SelectMany(attendant => attendant.ScheduleAssociations.Select(association => Comparable(
+                $"{attendant.Identity}\u001f{association.Type}\u001f{association.ScheduleId}",
+                $"{attendant.Name} / {association.Type}",
+                ("scheduleId", association.ScheduleId),
+                ("callFlowId", association.CallFlowId))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> AutoAttendantOperators(TenantDocumentationSnapshot data)
+        => data.AutoAttendants
+            .Where(attendant => attendant.Operator is not null)
+            .Select(attendant => Comparable(
+                attendant.Identity,
+                $"{attendant.Name} / operator",
+                ("type", attendant.Operator!.Type),
+                ("targetId", attendant.Operator.TargetId)))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> CallQueueAgents(TenantDocumentationSnapshot data)
+        => data.CallQueues
+            .SelectMany(queue => queue.Agents.Select(agent => Comparable(
+                $"{queue.Identity}\u001f{agent.ObjectId}",
+                $"{queue.Name} / {agent.DisplayName}",
+                ("optIn", agent.OptIn),
+                ("displayName", agent.DisplayName),
+                ("userPrincipalName", agent.UserPrincipalName))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> CallQueueDistributionLists(TenantDocumentationSnapshot data)
+        => data.CallQueues
+            .SelectMany(queue => queue.DistributionListIds.Select(groupId => Comparable(
+                $"{queue.Identity}\u001f{groupId}",
+                $"{queue.Name} / {groupId}")))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> CallQueueActions(TenantDocumentationSnapshot data)
+        => data.CallQueues
+            .SelectMany(queue => new[]
+            {
+                queue.Overflow is null ? null : Comparable(
+                    $"{queue.Identity}\u001foverflow",
+                    $"{queue.Name} / overflow",
+                    ("action", queue.Overflow.Action),
+                    ("targetId", queue.Overflow.TargetId),
+                    ("threshold", queue.Overflow.Threshold)),
+                queue.Timeout is null ? null : Comparable(
+                    $"{queue.Identity}\u001ftimeout",
+                    $"{queue.Name} / timeout",
+                    ("action", queue.Timeout.Action),
+                    ("targetId", queue.Timeout.TargetId),
+                    ("threshold", queue.Timeout.Threshold))
+            })
+            .OfType<InventoryComparable>()
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> ScheduleDateRanges(TenantDocumentationSnapshot data)
+        => data.Schedules
+            .SelectMany(schedule => schedule.DateRanges.Select(range => Comparable(
+                $"{schedule.Id}\u001f{range.Start}",
+                $"{schedule.Name} / {range.Start}",
+                ("start", range.Start),
+                ("end", range.End))))
+            .ToArray();
+
+    private static IReadOnlyList<InventoryComparable> ScheduleWeeklyRanges(TenantDocumentationSnapshot data)
+        => data.Schedules
+            .SelectMany(schedule => schedule.WeeklyRanges.Select(range => Comparable(
+                $"{schedule.Id}\u001f{range.Day}\u001f{range.Start}",
+                $"{schedule.Name} / {range.Day} / {range.Start}",
+                ("day", range.Day),
+                ("start", range.Start),
+                ("end", range.End))))
+            .ToArray();
+
+    private static InventoryComparable Comparable(
+        string id,
+        string displayName,
+        params (string Name, string? Value)[] properties)
+        => new(
+            id,
+            displayName,
+            properties.ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal));
+
+    private sealed record InventoryComparable(
+        string Id,
+        string DisplayName,
+        IReadOnlyDictionary<string, string?> Properties);
+
+    private static IReadOnlyDictionary<string, string?> TenantProperties(TenantInformationSnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["country"] = item.Country,
+            ["language"] = item.Language,
+        };
+
+    private static IReadOnlyDictionary<string, string?> ResourceAccountInventoryProperties(ResourceAccountInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["userPrincipalName"] = item.UserPrincipalName,
+            ["applicationId"] = item.ApplicationId,
+            ["phoneNumber"] = item.PhoneNumber,
+        };
+
+    private static IReadOnlyDictionary<string, string?> AutoAttendantInventoryProperties(AutoAttendantInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["language"] = item.Language,
+            ["timeZone"] = item.TimeZone,
+            ["voice"] = item.Voice,
+            ["defaultFlow"] = item.DefaultFlow,
+        };
+
+    private static IReadOnlyDictionary<string, string?> CallQueueInventoryProperties(CallQueueInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["routing"] = item.Routing,
+            ["alertTime"] = item.AlertTime,
+            ["language"] = item.Language,
+            ["agentCount"] = item.AgentCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["overflowThreshold"] = item.OverflowThreshold,
+            ["timeoutThreshold"] = item.TimeoutThreshold,
+            ["overflowAction"] = item.OverflowAction,
+            ["timeoutAction"] = item.TimeoutAction,
+        };
+
+    private static IReadOnlyDictionary<string, string?> ScheduleInventoryProperties(ScheduleInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["type"] = item.Type,
+            ["dateCount"] = item.DateCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+
+    private static IReadOnlyDictionary<string, string?> PhoneNumberProperties(PhoneNumberInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["type"] = item.Type,
+            ["assignedTo"] = item.AssignedTo,
+            ["status"] = item.Status,
+            ["activation"] = item.Activation,
+            ["city"] = item.City,
+            ["capability"] = item.Capability,
+        };
+
+    private static IReadOnlyDictionary<string, string?> VoiceUserProperties(VoiceUserInventorySnapshot item)
+        => new Dictionary<string, string?>
+        {
+            ["name"] = item.Name,
+            ["lineUri"] = item.LineUri,
+            ["voiceRoutingPolicy"] = item.VoiceRoutingPolicy,
+            ["callingPolicy"] = item.CallingPolicy,
+            ["dialPlan"] = item.DialPlan,
         };
 
     private static string Join(IReadOnlyList<string> values) => string.Join(", ", values);

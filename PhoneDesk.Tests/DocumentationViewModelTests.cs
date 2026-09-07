@@ -11,38 +11,6 @@ namespace PhoneDesk.Tests
 {
     public class DocumentationViewModelTests
     {
-        private static TenantTopology CreateTopology(string languageId, bool includeSecondResourceAccount)
-        {
-            var resourceAccounts = new List<TopologyResourceAccount>
-            {
-                new("Main RA", "main@contoso.example", "ra-1", "+41440000000", ResourceAccountKind.AutoAttendant, true),
-            };
-            if (includeSecondResourceAccount)
-            {
-                resourceAccounts.Add(new TopologyResourceAccount(
-                    "Queue RA", "queue@contoso.example", "ra-2", null, ResourceAccountKind.CallQueue, true));
-            }
-
-            return new TenantTopology(
-                new[]
-                {
-                    new TopologyAutoAttendant(
-                        "Main AA", "aa-1", languageId, "Europe/Zurich",
-                        new[] { "ra-1" }, Array.Empty<string>(), new[] { "cq-1" }),
-                },
-                new[]
-                {
-                    new TopologyCallQueue(
-                        "Support CQ", "cq-1", "Attendant", 30,
-                        new[] { "agent-1" }, Array.Empty<string>(),
-                        includeSecondResourceAccount ? new[] { "ra-2" } : Array.Empty<string>()),
-                },
-                resourceAccounts,
-                Array.Empty<TopologyGroup>(),
-                Array.Empty<OrphanFinding>(),
-                new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero));
-        }
-
         private static Mock<IDocumentationScriptBuilder> CreateDocBuilderMock()
         {
             var mock = new Mock<IDocumentationScriptBuilder>();
@@ -62,7 +30,8 @@ namespace PhoneDesk.Tests
             ITranslationService? translationService = null,
             ITenantAsCodeService? tenantAsCodeService = null,
             IPortabilityFileService? portabilityFileService = null,
-            ITenantTopologyCache? topologyCache = null)
+            ITenantDocumentationSnapshotParser? snapshotParser = null,
+            ITenantTopologyAssembler? topologyAssembler = null)
             => new DocumentationViewModel(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
@@ -77,7 +46,47 @@ namespace PhoneDesk.Tests
                 translationService: translationService,
                 tenantAsCodeService: tenantAsCodeService,
                 portabilityFileService: portabilityFileService,
-                topologyCache: topologyCache);
+                snapshotParser: snapshotParser,
+                topologyAssembler: topologyAssembler);
+
+        private static void SetupSnapshotOutputs(
+            ViewModelTestHarness harness,
+            TenantDocumentationRawData rawData,
+            string topologyRaw)
+        {
+            harness.PowerShellCommandService
+                .Setup(service => service.GetRetrieveTenantTopologyCommand())
+                .Returns("Get-Topology");
+            SetupCommandOutput(harness, "Get-TenantInfo", rawData.Tenant);
+            SetupCommandOutput(harness, "Get-ResourceAccounts", rawData.ResourceAccounts);
+            SetupCommandOutput(harness, "Get-AutoAttendants", rawData.AutoAttendants);
+            SetupCommandOutput(harness, "Get-CallQueues", rawData.CallQueues);
+            SetupCommandOutput(harness, "Get-Schedules", rawData.Schedules);
+            SetupCommandOutput(harness, "Get-PhoneNumbers", rawData.PhoneNumbers);
+            SetupCommandOutput(harness, "Get-VoiceUsers", rawData.VoiceUsers);
+            SetupCommandOutput(harness, "Get-Topology", topologyRaw);
+        }
+
+        private static void SetupCommandOutput(
+            ViewModelTestHarness harness,
+            string command,
+            string output)
+        {
+            harness.PowerShellContextService
+                .Setup(service => service.ExecuteCommandWithDetailsAsync(
+                    command,
+                    It.IsAny<Dictionary<string, string>?>(),
+                    It.IsAny<IProgress<PowerShellProgress>?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new PowerShellExecutionResult { Output = output });
+        }
+
+        private const string CompleteTopologyRaw =
+            "TOPRA: Reception RA|reception@contoso.example|ra-1|+41440000000|CallQueue|True\n" +
+            "TOPAA: Reception|aa-1|de-DE|Europe/Zurich|ra-1|schedule-1|cq-1\n" +
+            "TOPCQ: Support|cq-1|LongestIdle|20|agent-1|group-1|ra-1\n" +
+            "TOPGRP: Support group|group-1|support|Support agents\n" +
+            "SUCCESS: Tenant topology retrieved";
 
         [Fact]
         public void Constructor_LogsPageLoaded()
@@ -93,51 +102,69 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public async Task ExportTopologySnapshotUsesOnlyTheCachedTopology()
+        public async Task ExportTopologySnapshotQueriesLiveTenantAndIncludesFullReportInventory()
         {
             var harness = new ViewModelTestHarness();
             var docBuilder = CreateDocBuilderMock();
             var service = new TenantAsCodeService();
+            SetupSnapshotOutputs(
+                harness,
+                TenantDocumentationSnapshotParserTests.CreateRawData(),
+                CompleteTopologyRaw);
             var files = new Mock<IPortabilityFileService>();
             files.Setup(file => file.SaveJsonAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync("C:\\topology.json");
-            var cache = new TenantTopologyCache();
-            cache.Set(CreateTopology(languageId: "en-US", includeSecondResourceAccount: true));
             var vm = CreateViewModel(harness, docBuilder, tenantAsCodeService: service,
-                portabilityFileService: files.Object, topologyCache: cache);
+                portabilityFileService: files.Object,
+                snapshotParser: new TenantDocumentationSnapshotParser(),
+                topologyAssembler: new TenantTopologyAssembler());
 
             await vm.ExportTopologySnapshotCommand.ExecuteAsync(null);
 
             files.Verify(file => file.SaveJsonAsync(
                 It.IsAny<string>(),
-                "phonedesk-topology-20260830T120000Z.json",
+                It.Is<string>(name => name.StartsWith("phonedesk-topology-", StringComparison.Ordinal) && name.EndsWith("Z.json", StringComparison.Ordinal)),
                 It.Is<string>(json =>
+                    json.Contains("\"schemaVersion\": 2", StringComparison.Ordinal) &&
                     json.Contains("\"kind\": \"phonedesk.topology\"", StringComparison.Ordinal) &&
-                    json.Contains("\"identity\": \"aa-1\"", StringComparison.Ordinal))), Times.Once);
+                    json.Contains("\"documentation\"", StringComparison.Ordinal) &&
+                    json.Contains("\"phoneNumbers\"", StringComparison.Ordinal) &&
+                    json.Contains("\"voiceUsers\"", StringComparison.Ordinal) &&
+                    json.Contains("\"schedules\"", StringComparison.Ordinal))), Times.Once);
             harness.PowerShellContextService.Verify(
                 context => context.ExecuteCommandWithDetailsAsync(
                     It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(),
                     It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+                Times.Exactly(8));
         }
 
         [Fact]
-        public async Task CompareTopologySnapshotShowsAddedRemovedAndPropertyChangesWithoutTenantCalls()
+        public async Task CompareTopologySnapshotUsesNewLiveReadAndShowsInventoryPropertyChanges()
         {
             var harness = new ViewModelTestHarness();
             var docBuilder = CreateDocBuilderMock();
             var service = new TenantAsCodeService();
-            var savedTopology = CreateTopology(languageId: "de-DE", includeSecondResourceAccount: false);
+            var parser = new TenantDocumentationSnapshotParser();
+            var assembler = new TenantTopologyAssembler();
+            var savedRaw = TenantDocumentationSnapshotParserTests.CreateRawData();
+            var savedTopology = service.CreateTopologySnapshot(
+                assembler.Assemble(CompleteTopologyRaw, new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero)),
+                parser.Parse(savedRaw));
+            var liveRaw = savedRaw with
+            {
+                PhoneNumbers = savedRaw.PhoneNumbers.Replace("|Zurich|", "|Bern|", StringComparison.Ordinal)
+            };
+            SetupSnapshotOutputs(harness, liveRaw, CompleteTopologyRaw);
             var files = new Mock<IPortabilityFileService>();
             files.Setup(file => file.OpenJsonAsync(It.IsAny<string>()))
                 .ReturnsAsync(new PortableTextFile(
                     "baseline.json",
                     "C:\\baseline.json",
                     service.SerializeTopology(savedTopology)));
-            var cache = new TenantTopologyCache();
-            cache.Set(CreateTopology(languageId: "en-US", includeSecondResourceAccount: true));
             var vm = CreateViewModel(harness, docBuilder, tenantAsCodeService: service,
-                portabilityFileService: files.Object, topologyCache: cache);
+                portabilityFileService: files.Object,
+                snapshotParser: parser,
+                topologyAssembler: assembler);
 
             await vm.CompareTopologySnapshotCommand.ExecuteAsync(null);
 
@@ -145,14 +172,16 @@ namespace PhoneDesk.Tests
             Assert.Equal("baseline.json", vm.ComparedTopologyFileName);
             Assert.Contains(vm.TopologyDriftEntries, item =>
                 item.Kind == TopologyDriftKind.Changed &&
-                item.ObjectId == "aa-1" && item.PropertyName == "languageId");
-            Assert.Contains(vm.TopologyDriftEntries, item =>
-                item.Kind == TopologyDriftKind.Added && item.ObjectId == "ra-2");
+                item.ObjectType == "phoneNumber" &&
+                item.ObjectId == "+41440000000" &&
+                item.PropertyName == "city" &&
+                item.SnapshotValue == "Zurich" &&
+                item.LiveValue == "Bern");
             harness.PowerShellContextService.Verify(
                 context => context.ExecuteCommandWithDetailsAsync(
                     It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(),
                     It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+                Times.Exactly(8));
         }
 
         [Fact]
@@ -185,22 +214,55 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public async Task SnapshotActionsRequireTopologyLoadedOnDashboard()
+        public async Task SnapshotExportFailsClosedWhenAnyLiveDatasetIsIncomplete()
         {
             var harness = new ViewModelTestHarness();
+            var raw = TenantDocumentationSnapshotParserTests.CreateRawData() with
+            {
+                PhoneNumbers =
+                    "WARNING: Could not export phone numbers (insufficient permissions)\n" +
+                    "DOCDATA_PHONE_START\nDOCDATA_PHONE_END"
+            };
+            SetupSnapshotOutputs(harness, raw, CompleteTopologyRaw);
             var files = new Mock<IPortabilityFileService>();
             var vm = CreateViewModel(
                 harness,
                 CreateDocBuilderMock(),
                 tenantAsCodeService: new TenantAsCodeService(),
                 portabilityFileService: files.Object,
-                topologyCache: new TenantTopologyCache());
+                snapshotParser: new TenantDocumentationSnapshotParser(),
+                topologyAssembler: new TenantTopologyAssembler());
 
             await vm.ExportTopologySnapshotCommand.ExecuteAsync(null);
+
+            Assert.Contains("incomplete", vm.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("WARNING", vm.StatusMessage, StringComparison.Ordinal);
+            files.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task CompareRejectsInvalidSnapshotBeforeQueryingTheTenant()
+        {
+            var harness = new ViewModelTestHarness();
+            var files = new Mock<IPortabilityFileService>();
+            files.Setup(file => file.OpenJsonAsync(It.IsAny<string>()))
+                .ReturnsAsync(new PortableTextFile("invalid.json", "C:\\invalid.json", "{ invalid"));
+            var vm = CreateViewModel(
+                harness,
+                CreateDocBuilderMock(),
+                tenantAsCodeService: new TenantAsCodeService(),
+                portabilityFileService: files.Object,
+                snapshotParser: new TenantDocumentationSnapshotParser(),
+                topologyAssembler: new TenantTopologyAssembler());
+
             await vm.CompareTopologySnapshotCommand.ExecuteAsync(null);
 
-            Assert.Contains("Dashboard", vm.StatusMessage, StringComparison.OrdinalIgnoreCase);
-            files.VerifyNoOtherCalls();
+            Assert.Contains("invalid", vm.StatusMessage, StringComparison.OrdinalIgnoreCase);
+            harness.PowerShellContextService.Verify(
+                context => context.ExecuteCommandWithDetailsAsync(
+                    It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(),
+                    It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]

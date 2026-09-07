@@ -597,6 +597,12 @@ namespace PhoneDesk.Tests
                                 TopologyDriftKind.Changed, "callQueue", "cq-1", "Support Queue",
                                 "agentAlertTime", "30", "45"),
                             new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "phoneNumber", "+41440000000", "+41 44 000 00 00",
+                                "city", "Zurich", "Bern"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "autoAttendantMenuOption", "aa-1/menu-1",
+                                "Reception / DefaultCallFlow / 1", "targetId", "cq-old", "cq-new"),
+                            new TopologyDriftEntry(
                                 TopologyDriftKind.Added, "resourceAccount", "ra-2", "After-hours RA",
                                 null, null, null),
                             new TopologyDriftEntry(

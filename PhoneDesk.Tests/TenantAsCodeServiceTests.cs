@@ -155,6 +155,129 @@ public sealed class TenantAsCodeServiceTests
     }
 
     [Fact]
+    public void LegacyTopologyWithoutDocumentationRemainsReadable()
+    {
+        var json = _service.SerializeTopology(CreateLiveTopology());
+        var root = System.Text.Json.Nodes.JsonNode.Parse(json)?.AsObject();
+        Assert.NotNull(root);
+        root.Remove("documentation");
+
+        var roundTrip = _service.DeserializeTopology(root.ToJsonString());
+
+        Assert.Equal(PortabilitySchema.TopologyLegacyVersion, roundTrip.SchemaVersion);
+        Assert.Null(roundTrip.Documentation);
+        Assert.Single(roundTrip.AutoAttendants);
+    }
+
+    [Fact]
+    public void FullTopologySnapshotIsSchemaVersionTwoAndContainsTenantReportSuperset()
+    {
+        var topology = CreateLiveTopology();
+        var documentation = new TenantDocumentationSnapshotParser().Parse(
+            TenantDocumentationSnapshotParserTests.CreateRawData());
+        var document = _service.CreateTopologySnapshot(topology, documentation);
+
+        var first = _service.SerializeTopology(document);
+        var roundTrip = _service.DeserializeTopology(first);
+        var second = _service.SerializeTopology(roundTrip);
+
+        Assert.Equal(PortabilitySchema.TopologyCurrentVersion, roundTrip.SchemaVersion);
+        Assert.NotNull(roundTrip.Documentation);
+        Assert.Single(roundTrip.Documentation.PhoneNumbers);
+        Assert.Single(roundTrip.Documentation.VoiceUsers);
+        Assert.Single(roundTrip.Documentation.Schedules);
+        Assert.Contains("\"documentation\"", first, StringComparison.Ordinal);
+        Assert.Equal(first, second);
+        Assert.DoesNotContain("password", first, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", first, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", first, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void FullTopologySerializationStableOrdersTopLevelAndNestedInventory()
+    {
+        var topology = CreateLiveTopology();
+        var parsed = new TenantDocumentationSnapshotParser().Parse(
+            TenantDocumentationSnapshotParserTests.CreateRawData());
+        var secondPhone = new PhoneNumberInventorySnapshot(
+            "+41310000000", "CallingPlan", "user-2", "Assigned", "Activated", "Bern", "Voice");
+        var secondAgent = new CallQueueAgentSnapshot(
+            "agent-0", "False", "Grace Hopper", "grace@contoso.example");
+        var forward = parsed with
+        {
+            PhoneNumbers = parsed.PhoneNumbers.Append(secondPhone).ToArray(),
+            CallQueues = parsed.CallQueues
+                .Select(queue => queue with { Agents = queue.Agents.Append(secondAgent).ToArray() })
+                .ToArray()
+        };
+        var reversed = forward with
+        {
+            PhoneNumbers = forward.PhoneNumbers.Reverse().ToArray(),
+            CallQueues = forward.CallQueues
+                .Select(queue => queue with { Agents = queue.Agents.Reverse().ToArray() })
+                .Reverse()
+                .ToArray()
+        };
+
+        var firstJson = _service.SerializeTopology(_service.CreateTopologySnapshot(topology, forward));
+        var secondJson = _service.SerializeTopology(_service.CreateTopologySnapshot(topology, reversed));
+
+        Assert.Equal(firstJson, secondJson);
+        var normalized = _service.DeserializeTopology(firstJson);
+        Assert.Equal(
+            new[] { "+41310000000", "+41440000000" },
+            normalized.Documentation!.PhoneNumbers.Select(number => number.Number));
+        Assert.Equal(
+            new[] { "agent-0", "agent-1" },
+            Assert.Single(normalized.Documentation.CallQueues).Agents.Select(agent => agent.ObjectId));
+    }
+
+    [Fact]
+    public void FullTopologyComparisonIncludesInventoryAndDetailedCallFlowProperties()
+    {
+        var topology = CreateLiveTopology();
+        var parser = new TenantDocumentationSnapshotParser();
+        var savedDocumentation = parser.Parse(TenantDocumentationSnapshotParserTests.CreateRawData());
+        var liveDocumentation = savedDocumentation with
+        {
+            AutoAttendants = savedDocumentation.AutoAttendants
+                .Select(item => item with
+                {
+                    Voice = "Male",
+                    MenuOptions = item.MenuOptions
+                        .Select(option => option with { TargetId = "cq-2" })
+                        .ToArray()
+                })
+                .ToArray(),
+            PhoneNumbers = savedDocumentation.PhoneNumbers
+                .Select(item => item with { City = "Bern" })
+                .ToArray()
+        };
+        var saved = _service.CreateTopologySnapshot(topology, savedDocumentation);
+        var live = _service.CreateTopologySnapshot(topology, liveDocumentation);
+
+        var drift = _service.CompareTopology(saved, live);
+
+        Assert.Contains(drift, item =>
+            item.ObjectType == "autoAttendantInventory" &&
+            item.ObjectId == "aa-1" &&
+            item.PropertyName == "voice" &&
+            item.SnapshotValue == "Female" &&
+            item.LiveValue == "Male");
+        Assert.Contains(drift, item =>
+            item.ObjectType == "phoneNumber" &&
+            item.ObjectId == "+41440000000" &&
+            item.PropertyName == "city" &&
+            item.SnapshotValue == "Zurich" &&
+            item.LiveValue == "Bern");
+        Assert.Contains(drift, item =>
+            item.ObjectType == "autoAttendantMenuOption" &&
+            item.PropertyName == "targetId" &&
+            item.SnapshotValue == "cq-1" &&
+            item.LiveValue == "cq-2");
+    }
+
+    [Fact]
     public void TopologyComparisonReportsAddedRemovedAndChangedProperties()
     {
         var live = CreateLiveTopology();

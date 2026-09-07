@@ -99,6 +99,7 @@ class Program
         services.AddTransient<IDryRunPlanBuilder, DryRunPlanBuilder>();
         services.AddTransient<IDryRunPlanExporter, DryRunPlanExporter>();
         services.AddTransient<ITenantAsCodeService, TenantAsCodeService>();
+        services.AddTransient<ITenantDocumentationSnapshotParser, TenantDocumentationSnapshotParser>();
 
         // Tenant dashboard (issue #64): read-only topology assembly + session-lifetime cache.
         // The assembler is a pure transformation; the cache is a singleton so the retrieved snapshot

@@ -5,6 +5,8 @@ namespace PhoneDesk.Portability;
 public static class PortabilitySchema
 {
     public const int CurrentVersion = 1;
+    public const int TopologyCurrentVersion = 2;
+    public const int TopologyLegacyVersion = 1;
     public const string ConfigurationKind = "phonedesk.configuration";
     public const string TopologyKind = "phonedesk.topology";
 }
@@ -129,7 +131,8 @@ public sealed record TopologySnapshotDocument(
     IReadOnlyList<TopologyAutoAttendantSnapshot> AutoAttendants,
     IReadOnlyList<TopologyCallQueueSnapshot> CallQueues,
     IReadOnlyList<TopologyResourceAccountSnapshot> ResourceAccounts,
-    IReadOnlyList<TopologyGroupSnapshot> Groups);
+    IReadOnlyList<TopologyGroupSnapshot> Groups,
+    TenantDocumentationSnapshot? Documentation = null);
 
 public sealed record TopologyAutoAttendantSnapshot(
     string Name,
@@ -162,6 +165,134 @@ public sealed record TopologyGroupSnapshot(
     string Id,
     string MailNickname,
     string Description);
+
+public sealed record TenantDocumentationRawData(
+    string Tenant,
+    string ResourceAccounts,
+    string AutoAttendants,
+    string CallQueues,
+    string Schedules,
+    string PhoneNumbers,
+    string VoiceUsers);
+
+public sealed record TenantDocumentationSnapshot(
+    TenantInformationSnapshot Tenant,
+    IReadOnlyList<ResourceAccountInventorySnapshot> ResourceAccounts,
+    IReadOnlyList<AutoAttendantInventorySnapshot> AutoAttendants,
+    IReadOnlyList<CallQueueInventorySnapshot> CallQueues,
+    IReadOnlyList<ScheduleInventorySnapshot> Schedules,
+    IReadOnlyList<PhoneNumberInventorySnapshot> PhoneNumbers,
+    IReadOnlyList<VoiceUserInventorySnapshot> VoiceUsers);
+
+public sealed record TenantInformationSnapshot(
+    string Name,
+    string Id,
+    string Country,
+    string Language);
+
+public sealed record ResourceAccountInventorySnapshot(
+    string Name,
+    string UserPrincipalName,
+    string ObjectId,
+    string ApplicationId,
+    string PhoneNumber,
+    IReadOnlyList<ResourceAccountAssociationSnapshot> Associations);
+
+public sealed record ResourceAccountAssociationSnapshot(
+    string ConfigurationId,
+    string ConfigurationType);
+
+public sealed record AutoAttendantInventorySnapshot(
+    string Name,
+    string Identity,
+    string Language,
+    string TimeZone,
+    string Voice,
+    string DefaultFlow,
+    IReadOnlyList<AutoAttendantMenuOptionSnapshot> MenuOptions,
+    IReadOnlyList<AutoAttendantCallFlowSnapshot> CallFlows,
+    IReadOnlyList<AutoAttendantScheduleAssociationSnapshot> ScheduleAssociations,
+    AutoAttendantOperatorSnapshot? Operator);
+
+public sealed record AutoAttendantMenuOptionSnapshot(
+    string FlowName,
+    string Key,
+    string Action,
+    string TargetId);
+
+public sealed record AutoAttendantCallFlowSnapshot(
+    string FlowName,
+    string MenuName);
+
+public sealed record AutoAttendantScheduleAssociationSnapshot(
+    string Type,
+    string ScheduleId,
+    string CallFlowId);
+
+public sealed record AutoAttendantOperatorSnapshot(
+    string Type,
+    string TargetId);
+
+public sealed record CallQueueInventorySnapshot(
+    string Name,
+    string Identity,
+    string Routing,
+    string AlertTime,
+    string Language,
+    int AgentCount,
+    string OverflowThreshold,
+    string TimeoutThreshold,
+    string OverflowAction,
+    string TimeoutAction,
+    IReadOnlyList<CallQueueAgentSnapshot> Agents,
+    IReadOnlyList<string> DistributionListIds,
+    QueueThresholdActionSnapshot? Overflow,
+    QueueThresholdActionSnapshot? Timeout);
+
+public sealed record CallQueueAgentSnapshot(
+    string ObjectId,
+    string OptIn,
+    string DisplayName,
+    string UserPrincipalName);
+
+public sealed record QueueThresholdActionSnapshot(
+    string Action,
+    string TargetId,
+    string Threshold);
+
+public sealed record ScheduleInventorySnapshot(
+    string Name,
+    string Id,
+    string Type,
+    int DateCount,
+    IReadOnlyList<ScheduleDateRangeSnapshot> DateRanges,
+    IReadOnlyList<ScheduleWeeklyRangeSnapshot> WeeklyRanges);
+
+public sealed record ScheduleDateRangeSnapshot(
+    string Start,
+    string End);
+
+public sealed record ScheduleWeeklyRangeSnapshot(
+    string Day,
+    string Start,
+    string End);
+
+public sealed record PhoneNumberInventorySnapshot(
+    string Number,
+    string Type,
+    string AssignedTo,
+    string Status,
+    string Activation,
+    string City,
+    string Capability);
+
+public sealed record VoiceUserInventorySnapshot(
+    string Name,
+    string UserPrincipalName,
+    string LineUri,
+    string VoiceRoutingPolicy,
+    string CallingPolicy,
+    string DialPlan);
 
 public enum TopologyDriftKind
 {

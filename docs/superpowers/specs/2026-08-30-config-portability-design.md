@@ -2,12 +2,12 @@
 
 ## Scope
 
-Issue #71 adds two related, offline-first workflows:
+Issue #71 adds two related workflows:
 
 1. Export and import the app configuration as an explicit, schema-versioned JSON document.
-2. Export the last dashboard topology snapshot and compare a saved snapshot with the current in-memory topology.
+2. Export a complete live tenant snapshot and compare a saved snapshot with newly read tenant state.
 
-Neither workflow executes PowerShell, changes tenant state, or modifies the frozen script builders and authentication flow.
+Configuration import/export is local. Snapshot actions execute the existing read-only report and dashboard queries, but never change tenant state. The frozen script builders and authentication flow remain byte-identical.
 
 ## Configuration document
 
@@ -31,19 +31,19 @@ The existing Save/Load buttons remain the user entry points, but their behavior 
 
 ## Topology snapshot and drift
 
-The topology document has its own fixed kind and schema version. It captures the cached auto attendants, call queues, resource accounts, groups, and resource-account phone assignments. Objects and nested ID lists are stable-sorted. `retrievedAtUtc` comes from the cached topology and is metadata, not a comparison field.
+The topology document has its own fixed kind and schema version. Schema v2 captures the live Dashboard topology plus a structured superset of every Tenant Report dataset: tenant metadata, detailed auto-attendant call flows/menu options/schedule associations/operators, detailed call queues/agents/distribution lists/overflow/timeout actions, resource-account associations, schedules and ranges, phone-number inventory/assignments, and voice-enabled users/policies. Objects and nested ID lists are stable-sorted. `retrievedAtUtc` records collection time and is metadata, not a comparison field. Schema-v1 snapshots remain readable and compare their original topology fields.
 
-The Documentation page gains Export snapshot and Compare snapshot actions. Both require a topology previously loaded on the Dashboard. Export writes only cached data. Compare parses a saved topology file and calculates:
+The Documentation page provides Export snapshot and Compare snapshot actions. Each action collects fresh live state through the existing read-only scripts. Export writes that complete snapshot. Compare validates the saved file before querying the tenant, then calculates:
 
 - added objects;
 - removed objects;
 - property-level changes for objects with the same stable identity.
 
-Each drift row contains change kind, object type, object identity/name, property, saved value, and live value. Results are shown in a scrollable panel and never trigger a tenant round-trip.
+Each drift row contains change kind, object type, object identity/name, property, saved value, and live value. Results are shown in a scrollable panel. Any failed, warning-only, partial, or marker-incomplete query aborts snapshot generation/comparison instead of producing false removals.
 
 ## Architecture
 
-- Application owns portable document models, drift/change models, and serialization/diff ports.
+- Application owns portable document models, drift/change models, serialization/diff ports, and the strict parser for frozen report markers.
 - Infrastructure implements strict JSON serialization, validation, deterministic ordering, and topology diffing.
 - Presentation owns the explicit mapper between `PhoneManagerVariables` and the portable Application model plus Avalonia file-picker plumbing.
 - ViewModels consume ports and expose preview/result state. They do not serialize JSON or open files directly.
@@ -52,7 +52,7 @@ This maintains the existing dependency rule and keeps ObservableObject types out
 
 ## Verification
 
-- Unit tests cover strict schema rejection, deterministic output, secret exclusion, full variable round-trip, cancel/apply semantics, stable topology output, and added/removed/property-level drift.
+- Unit tests cover strict schema rejection, deterministic output, secret exclusion, full variable round-trip, cancel/apply semantics, complete live report-marker parsing, schema-v1 compatibility, schema-v2 stable topology output, fail-closed collection, and added/removed/property-level inventory drift.
 - Existing unit, integration, localization, dependency-rule, and release tests must remain green.
 - Headless screenshots cover the configuration import preview and populated topology drift states in English and German; generated PNGs are visually inspected before the PR.
 - The complete PR matrix and fail-closed automated review must pass before merge.

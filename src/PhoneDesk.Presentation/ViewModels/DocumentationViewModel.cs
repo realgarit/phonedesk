@@ -13,6 +13,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using PhoneDesk.Portability;
 using PhoneDesk.Topology;
+using PhoneDesk.HealthChecks;
 
 namespace PhoneDesk.ViewModels
 {
@@ -23,6 +24,7 @@ namespace PhoneDesk.ViewModels
         private readonly IPortabilityFileService? _portabilityFileService;
         private readonly ITenantDocumentationSnapshotParser? _snapshotParser;
         private readonly ITenantTopologyAssembler? _topologyAssembler;
+        private readonly ITenantHealthCheckCache? _healthCheckCache;
         private IReadOnlyList<TopologyDriftEntry> _topologyDrift = Array.Empty<TopologyDriftEntry>();
         private bool _disposed;
 
@@ -74,7 +76,8 @@ namespace PhoneDesk.ViewModels
             ITenantAsCodeService? tenantAsCodeService = null,
             IPortabilityFileService? portabilityFileService = null,
             ITenantDocumentationSnapshotParser? snapshotParser = null,
-            ITenantTopologyAssembler? topologyAssembler = null)
+            ITenantTopologyAssembler? topologyAssembler = null,
+            ITenantHealthCheckCache? healthCheckCache = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
@@ -83,6 +86,7 @@ namespace PhoneDesk.ViewModels
             _portabilityFileService = portabilityFileService;
             _snapshotParser = snapshotParser;
             _topologyAssembler = topologyAssembler;
+            _healthCheckCache = healthCheckCache;
             TopologyDriftEntries.CollectionChanged += (_, _) =>
                 OnPropertyChanged(nameof(HasTopologyDriftEntries));
             if (_translationService is not null)
@@ -1081,10 +1085,93 @@ namespace PhoneDesk.ViewModels
                 doc.AppendLine();
             }
 
+            AppendHealthCheckAppendix(doc);
+
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
             AppendReportLine(doc, UiTextKey.DocumentationReportEndTitle, "  END OF DOCUMENTATION");
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
         }
+
+        private void AppendHealthCheckAppendix(StringBuilder doc)
+        {
+            var result = _healthCheckCache?.Current;
+            if (result is null ||
+                !string.Equals(result.TenantId, _sessionManager.TenantId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            doc.AppendLine("┌─────────────────────────────────────────────────────────────┐");
+            AppendReportLine(
+                doc,
+                UiTextKey.DocumentationReportHealthCheckTitle,
+                "│  APPENDIX — TENANT HEALTH CHECK                             │");
+            doc.AppendLine("└─────────────────────────────────────────────────────────────┘");
+            AppendReportLine(
+                doc,
+                UiTextKey.DocumentationReportHealthCheckGenerated,
+                "  Evaluated: {time}",
+                new Dictionary<string, object?>
+                {
+                    ["time"] = result.EvaluatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                });
+            AppendReportLine(
+                doc,
+                UiTextKey.DocumentationReportHealthCheckSummary,
+                "  Active findings: {count} | Suppressed: {suppressed} | Disabled rules: {disabled}",
+                new Dictionary<string, object?>
+                {
+                    ["count"] = result.ActiveFindings.Count,
+                    ["suppressed"] = result.SuppressedCount,
+                    ["disabled"] = result.DisabledRuleCount,
+                });
+            doc.AppendLine();
+
+            if (result.ActiveFindings.Count == 0)
+            {
+                AppendReportLine(
+                    doc,
+                    UiTextKey.DocumentationReportHealthNoFindings,
+                    "  No active findings from the enabled rules.");
+                doc.AppendLine();
+                return;
+            }
+
+            foreach (var finding in result.ActiveFindings)
+            {
+                var rule = TenantHealthRuleCatalog.Rules.First(item => item.Id == finding.RuleId);
+                var severity = finding.Severity switch
+                {
+                    TenantHealthSeverity.Error => GetText(UiTextKey.HealthCheckSeverityError, "Error"),
+                    TenantHealthSeverity.Warning => GetText(UiTextKey.HealthCheckSeverityWarning, "Warning"),
+                    _ => GetText(UiTextKey.HealthCheckSeverityInformation, "Information"),
+                };
+                AppendReportLine(
+                    doc,
+                    UiTextKey.DocumentationReportHealthFinding,
+                    "  [{severity}] {rule}: {object}",
+                    new Dictionary<string, object?>
+                    {
+                        ["severity"] = severity,
+                        ["rule"] = LocalizeHealth(rule.Title),
+                        ["object"] = finding.DisplayName,
+                    });
+                AppendReportLine(
+                    doc,
+                    UiTextKey.DocumentationReportHealthExplanation,
+                    "    Why: {text}",
+                    new Dictionary<string, object?> { ["text"] = LocalizeHealth(finding.Explanation) });
+                AppendReportLine(
+                    doc,
+                    UiTextKey.DocumentationReportHealthRecommendation,
+                    "    Fix: {text}",
+                    new Dictionary<string, object?> { ["text"] = LocalizeHealth(finding.Recommendation) });
+                doc.AppendLine();
+            }
+        }
+
+        private string LocalizeHealth(LocalizedHealthText text)
+            => _translationService?.CurrentLanguage == AppLanguage.German ? text.German : text.English;
 
         // ─────────────────────── TOPOLOGY BUILDER ───────────────────────
 

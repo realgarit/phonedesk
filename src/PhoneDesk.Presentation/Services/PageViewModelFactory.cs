@@ -34,6 +34,7 @@ namespace PhoneDesk.Services
             {
                 ConstantsService.Pages.Welcome,
                 ConstantsService.Pages.Dashboard,
+                ConstantsService.Pages.HealthCheck,
                 ConstantsService.Pages.GetStarted,
                 ConstantsService.Pages.Variables,
                 ConstantsService.Pages.M365Groups,
@@ -62,6 +63,7 @@ namespace PhoneDesk.Services
             {
                 ConstantsService.Pages.Welcome => _services.GetRequiredService<WelcomeViewModel>(),
                 ConstantsService.Pages.Dashboard => _services.GetRequiredService<DashboardViewModel>(),
+                ConstantsService.Pages.HealthCheck => _services.GetRequiredService<HealthCheckViewModel>(),
                 ConstantsService.Pages.GetStarted => _services.GetRequiredService<GetStartedViewModel>(),
                 ConstantsService.Pages.Variables => _services.GetRequiredService<VariablesViewModel>(),
                 ConstantsService.Pages.M365Groups => _services.GetRequiredService<M365GroupsViewModel>(),

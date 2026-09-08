@@ -25,7 +25,9 @@ namespace PhoneDesk.Tests
             ViewModelTestHarness harness,
             ITenantTopologyCache cache,
             Mock<IAuditLog>? auditLog = null)
-            => new(
+        {
+            harness.SessionManager.SetupGet(manager => manager.TenantId).Returns("tenant-1");
+            return new(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
                 harness.LoggingService.Object,
@@ -38,6 +40,7 @@ namespace PhoneDesk.Tests
                 harness.SharedStateService.Object,
                 harness.DialogService.Object,
                 auditLog?.Object);
+        }
 
         [Fact]
         public async Task Refresh_PopulatesCollectionsAndCache()
@@ -76,7 +79,7 @@ namespace PhoneDesk.Tests
         public void Constructor_RestoresFromCache_WithoutQuerying()
         {
             var cache = new TenantTopologyCache();
-            cache.Set(new TenantTopologyAssembler().Assemble(Sample, DateTimeOffset.UtcNow));
+            cache.Set("tenant-1", new TenantTopologyAssembler().Assemble(Sample, DateTimeOffset.UtcNow));
 
             var harness = new ViewModelTestHarness();
             var vm = Create(harness, cache);
@@ -91,10 +94,23 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void Constructor_DoesNotRestoreTopologyFromAnotherTenant()
+        {
+            var cache = new TenantTopologyCache();
+            cache.Set("tenant-2", new TenantTopologyAssembler().Assemble(Sample, DateTimeOffset.UtcNow));
+            var harness = new ViewModelTestHarness();
+
+            var vm = Create(harness, cache);
+
+            Assert.False(vm.HasData);
+            Assert.Empty(vm.CallQueues);
+        }
+
+        [Fact]
         public async Task Load_UsesCache_WhenPresent()
         {
             var cache = new TenantTopologyCache();
-            cache.Set(new TenantTopologyAssembler().Assemble(Sample, DateTimeOffset.UtcNow));
+            cache.Set("tenant-1", new TenantTopologyAssembler().Assemble(Sample, DateTimeOffset.UtcNow));
             var harness = new ViewModelTestHarness();
             var vm = Create(harness, cache);
 

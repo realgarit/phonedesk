@@ -11,13 +11,25 @@ namespace PhoneDesk.Services
     public sealed class TenantTopologyCache : ITenantTopologyCache
     {
         private TenantTopology? _current;
+        private string? _tenantId;
 
         public bool HasValue => _current is not null;
 
         public TenantTopology? Current => _current;
+        public string? TenantId => _tenantId;
 
-        public void Set(TenantTopology topology) => _current = topology;
+        public void Set(string tenantId, TenantTopology topology)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+            ArgumentNullException.ThrowIfNull(topology);
+            _tenantId = tenantId;
+            _current = topology;
+        }
 
-        public void Clear() => _current = null;
+        public void Clear()
+        {
+            _tenantId = null;
+            _current = null;
+        }
     }
 }

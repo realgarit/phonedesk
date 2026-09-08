@@ -24,6 +24,7 @@ using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.ViewModels;
 using PhoneDesk.Portability;
+using PhoneDesk.HealthChecks;
 
 namespace PhoneDesk.Tests
 {
@@ -85,6 +86,12 @@ namespace PhoneDesk.Tests
             new("Variables", true, "config-import-preview-en.png", "issue71-config-import-en"),
             new("Variables", true, "config-import-preview-de.png", "issue71-config-import-de"),
             new("Dashboard", true, "dashboard-de.png", "ready-de"),
+            new("HealthCheck", true, "health-check-empty-en.png", "issue78-health-empty-en"),
+            new("HealthCheck", true, "health-check-empty-de.png", "issue78-health-empty-de"),
+            new("HealthCheck", true, "health-check-findings-en.png", "issue78-health-findings-en"),
+            new("HealthCheck", true, "health-check-findings-de.png", "issue78-health-findings-de"),
+            new("HealthCheck", true, "health-check-suppressed-en.png", "issue78-health-suppressed-en"),
+            new("HealthCheck", true, "health-check-suppressed-de.png", "issue78-health-suppressed-de"),
             new("M365Groups", true, "m365-groups.png"),
             new("M365Groups", true, "task5-m365-groups-empty-en.png", "task5-m365-empty-en"),
             new("M365Groups", true, "task5-m365-groups-empty-de.png", "task5-m365-empty-de"),
@@ -609,6 +616,45 @@ namespace PhoneDesk.Tests
                                 TopologyDriftKind.Removed, "group", "group-old", "Legacy Support",
                                 null, null, null),
                         });
+                    break;
+
+                case HealthCheckViewModel healthCheck when scenario.StartsWith("issue78-health-findings", StringComparison.Ordinal):
+                    healthCheck.SetResultsForDisplay(
+                        TenantHealthEvaluationServiceTests.CreateContext(),
+                        new TenantHealthPreferences(
+                            new HashSet<string>(StringComparer.Ordinal)
+                            {
+                                TenantHealthRuleCatalog.UnassignedServiceNumber,
+                            },
+                            new HashSet<string>(StringComparer.Ordinal)
+                            {
+                                $"{TenantHealthRuleCatalog.OrphanedResourceAccount}:unassociated:ra-unused",
+                            }),
+                        new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero));
+                    healthCheck.ShowSuppressed = true;
+                    break;
+
+                case HealthCheckViewModel suppressedHealthCheck when scenario.StartsWith("issue78-health-suppressed", StringComparison.Ordinal):
+                    var healthContext = TenantHealthEvaluationServiceTests.CreateContext();
+                    var allRuleIds = TenantHealthRuleCatalog.Rules
+                        .Select(rule => rule.Id)
+                        .ToHashSet(StringComparer.Ordinal);
+                    var allFindingIds = new TenantHealthEvaluationService()
+                        .Evaluate(healthContext, allRuleIds)
+                        .Select(finding => finding.FindingId)
+                        .ToHashSet(StringComparer.Ordinal);
+                    suppressedHealthCheck.SetResultsForDisplay(
+                        healthContext,
+                        new TenantHealthPreferences(
+                            new HashSet<string>(StringComparer.Ordinal),
+                            allFindingIds),
+                        new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero));
+                    suppressedHealthCheck.ShowSuppressed = true;
+                    var healthFindingsScroll = window.GetVisualDescendants()
+                        .OfType<ScrollViewer>()
+                        .Single(scroll => scroll.Name == "HealthFindingsScroll");
+                    healthFindingsScroll.Offset = new Vector(0, 150);
+                    PumpRender();
                     break;
             }
         }

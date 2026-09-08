@@ -736,8 +736,6 @@ namespace PhoneDesk.ViewModels
             List<(string CqName, string DlId)> dlList)
         {
             // ──── HEADER ────
-            AppendHealthCheckAppendix(doc);
-
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
             AppendReportLine(doc, UiTextKey.DocumentationReportTitle, "  TEAMS PHONE SYSTEM — COMPLETE TENANT DOCUMENTATION");
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
@@ -1086,6 +1084,8 @@ namespace PhoneDesk.ViewModels
                 AppendReportLine(doc, UiTextKey.DocumentationReportPhoneNumberLabel, "  Phone Number:    {value}", new Dictionary<string, object?> { ["value"] = variables.RaaAnr });
                 doc.AppendLine();
             }
+
+            AppendHealthCheckAppendix(doc);
 
             doc.AppendLine("═══════════════════════════════════════════════════════════════");
             AppendReportLine(doc, UiTextKey.DocumentationReportEndTitle, "  END OF DOCUMENTATION");

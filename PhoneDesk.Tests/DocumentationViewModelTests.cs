@@ -381,6 +381,11 @@ namespace PhoneDesk.Tests
             Assert.Contains("Add an agent.", vm.DocumentationOutput);
             Assert.Contains("Suppressed: 1", vm.DocumentationOutput);
             Assert.Contains("Disabled rules: 2", vm.DocumentationOutput);
+            var titleIndex = vm.DocumentationOutput.IndexOf("TEAMS PHONE SYSTEM", StringComparison.Ordinal);
+            var appendixIndex = vm.DocumentationOutput.IndexOf("APPENDIX — TENANT HEALTH CHECK", StringComparison.Ordinal);
+            var endIndex = vm.DocumentationOutput.IndexOf("END OF DOCUMENTATION", StringComparison.Ordinal);
+            Assert.True(titleIndex >= 0 && titleIndex < appendixIndex);
+            Assert.True(appendixIndex < endIndex);
         }
 
         [Fact]

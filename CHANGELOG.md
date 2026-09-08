@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.29.0](https://github.com/realgarit/phonedesk/compare/v3.28.0...v3.29.0) (2026-09-08)
+
+
+### Features
+
+* add read-only tenant health checks ([f9094e7](https://github.com/realgarit/phonedesk/commit/f9094e780b505e1636120b8645b6b4d85074c709))
+* add tenant health checks ([10a3263](https://github.com/realgarit/phonedesk/commit/10a326395711369798c765a9c543211185cb2057))
+
+
+### Bug Fixes
+
+* place health findings appendix at report end ([e0a63ba](https://github.com/realgarit/phonedesk/commit/e0a63ba431046c9a4c2163ba1adb1e6a7ae20cfc))
+
 ## [3.28.0](https://github.com/realgarit/phonedesk/compare/v3.27.2...v3.28.0) (2026-09-07)
 
 

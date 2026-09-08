@@ -66,6 +66,8 @@ class Program
         // Persistent audit log (issue #67): per-tenant JSON-lines under the app-data directory.
         services.AddSingleton<IAuditLog, FileAuditLog>();
         services.AddSingleton<IBundledModuleVersionService, BundledModuleVersionService>();
+        services.AddSingleton<ITenantHealthPreferencesStore, TenantHealthPreferencesStore>();
+        services.AddSingleton<ITenantHealthCheckCache, TenantHealthCheckCache>();
         
         // UI Services (singleton - manages UI state)
         services.AddSingleton<IDialogService, DialogService>();
@@ -100,6 +102,9 @@ class Program
         services.AddTransient<IDryRunPlanExporter, DryRunPlanExporter>();
         services.AddTransient<ITenantAsCodeService, TenantAsCodeService>();
         services.AddTransient<ITenantDocumentationSnapshotParser, TenantDocumentationSnapshotParser>();
+        services.AddTransient<ITenantHealthEvaluationService, TenantHealthEvaluationService>();
+        services.AddTransient<ITenantHealthEnrichmentParser, TenantHealthEnrichmentParser>();
+        services.AddTransient<ITenantHealthQueryBuilder, TenantHealthQueryBuilder>();
 
         // Tenant dashboard (issue #64): read-only topology assembly + session-lifetime cache.
         // The assembler is a pure transformation; the cache is a singleton so the retrieved snapshot
@@ -110,6 +115,7 @@ class Program
         // ViewModels (transient - new instance per navigation)
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<DashboardViewModel>();
+        services.AddTransient<HealthCheckViewModel>();
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<GetStartedViewModel>();
         services.AddTransient<VariablesViewModel>();

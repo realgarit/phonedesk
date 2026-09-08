@@ -6,6 +6,7 @@ using PhoneDesk.Tests.TestSupport;
 using PhoneDesk.ViewModels;
 using PhoneDesk.Portability;
 using PhoneDesk.Topology;
+using PhoneDesk.HealthChecks;
 
 namespace PhoneDesk.Tests
 {
@@ -31,7 +32,8 @@ namespace PhoneDesk.Tests
             ITenantAsCodeService? tenantAsCodeService = null,
             IPortabilityFileService? portabilityFileService = null,
             ITenantDocumentationSnapshotParser? snapshotParser = null,
-            ITenantTopologyAssembler? topologyAssembler = null)
+            ITenantTopologyAssembler? topologyAssembler = null,
+            ITenantHealthCheckCache? healthCheckCache = null)
             => new DocumentationViewModel(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
@@ -47,7 +49,8 @@ namespace PhoneDesk.Tests
                 tenantAsCodeService: tenantAsCodeService,
                 portabilityFileService: portabilityFileService,
                 snapshotParser: snapshotParser,
-                topologyAssembler: topologyAssembler);
+                topologyAssembler: topologyAssembler,
+                healthCheckCache: healthCheckCache);
 
         private static void SetupSnapshotOutputs(
             ViewModelTestHarness harness,
@@ -338,6 +341,46 @@ namespace PhoneDesk.Tests
             docBuilder.Verify(d => d.GetExportSchedulesCommand(), Times.Once);
             docBuilder.Verify(d => d.GetExportPhoneNumbersCommand(), Times.Once);
             docBuilder.Verify(d => d.GetExportVoiceUsersCommand(), Times.Once);
+        }
+
+        [Fact]
+        public async Task ExportDocumentationIncludesLatestHealthFindingsForSameTenant()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.SessionManager.SetupGet(manager => manager.TenantId).Returns("tenant-1");
+            harness.SetExecutionResult(string.Empty);
+            var cache = new TenantHealthCheckCache();
+            cache.Set(new TenantHealthCheckResult(
+                "tenant-1",
+                new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero),
+                new[]
+                {
+                    new TenantHealthFinding(
+                        "call-queue-without-agents:empty:cq-1",
+                        TenantHealthRuleCatalog.CallQueueWithoutAgents,
+                        TenantHealthSeverity.Error,
+                        "callQueue",
+                        "cq-1",
+                        "Empty support",
+                        new LocalizedHealthText("Queue cannot ring a person.", "Warteschleife kann keine Person anrufen."),
+                        new LocalizedHealthText("Add an agent.", "Fügen Sie einen Agenten hinzu."),
+                        ConstantsService.Pages.CallQueues),
+                },
+                SuppressedCount: 1,
+                DisabledRuleCount: 2));
+            var vm = CreateViewModel(
+                harness,
+                CreateDocBuilderMock(),
+                healthCheckCache: cache);
+
+            await vm.ExportDocumentationCommand.ExecuteAsync(null);
+
+            Assert.Contains("APPENDIX — TENANT HEALTH CHECK", vm.DocumentationOutput);
+            Assert.Contains("Empty support", vm.DocumentationOutput);
+            Assert.Contains("Queue cannot ring a person.", vm.DocumentationOutput);
+            Assert.Contains("Add an agent.", vm.DocumentationOutput);
+            Assert.Contains("Suppressed: 1", vm.DocumentationOutput);
+            Assert.Contains("Disabled rules: 2", vm.DocumentationOutput);
         }
 
         [Fact]

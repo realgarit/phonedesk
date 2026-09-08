@@ -37,6 +37,38 @@ namespace PhoneDesk.Tests
                 harness.ValidationService.Object,
                 msalAuthService));
 
+            var topologyCache = new TenantTopologyCache();
+            services.AddSingleton(sp => new DashboardViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                new TenantTopologyAssembler(),
+                topologyCache));
+
+            var healthPreferences = new Mock<ITenantHealthPreferencesStore>();
+            healthPreferences.Setup(store => store.Load(It.IsAny<string>()))
+                .Returns(PhoneDesk.HealthChecks.TenantHealthPreferences.Default);
+            healthPreferences.Setup(store => store.Save(It.IsAny<string>(), It.IsAny<PhoneDesk.HealthChecks.TenantHealthPreferences>()))
+                .Returns(true);
+            services.AddSingleton(sp => new HealthCheckViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                topologyCache,
+                new TenantHealthEvaluationService(),
+                new TenantHealthEnrichmentParser(),
+                new TenantHealthQueryBuilder(),
+                healthPreferences.Object,
+                new TenantHealthCheckCache()));
+
             services.AddSingleton(sp => new VariablesViewModel(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
@@ -153,6 +185,9 @@ namespace PhoneDesk.Tests
         public static IEnumerable<object[]> KnownPages()
         {
             yield return new object[] { ConstantsService.Pages.Welcome, typeof(WelcomeViewModel) };
+            yield return new object[] { ConstantsService.Pages.Dashboard, typeof(DashboardViewModel) };
+            yield return new object[] { ConstantsService.Pages.HealthCheck, typeof(HealthCheckViewModel) };
+            yield return new object[] { ConstantsService.Pages.HealthCheck.Replace(" ", ""), typeof(HealthCheckViewModel) };
             yield return new object[] { ConstantsService.Pages.GetStarted, typeof(GetStartedViewModel) };
             yield return new object[] { ConstantsService.Pages.GetStarted.Replace(" ", ""), typeof(GetStartedViewModel) };
             yield return new object[] { ConstantsService.Pages.Variables, typeof(VariablesViewModel) };

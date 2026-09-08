@@ -94,6 +94,7 @@ namespace PhoneDesk.Services
         {
             public const string Welcome = "Welcome";
             public const string Dashboard = "Dashboard";
+            public const string HealthCheck = "Health Check";
             public const string GetStarted = "Get Started";
             public const string Variables = "Variables";
             public const string M365Groups = "M365 Groups";

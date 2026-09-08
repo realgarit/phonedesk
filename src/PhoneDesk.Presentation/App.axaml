@@ -50,6 +50,8 @@
                     <SolidColorBrush x:Key="SuccessHairlineBrush" Color="#403FB68B"/>
                     <SolidColorBrush x:Key="StatusOnBrush" Color="#4ADE80"/>
                     <SolidColorBrush x:Key="StatusOffBrush" Color="#55556A"/>
+                    <SolidColorBrush x:Key="HealthErrorBrush" Color="#F87171"/>
+                    <SolidColorBrush x:Key="HealthWarningBrush" Color="#FBBF24"/>
                     <!-- Brand mark gradient -->
                     <LinearGradientBrush x:Key="BrandGradientBrush" StartPoint="0%,0%" EndPoint="100%,100%">
                         <GradientStop Offset="0" Color="#7B80EE"/>
@@ -79,6 +81,8 @@
                     <SolidColorBrush x:Key="SuccessHairlineBrush" Color="#401E9E6A"/>
                     <SolidColorBrush x:Key="StatusOnBrush" Color="#16A34A"/>
                     <SolidColorBrush x:Key="StatusOffBrush" Color="#A6A4BC"/>
+                    <SolidColorBrush x:Key="HealthErrorBrush" Color="#DC2626"/>
+                    <SolidColorBrush x:Key="HealthWarningBrush" Color="#B45309"/>
                     <LinearGradientBrush x:Key="BrandGradientBrush" StartPoint="0%,0%" EndPoint="100%,100%">
                         <GradientStop Offset="0" Color="#7B80EE"/>
                         <GradientStop Offset="1" Color="#45478F"/>

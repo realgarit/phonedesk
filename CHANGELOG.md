@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.29.1](https://github.com/realgarit/phonedesk/compare/v3.29.0...v3.29.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* restore Windows Teams sign-in ([29022c7](https://github.com/realgarit/phonedesk/commit/29022c7691c05c0b4c83c5bc96a0355d24e67fa7))
+* restore Windows Teams sign-in ([82107b7](https://github.com/realgarit/phonedesk/commit/82107b76dc422ad25c74a4613b1ca41839d88dea))
+
 ## [3.29.0](https://github.com/realgarit/phonedesk/compare/v3.28.0...v3.29.0) (2026-09-08)
 
 

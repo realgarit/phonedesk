@@ -1,0 +1,52 @@
+# Native Codex Code Review is configured in Codex Cloud. This workflow keeps
+# the deterministic Semgrep scan in CI and never needs an AI API key.
+name: semgrep-review
+
+on:
+  pull_request:
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test Semgrep validator
+        run: python3 scripts/test_validate_semgrep_run.py
+
+      - name: Compute PR diff
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: bash scripts/compute-diff.sh
+
+      - name: Run Semgrep
+        run: bash scripts/run-semgrep.sh
+
+      - name: Format Semgrep comment
+        run: python3 scripts/format-review-comment.py semgrep.json > comment.md
+
+      - name: Post PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
+
+      - name: Fail check if findings exist
+        run: |
+          if ! count=$(python3 -c 'import json; print(len(json.load(open("semgrep.json")).get("results", [])))' 2>/dev/null); then
+            echo "Could not parse semgrep.json - failing check so it gets looked at."
+            exit 1
+          fi
+          echo "Semgrep findings: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "Findings reported - see PR comment."
+            exit 1
+          fi

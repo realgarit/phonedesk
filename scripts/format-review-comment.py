@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Format Semgrep JSON + AI review text into one PR comment body.
+"""Format Semgrep JSON into a PR comment body.
 
-Usage: format-review-comment.py <semgrep.json> <ai-review.txt>
+Usage: format-review-comment.py <semgrep.json>
 Prints the formatted comment to stdout.
 """
 import json
@@ -53,22 +53,12 @@ def format_semgrep(path):
     return "\n".join(lines)
 
 
-def format_ai_review(path):
-    with open(path) as f:
-        text = f.read().strip()
-    return text if text else "No findings."
-
-
 def main():
-    semgrep_path, ai_review_path = sys.argv[1], sys.argv[2]
+    semgrep_path = sys.argv[1]
     semgrep_section = format_semgrep(semgrep_path)
-    ai_section = format_ai_review(ai_review_path)
-    print("## Automated review\n")
+    print("## Automated security review\n")
     print("### Semgrep (deterministic)\n")
     print(semgrep_section)
-    print()
-    print("### AI review (security + code quality)\n")
-    print(ai_section)
 
 
 if __name__ == "__main__":

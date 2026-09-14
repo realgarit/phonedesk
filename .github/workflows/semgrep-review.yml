@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -41,7 +41,21 @@ jobs:
 
       - name: Fail check if findings exist
         run: |
-          if ! count=$(python3 -c 'import json; print(len(json.load(open("semgrep.json")).get("results", [])))' 2>/dev/null); then
+          if ! count=$(python3 - <<'PYEOF'
+          import json
+
+
+          with open("semgrep.json", encoding="utf-8") as file:
+              report = json.load(file)
+          results = report.get("results")
+          errors = report.get("errors", [])
+          if not isinstance(results, list):
+              raise SystemExit("Semgrep report has no results array.")
+          if errors:
+              raise SystemExit(f"Semgrep reported {len(errors)} scanner error(s).")
+          print(len(results))
+          PYEOF
+          ); then
             echo "Could not parse semgrep.json - failing check so it gets looked at."
             exit 1
           fi

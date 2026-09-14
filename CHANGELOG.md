@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.29.2](https://github.com/realgarit/phonedesk/compare/v3.29.1...v3.29.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **ci:** harden Semgrep review ([c98461f](https://github.com/realgarit/phonedesk/commit/c98461f846e3d28902d509c7daaccd9ef7f619a3))
+* **ci:** harden Semgrep review ([5991b6d](https://github.com/realgarit/phonedesk/commit/5991b6dc7898ecccd4f5707b782b9bc8aa377f3f))
+
 ## [3.29.1](https://github.com/realgarit/phonedesk/compare/v3.29.0...v3.29.1) (2026-09-09)
 
 

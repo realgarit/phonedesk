@@ -122,6 +122,31 @@
                 </StackPanel>
             </StackPanel>
 
+            <Expander Name="TelephonyBasics" HorizontalAlignment="Stretch" Margin="0,0,0,20"
+                      Header="{loc:Translate Key=WelcomeBasicsTitle}">
+                <StackPanel Spacing="16" Margin="12">
+                    <TextBlock Text="{loc:Translate Key=WelcomeCallExample}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="24" RowSpacing="16">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=WelcomeAttendantTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:Translate Key=WelcomeAttendantBody}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=WelcomeQueueTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:Translate Key=WelcomeQueueBody}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=WelcomeResourceTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:Translate Key=WelcomeResourceBody}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=WelcomeTenantTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:Translate Key=WelcomeTenantBody}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Expander>
+
             <!-- Workflow Steps -->
             <Grid Classes="workflow">
                 <StackPanel>

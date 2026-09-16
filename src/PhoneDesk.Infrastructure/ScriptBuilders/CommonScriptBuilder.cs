@@ -105,7 +105,10 @@ try {
     # Explicitly import MicrosoftTeams to ensure cmdlets are available
     Import-Module " + ConstantsService.PowerShellModules.MicrosoftTeams + @" -Force -ErrorAction Stop
 
-    Connect-MicrosoftTeams -ErrorAction Stop
+    # MicrosoftTeams 7.9.0 enables WAM by default on Windows. PhoneDesk hosts
+    # PowerShell in-process and has no console HWND for the module to parent WAM to.
+    # Use Microsoft's documented compatibility switch for unsupported hosts.
+    Connect-MicrosoftTeams -DisableWAM -ErrorAction Stop
     $connection = Get-CsTenant -ErrorAction Stop
     if ($connection) {
         Write-Host 'SUCCESS: Connected to Microsoft Teams'

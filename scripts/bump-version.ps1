@@ -49,11 +49,12 @@ switch ($BumpType) {
     }
 }
 
-$newVersion = "$major.$minor.$patch.$revision"
+$displayVersion = "$major.$minor.$patch"
+$newVersion = "$displayVersion.$revision"
 Write-Host "New version: $newVersion" -ForegroundColor Green
 
 # Update csproj file
-$csprojContent = $csprojContent -replace '<Version>[\d.]+</Version>', "<Version>$newVersion</Version>"
+$csprojContent = $csprojContent -replace '<Version>[\d.]+</Version>', "<Version>$displayVersion</Version>"
 $csprojContent = $csprojContent -replace '<AssemblyVersion>[\d.]+</AssemblyVersion>', "<AssemblyVersion>$newVersion</AssemblyVersion>"
 $csprojContent = $csprojContent -replace '<FileVersion>[\d.]+</FileVersion>', "<FileVersion>$newVersion</FileVersion>"
 Set-Content -Path $csprojPath -Value $csprojContent -NoNewline
@@ -67,10 +68,9 @@ Set-Content -Path $manifestPath -Value $manifestContent -NoNewline
 Write-Host "✓ Updated app.manifest" -ForegroundColor Green
 
 # Update ConstantsService.cs (use 3-part version for display)
-$constantsPath = Join-Path $repoRoot "src\PhoneDesk.Domain\ConstantsService.cs"
+$constantsPath = Join-Path $repoRoot "src/PhoneDesk.Domain/ConstantsService.cs"
 $constantsContent = Get-Content $constantsPath -Raw
 # Use 3-part version for display (major.minor.patch)
-$displayVersion = "$major.$minor.$patch"
 $constantsContent = $constantsContent -replace 'public const string Version = "Version [\d.]+";', "public const string Version = `"Version $displayVersion`";"
 Set-Content -Path $constantsPath -Value $constantsContent -NoNewline
 Write-Host "✓ Updated ConstantsService.cs" -ForegroundColor Green

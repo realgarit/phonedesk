@@ -119,6 +119,26 @@ class ValidateAiReviewTests(unittest.TestCase):
             self.assertFalse(valid, payload)
             self.assertIn("semgrep", message.lower())
 
+    def test_semgrep_scanner_error_identifies_the_affected_path(self):
+        valid, message = self.run_validation(
+            {
+                "results": [],
+                "errors": [
+                    {
+                        "type": "PartialParsing",
+                        "message": "Syntax error",
+                        "path": "src/example.cs",
+                    }
+                ],
+            },
+            "No findings.\n",
+            "model_exit=0\n",
+        )
+
+        self.assertFalse(valid)
+        self.assertIn("src/example.cs", message)
+        self.assertIn("PartialParsing", message)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,8 +10,9 @@ namespace PhoneDesk.Services.Interfaces
     public interface ITenantTopologyCache
     {
         bool HasValue { get; }
+        string? TenantId { get; }
         TenantTopology? Current { get; }
-        void Set(TenantTopology topology);
+        void Set(string tenantId, TenantTopology topology);
         void Clear();
     }
 }

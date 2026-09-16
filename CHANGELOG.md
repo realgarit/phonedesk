@@ -1,5 +1,68 @@
 # Changelog
 
+## [3.29.1](https://github.com/realgarit/phonedesk/compare/v3.29.0...v3.29.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* restore Windows Teams sign-in ([29022c7](https://github.com/realgarit/phonedesk/commit/29022c7691c05c0b4c83c5bc96a0355d24e67fa7))
+* restore Windows Teams sign-in ([82107b7](https://github.com/realgarit/phonedesk/commit/82107b76dc422ad25c74a4613b1ca41839d88dea))
+
+## [3.29.0](https://github.com/realgarit/phonedesk/compare/v3.28.0...v3.29.0) (2026-09-08)
+
+
+### Features
+
+* add read-only tenant health checks ([f9094e7](https://github.com/realgarit/phonedesk/commit/f9094e780b505e1636120b8645b6b4d85074c709))
+* add tenant health checks ([10a3263](https://github.com/realgarit/phonedesk/commit/10a326395711369798c765a9c543211185cb2057))
+
+
+### Bug Fixes
+
+* place health findings appendix at report end ([e0a63ba](https://github.com/realgarit/phonedesk/commit/e0a63ba431046c9a4c2163ba1adb1e6a7ae20cfc))
+
+## [3.28.0](https://github.com/realgarit/phonedesk/compare/v3.27.2...v3.28.0) (2026-09-07)
+
+
+### Features
+
+* complete live tenant snapshots for issue [#71](https://github.com/realgarit/phonedesk/issues/71) ([d0f3566](https://github.com/realgarit/phonedesk/commit/d0f356694d0503d59ca924e9b001c981b1875d1e))
+* complete live tenant topology snapshots ([1f7c3cb](https://github.com/realgarit/phonedesk/commit/1f7c3cb970eac9089b476dd2ed5d3974c3f54bc5))
+
+
+### Bug Fixes
+
+* preserve duplicate tenant object names ([18d28b2](https://github.com/realgarit/phonedesk/commit/18d28b282bb73a6c03468c3b49afd6e3af843acc))
+* stabilize ambiguous snapshot detail identity ([b4fea0b](https://github.com/realgarit/phonedesk/commit/b4fea0b2a6fb167791c95d8310c6347282b12bb3))
+* support multiple resource associations ([94de781](https://github.com/realgarit/phonedesk/commit/94de781be26ab410972b333ed31555c3c8f107b5))
+
+## [3.27.2](https://github.com/realgarit/phonedesk/compare/v3.27.1...v3.27.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* explain Teams telephony for first-time operators ([915e03f](https://github.com/realgarit/phonedesk/commit/915e03f42778e248e8b4cd9a46726ef2543a5d3e))
+* explain Teams telephony for first-time operators ([df9edbe](https://github.com/realgarit/phonedesk/commit/df9edbef97b8d0e457c49106c942eca1bcc13efb))
+
+## [3.27.1](https://github.com/realgarit/phonedesk/compare/v3.26.1...v3.27.1) (2026-09-05)
+
+
+### Features
+
+* add tenant configuration portability and drift ([67f9719](https://github.com/realgarit/phonedesk/commit/67f9719a6199599526e7af0740b39ae8909d0b4b))
+* add tenant configuration portability and drift ([e02eec8](https://github.com/realgarit/phonedesk/commit/e02eec8a746811f0c70510750e24bc02f4dbcef2))
+
+
+### Bug Fixes
+
+* clarify portability actions and test release scripts ([aa68670](https://github.com/realgarit/phonedesk/commit/aa68670b1916a93305b13025f1d43f058596dcb9))
+* clarify setup screens and reject incomplete schedules ([d6dd11b](https://github.com/realgarit/phonedesk/commit/d6dd11b8f08d1168912cdf81a1f76c98e7e9204b))
+* finish configuration readability for 3.27.1 ([f290a80](https://github.com/realgarit/phonedesk/commit/f290a80a55b3337aaa47b0943c38e7e70c287143))
+* keep CI script validation portable and parseable ([0657579](https://github.com/realgarit/phonedesk/commit/0657579eaf8e22736845b9d758398f2a7fae78d4))
+* keep configuration labels and wizard step names visible ([135163d](https://github.com/realgarit/phonedesk/commit/135163d537ff4dd640886fde93e0ce25c356aa4d))
+* preserve optional holiday end times ([f3f81e2](https://github.com/realgarit/phonedesk/commit/f3f81e22a791a7e8637761b681c6aa0e2e399d16))
+* reject incomplete imported weekly schedules ([370b3f3](https://github.com/realgarit/phonedesk/commit/370b3f3bf8a730216b94add77a09fa71fb12488c))
+
 ## [3.26.1](https://github.com/realgarit/phonedesk/compare/v3.26.0...v3.26.1) (2026-08-22)
 
 

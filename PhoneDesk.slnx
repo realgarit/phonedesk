@@ -9,5 +9,6 @@
     <Project Path="tools/PhoneDesk.LocalizationGuard/PhoneDesk.LocalizationGuard.csproj" />
   </Folder>
   <Project Path="phonedesk.csproj" />
+  <Project Path="PhoneDesk.IntegrationTests/PhoneDesk.IntegrationTests.csproj" />
   <Project Path="PhoneDesk.Tests/PhoneDesk.Tests.csproj" />
 </Solution>

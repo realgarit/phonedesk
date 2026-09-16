@@ -37,6 +37,12 @@ namespace PhoneDesk.Views
             => DialogEventHelper.CloseOnBackdropClick(VM, VM?.CancelAutoAttendantConfigurationCommand);
 
         private void HolidaySeriesManagerCard_PointerPressed(object? sender, PointerPressedEventArgs e) => DialogEventHelper.StopPropagation(sender, e);
+
+        private void ConfigurationImportBackdrop_PointerPressed(object? sender, PointerPressedEventArgs e)
+            => DialogEventHelper.CloseOnBackdropClick(VM, VM?.CancelConfigurationImportCommand);
+
+        private void ConfigurationImportCard_PointerPressed(object? sender, PointerPressedEventArgs e)
+            => DialogEventHelper.StopPropagation(sender, e);
         private void HolidayTimePickerCard_PointerPressed(object? sender, PointerPressedEventArgs e) => DialogEventHelper.StopPropagation(sender, e);
         private void EditHolidayCard_PointerPressed(object? sender, PointerPressedEventArgs e) => DialogEventHelper.StopPropagation(sender, e);
         private void PredefinedHolidaysWizardCard_PointerPressed(object? sender, PointerPressedEventArgs e) => DialogEventHelper.StopPropagation(sender, e);

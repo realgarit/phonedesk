@@ -19,7 +19,9 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
-        <!-- Local styles removed, using App.axaml styles -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
         <Style Selector="fi|SymbolIcon.AnimatedArrow">
             <Style.Animations>
                 <Animation Duration="0:0:1" IterationCount="Infinite">
@@ -48,17 +50,17 @@
 
                 <!-- Page Header -->
                 <StackPanel Grid.Row="0" Margin="24,24,24,8">
-                    <StackPanel Orientation="Horizontal" Spacing="14">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                         <Border Classes="icon-badge">
                             <fi:SymbolIcon Symbol="Code"/>
                         </Border>
-                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                             <TextBlock Text="{loc:Translate Key=VariablesTitle}" Classes="page-title" Margin="0"/>
                             <TextBlock Text="{loc:Translate Key=VariablesSubtitle}"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
                     <TextBlock Text="{loc:Translate Key=VariablesWelcomeMessage}"
                                FontSize="13"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -84,30 +86,35 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,8,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerLegalNameWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerLegalNameWatermark}"
                                              Text="{Binding Variables.CustomerLegalName}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleAcmeCorp}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="4,8,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesMicrosoftFallbackDomainWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesMicrosoftFallbackDomainWatermark}"
                                              Text="{Binding Variables.MsFallbackDomain}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleFallbackDomain}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerCodeWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerCodeWatermark}"
                                              Text="{Binding Variables.Customer}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerCode}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="4,0,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesCustomerGroupNameWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <TextBox Watermark="{loc:Translate Key=VariablesCustomerGroupNameWatermark}"
                                              Text="{Binding Variables.CustomerGroupName}"
                                              />
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleCustomerGroupName}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesLanguageIdWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding LanguageOptions}"
                                               Text="{Binding Variables.LanguageId}"
@@ -118,6 +125,7 @@
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleLanguageId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="1" Margin="4,0,0,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesTimeZoneIdWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding TimeZoneOptions}"
                                               Text="{Binding Variables.TimeZoneId}"
@@ -128,6 +136,7 @@
                                     <TextBlock Text="{loc:Translate Key=VariablesExampleTimeZoneId}" FontSize="11" Margin="0,4,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,4,8">
+                                    <TextBlock Text="{loc:Translate Key=VariablesUsageLocationWatermark}" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
                                     <AutoCompleteBox
                                               ItemsSource="{Binding UsageLocationOptions}"
                                               Text="{Binding Variables.UsageLocation}"
@@ -538,6 +547,83 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
+            </Grid>
+        </Border>
+        <!-- Configuration import preview: parsing never mutates shared state; Apply is the only commit path. -->
+        <Border IsVisible="{Binding ShowConfigurationImportPreview}"
+                Background="#80000000"
+                ZIndex="1200"
+                PointerPressed="ConfigurationImportBackdrop_PointerPressed">
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="24"
+                  PointerPressed="ConfigurationImportCard_PointerPressed">
+                <Border Classes="dialog" Width="900" MaxWidth="960" MaxHeight="620">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="14">
+                        <StackPanel Grid.Row="0" Spacing="6">
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewTitle}"
+                                       Classes="dialog-title"/>
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewDescription}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{loc:Translate Key=VariablesImportPreviewFileLabel}"
+                                       FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding PendingConfigurationFileName}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <Grid Grid.Row="2">
+                            <DataGrid ItemsSource="{Binding PendingConfigurationChanges}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      CanUserResizeColumns="True"
+                                      GridLinesVisibility="Horizontal"
+                                      MaxHeight="390"
+                                      IsVisible="{Binding HasPendingConfigurationChanges}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportPathColumn}"
+                                                        Binding="{Binding DisplayPath}" Width="2*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportCurrentColumn}"
+                                                        Binding="{Binding CurrentValue}" Width="2*"/>
+                                    <DataGridTextColumn Header="{loc:Translate Key=VariablesImportNewColumn}"
+                                                        Binding="{Binding ImportedValue}" Width="2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <Border Classes="sunken"
+                                    Padding="20"
+                                    IsVisible="{Binding !HasPendingConfigurationChanges}">
+                                <TextBlock Text="{loc:Translate Key=VariablesImportNoChanges}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Row="3"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    Spacing="12">
+                            <Button Command="{Binding CancelConfigurationImportCommand}"
+                                    Classes="IconText">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Dismiss"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ApplyConfigurationImportCommand}"
+                                    Classes="accent IconText"
+                                    IsEnabled="{Binding HasPendingConfigurationChanges}">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Checkmark"/>
+                                    <TextBlock Text="{loc:Translate Key=VariablesApplyImportAction}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </Border>
         <!-- Holiday Time Picker Dialog - Border overlay -->

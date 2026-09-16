@@ -107,6 +107,13 @@
                                 </StackPanel>
                             </ListBoxItem>
 
+                            <ListBoxItem Tag="HealthCheck" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationHealthCheck}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                                    <fi:SymbolIcon Symbol="ShieldCheckmark"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationHealthCheck}" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ListBoxItem>
+
                             <ListBoxItem Tag="GetStarted" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationReadinessCheck}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="Rocket"/>

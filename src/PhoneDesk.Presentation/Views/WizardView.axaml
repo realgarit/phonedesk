@@ -83,7 +83,7 @@
                                                     <TextBlock Text="{Binding Title}"
                                                              FontSize="12"
                                                              FontWeight="SemiBold"
-                                                             TextTrimming="CharacterEllipsis"/>
+                                                             TextWrapping="Wrap"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>

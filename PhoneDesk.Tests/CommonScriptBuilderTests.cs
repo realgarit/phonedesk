@@ -33,5 +33,15 @@ namespace PhoneDesk.Tests
             Assert.Contains("linux-x64/Modules", script);
             Assert.Contains("../linux-x64/Modules", script);
         }
+
+        [Fact]
+        public void GetConnectTeamsCommand_DisablesWamForHostedPowerShell()
+        {
+            var builder = new CommonScriptBuilder(_mockSanitizer.Object);
+            var script = builder.GetConnectTeamsCommand();
+
+            Assert.Contains("Connect-MicrosoftTeams -DisableWAM -ErrorAction Stop", script);
+            Assert.DoesNotContain("Connect-MicrosoftTeams -ErrorAction Stop", script);
+        }
     }
 }

@@ -5,9 +5,9 @@
          EnableNETAnalyzers and AnalysisLevel are inherited from Directory.Build.props. -->
     <OutputType>WinExe</OutputType>
     <RootNamespace>PhoneDesk</RootNamespace>
-    <Version>3.26.1</Version> <!-- x-release-please-version -->
-    <AssemblyVersion>3.26.1.0</AssemblyVersion> <!-- x-release-please-version -->
-    <FileVersion>3.26.1.0</FileVersion> <!-- x-release-please-version -->
+    <Version>3.29.1</Version> <!-- x-release-please-version -->
+    <AssemblyVersion>3.29.1.0</AssemblyVersion> <!-- x-release-please-version -->
+    <FileVersion>3.29.1.0</FileVersion> <!-- x-release-please-version -->
     
     <!-- Publish Settings for Framework-Dependent Deployment -->
     <PublishSingleFile>false</PublishSingleFile>
@@ -55,10 +55,10 @@
     </None>
     <AvaloniaXaml Remove="Archive\**\*.axaml" />
 
-    <!-- Exclude test project from build -->
-    <Compile Remove="PhoneDesk.Tests\**\*.cs" />
-    <None Remove="PhoneDesk.Tests\**" />
-    <EmbeddedResource Remove="PhoneDesk.Tests\**" />
+    <!-- Exclude repository test projects from the root application glob. -->
+    <Compile Remove="PhoneDesk.*Tests\**\*.cs" />
+    <None Remove="PhoneDesk.*Tests\**" />
+    <EmbeddedResource Remove="PhoneDesk.*Tests\**" />
 
     <!-- Exclude standalone repository tools from the application project. -->
     <Compile Remove="tools\**\*.cs" />

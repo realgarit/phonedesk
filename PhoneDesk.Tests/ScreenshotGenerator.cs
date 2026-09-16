@@ -23,6 +23,8 @@ using PhoneDesk.Models;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.ViewModels;
+using PhoneDesk.Portability;
+using PhoneDesk.HealthChecks;
 
 namespace PhoneDesk.Tests
 {
@@ -69,12 +71,27 @@ namespace PhoneDesk.Tests
             new("Welcome", true, "shell-settings-en.png", "settings-en"),
             new("Welcome", true, "shell-settings-de.png", "settings-de"),
             new("Welcome", true, "welcome.png"),
+            new("Welcome", true, "welcome-de.png", "novice-de"),
+            new("Welcome", true, "welcome-basics-en.png", "novice-basics-en"),
+            new("Welcome", true, "welcome-basics-de.png", "novice-basics-de"),
+            new("GetStarted", true, "get-started-checklist-en.png", "novice-checklist-en"),
+            new("GetStarted", true, "get-started-checklist-de.png", "novice-checklist-de"),
             new("GetStarted", true, "get-started.png"),
             new("GetStarted", true, "get-started-ready.png", "ready"),
+            new("GetStarted", true, "get-started-connections-en.png", "ready-connections-en"),
+            new("GetStarted", true, "get-started-connections-de.png", "ready-connections-de"),
             new("GetStarted", true, "get-started-ready-de.png", "ready-de"),
             new("Variables", true, "variables.png"),
             new("Variables", true, "variables-de.png", "ready-de"),
+            new("Variables", true, "config-import-preview-en.png", "issue71-config-import-en"),
+            new("Variables", true, "config-import-preview-de.png", "issue71-config-import-de"),
             new("Dashboard", true, "dashboard-de.png", "ready-de"),
+            new("HealthCheck", true, "health-check-empty-en.png", "issue78-health-empty-en"),
+            new("HealthCheck", true, "health-check-empty-de.png", "issue78-health-empty-de"),
+            new("HealthCheck", true, "health-check-findings-en.png", "issue78-health-findings-en"),
+            new("HealthCheck", true, "health-check-findings-de.png", "issue78-health-findings-de"),
+            new("HealthCheck", true, "health-check-suppressed-en.png", "issue78-health-suppressed-en"),
+            new("HealthCheck", true, "health-check-suppressed-de.png", "issue78-health-suppressed-de"),
             new("M365Groups", true, "m365-groups.png"),
             new("M365Groups", true, "task5-m365-groups-empty-en.png", "task5-m365-empty-en"),
             new("M365Groups", true, "task5-m365-groups-empty-de.png", "task5-m365-empty-de"),
@@ -98,8 +115,12 @@ namespace PhoneDesk.Tests
             new("BulkOperations", true, "bulk-operations.png"),
             new("BulkOperations", true, "task5-bulk-operations-error-en.png", "task5-bulk-error-en"),
             new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
+            new("Documentation", true, "documentation-empty-en.png", "task6-documentation-empty-en"),
+            new("Documentation", true, "documentation-empty-de.png", "task6-documentation-empty-de"),
             new("Documentation", true, "documentation.png"),
             new("Documentation", true, "documentation-de.png", "ready-de"),
+            new("Documentation", true, "topology-drift-en.png", "issue71-topology-drift-en"),
+            new("Documentation", true, "topology-drift-de.png", "issue71-topology-drift-de"),
             new("History", true, "history-de.png", "ready-de"),
             new("Welcome", true, "task6-update-banner-en.png", "task6-update-banner-en"),
             new("Welcome", true, "task6-update-banner-de.png", "task6-update-banner-de"),
@@ -193,6 +214,8 @@ namespace PhoneDesk.Tests
                     continue;
                 }
 
+                ((App)app).Services = provider;
+                app.Resources["TranslationCatalog"] = provider.GetRequiredService<ITranslationService>().Text;
                 app.RequestedThemeVariant = shot.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
                 if (string.Equals(previousPage, shot.Page, StringComparison.Ordinal))
                 {
@@ -294,7 +317,7 @@ namespace PhoneDesk.Tests
             var sharedState = provider.GetRequiredService<ISharedStateService>();
             var translation = provider.GetRequiredService<ITranslationService>();
 
-            translation.CurrentLanguage = scenario.Contains("-de", StringComparison.Ordinal)
+            translation.CurrentLanguage = scenario.EndsWith("-de", StringComparison.Ordinal)
                 ? AppLanguage.German
                 : AppLanguage.English;
 
@@ -339,6 +362,31 @@ namespace PhoneDesk.Tests
             }
 
             mainWindowViewModel.IsSettingsOpen = false;
+            if (scenario.StartsWith("ready-connections", StringComparison.Ordinal))
+            {
+                var scroll = window.GetVisualDescendants().OfType<ScrollViewer>().Single(e => e.Name == "ReadinessScroll");
+                scroll.ScrollToEnd();
+                PumpRender();
+                return;
+            }
+            foreach (var help in window.GetVisualDescendants().OfType<Expander>()
+                .Where(e => e.Name == "TelephonyBasics" || e.Name == "SetupChecklist"))
+            {
+                help.IsExpanded = false;
+            }
+            if (scenario.StartsWith("novice-basics", StringComparison.Ordinal)
+                || scenario.StartsWith("novice-checklist", StringComparison.Ordinal))
+            {
+                var name = scenario.StartsWith("novice-basics", StringComparison.Ordinal)
+                    ? "TelephonyBasics" : "SetupChecklist";
+                var expander = window.GetVisualDescendants().OfType<Expander>().Single(e => e.Name == name);
+                expander.IsExpanded = true;
+                PumpRender();
+                expander.BringIntoView();
+                PumpRender();
+                return;
+            }
+
             if (scenario.StartsWith("task6-update-banner", StringComparison.Ordinal))
             {
                 var stateType = typeof(MainWindowViewModel).GetNestedType("UpdateBannerState", BindingFlags.NonPublic)
@@ -529,6 +577,85 @@ namespace PhoneDesk.Tests
                         new Dictionary<string, object?> { ["error"] = errorDetails });
                     break;
                     }
+
+                case VariablesViewModel variables when scenario.StartsWith("issue71-config-import", StringComparison.Ordinal):
+                    variables.PendingConfigurationFileName = "contoso-production.json";
+                    variables.PendingConfigurationChanges.Clear();
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.general.customer", "contoso", "fabrikam"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.general.usageLocation", "CH", "DE"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.callQueueTemplate.overflowThreshold", "10", "25"));
+                    variables.PendingConfigurationChanges.Add(new ConfigurationChange(
+                        "configuration.holidayTemplate.series", "2 entries", "4 entries"));
+                    variables.ShowConfigurationImportPreview = true;
+                    break;
+
+                case DocumentationViewModel documentation when scenario.StartsWith("issue71-topology-drift", StringComparison.Ordinal):
+                    documentation.SetTopologyDriftForDisplay(
+                        "contoso-baseline-20260801.json",
+                        new[]
+                        {
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "autoAttendant", "aa-1", "Main Reception",
+                                "languageId", "de-DE", "en-US"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "callQueue", "cq-1", "Support Queue",
+                                "agentAlertTime", "30", "45"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "phoneNumber", "+41440000000", "+41 44 000 00 00",
+                                "city", "Zurich", "Bern"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Changed, "autoAttendantMenuOption", "aa-1/menu-1",
+                                "Reception / DefaultCallFlow / 1", "targetId", "cq-old", "cq-new"),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Added, "resourceAccount", "ra-2", "After-hours RA",
+                                null, null, null),
+                            new TopologyDriftEntry(
+                                TopologyDriftKind.Removed, "group", "group-old", "Legacy Support",
+                                null, null, null),
+                        });
+                    break;
+
+                case HealthCheckViewModel healthCheck when scenario.StartsWith("issue78-health-findings", StringComparison.Ordinal):
+                    healthCheck.SetResultsForDisplay(
+                        TenantHealthEvaluationServiceTests.CreateContext(),
+                        new TenantHealthPreferences(
+                            new HashSet<string>(StringComparer.Ordinal)
+                            {
+                                TenantHealthRuleCatalog.UnassignedServiceNumber,
+                            },
+                            new HashSet<string>(StringComparer.Ordinal)
+                            {
+                                $"{TenantHealthRuleCatalog.OrphanedResourceAccount}:unassociated:ra-unused",
+                            }),
+                        new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero));
+                    healthCheck.ShowSuppressed = true;
+                    break;
+
+                case HealthCheckViewModel suppressedHealthCheck when scenario.StartsWith("issue78-health-suppressed", StringComparison.Ordinal):
+                    var healthContext = TenantHealthEvaluationServiceTests.CreateContext();
+                    var allRuleIds = TenantHealthRuleCatalog.Rules
+                        .Select(rule => rule.Id)
+                        .ToHashSet(StringComparer.Ordinal);
+                    var allFindingIds = new TenantHealthEvaluationService()
+                        .Evaluate(healthContext, allRuleIds)
+                        .Select(finding => finding.FindingId)
+                        .ToHashSet(StringComparer.Ordinal);
+                    suppressedHealthCheck.SetResultsForDisplay(
+                        healthContext,
+                        new TenantHealthPreferences(
+                            new HashSet<string>(StringComparer.Ordinal),
+                            allFindingIds),
+                        new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero));
+                    suppressedHealthCheck.ShowSuppressed = true;
+                    var healthFindingsScroll = window.GetVisualDescendants()
+                        .OfType<ScrollViewer>()
+                        .Single(scroll => scroll.Name == "HealthFindingsScroll");
+                    healthFindingsScroll.Offset = new Vector(0, 150);
+                    PumpRender();
+                    break;
             }
         }
 

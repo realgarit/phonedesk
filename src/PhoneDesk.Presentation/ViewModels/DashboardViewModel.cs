@@ -102,7 +102,8 @@ namespace PhoneDesk.ViewModels
             }
 
             // Instant restore from the session cache (issue #64: navigation back is instant).
-            if (_cache.HasValue && _cache.Current is not null)
+            if (_cache.HasValue && _cache.Current is not null &&
+                string.Equals(_cache.TenantId, _sessionManager.TenantId, StringComparison.OrdinalIgnoreCase))
             {
                 Populate(_cache.Current);
             }
@@ -141,7 +142,8 @@ namespace PhoneDesk.ViewModels
         [RelayCommand]
         private async Task LoadAsync()
         {
-            if (_cache.HasValue && _cache.Current is not null)
+            if (_cache.HasValue && _cache.Current is not null &&
+                string.Equals(_cache.TenantId, _sessionManager.TenantId, StringComparison.OrdinalIgnoreCase))
             {
                 Populate(_cache.Current);
                 return;
@@ -163,7 +165,14 @@ namespace PhoneDesk.ViewModels
                 var result = await ExecutePowerShellCommandAsync(command, null, "RetrieveTenantTopology", allowThrottleRetry: true);
 
                 var topology = _assembler.Assemble(result.Value, DateTimeOffset.UtcNow);
-                _cache.Set(topology);
+                var tenantId = _sessionManager.TenantId;
+                if (string.IsNullOrWhiteSpace(tenantId))
+                {
+                    throw new InvalidOperationException(GetText(
+                        UiTextKey.HealthCheckTenantRequiredStatus,
+                        "Reconnect to Teams and Microsoft Graph so the tenant can be identified."));
+                }
+                _cache.Set(tenantId, topology);
                 Populate(topology);
 
                 StatusMessage = GetText(

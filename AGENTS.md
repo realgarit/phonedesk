@@ -1,6 +1,6 @@
 # phonedesk — Agent instructions
 
-> Canonical instructions for all coding agents (Claude Code, Codex, GitHub Copilot). Claude loads this via the CLAUDE.md stub.
+> Canonical instructions for all coding agents (Claude Code, Codex, GitHub Copilot). Codex reads this directly; Claude and GitHub Copilot use pointer files when present.
 
 ## Architecture (Clean Architecture)
 
@@ -74,7 +74,7 @@ Always: **branch → commit → push + open PR → CI green → merge (merge com
 ## Cross-agent conventions
 
 - This file (`AGENTS.md`) is the single source of truth for agent instructions in this repo. `CLAUDE.md` and `.github/copilot-instructions.md` are pointers to it — never edit them, never duplicate content into them.
-- Reusable skills live in `.claude/skills/` (one folder per skill with a `SKILL.md`). GitHub Copilot reads that directory natively; Codex sees it via the `.agents/skills` symlink. New skills always go in `.claude/skills/`.
+- Shared repository skills live in `.agents/skills/` (one folder per skill with a `SKILL.md`). Codex scans this location natively. Keep any `.claude/skills/` compatibility bridge pointer-only or generated from this directory; never maintain two independent sources. New shared skills always go in `.agents/skills/`.
 - Claude-specific subagent definitions live in `.claude/agents/`. If you are not Claude Code, you may read them as role/process guidance.
 - Session continuity across tools: before ending substantial work in ANY tool (Claude Code, Codex, Copilot), record durable context — decisions made, gotchas discovered, in-progress state worth resuming — in the "Working notes" section below, or fold it into the relevant section above. This is the shared memory between agents.
 
@@ -103,3 +103,5 @@ Always: **branch → commit → push + open PR → CI green → merge (merge com
 - 2026-08-22 — **Review-contract hardening**: the AI review runner persists the provider exit code and rejects session-limit, runtime-failure, non-exact-clean, and finding output as non-clean. Semgrep scanner errors or missing output now fail instead of becoming an empty result; both validator boundaries have regression tests.
 - 2026-08-22 — **Validation message localization**: validation results now carry stable `ValidationErrorCode` values alongside legacy English messages. Presentation validation dialogs and Wizard readiness details map those codes through the English/German catalog, including re-localization after a language switch.
 - 2026-08-22 — **Independent review follow-up**: the post-change audit found and fixed weak Semgrep JSON-shape/error validation, provider stderr session-limit detection, changed-path argument quoting, and missing German expanded screenshot coverage. Main remains unprotected on GitHub; the workflow fails inconclusive reviews but branch protection was not changed.
+
+- 2026-09-16 — Codex-first layout sweep: repository-local shared skills use `.agents/skills/` as the canonical source. Any `.claude/skills/` path is only a compatibility bridge or generated mirror.

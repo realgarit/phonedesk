@@ -19,12 +19,12 @@ namespace PhoneDesk.Services.ScriptBuilders
 $output = @()
 $output += 'Common setup completed successfully'
 
-# Check MicrosoftTeams module
-if (Get-Module -ListAvailable -Name " + ConstantsService.PowerShellModules.MicrosoftTeams + @") {
-    $teamsModule = Get-Module -ListAvailable -Name " + ConstantsService.PowerShellModules.MicrosoftTeams + @"
+# Validate the same bundled Teams command that Connect will invoke.
+try {
+" + GetTeamsModuleSetupScript() + @"
     $output += 'MicrosoftTeams module is available: ' + $teamsModule.Version
-} else {
-    $output += 'ERROR: MicrosoftTeams module not found in bundled modules'
+} catch {
+    $output += ""ERROR: MicrosoftTeams module is not ready: $_""
 }
 
 # Check Microsoft.Graph modules
@@ -102,13 +102,12 @@ if ($bundledModulesPath) {
         {
             return GetCommonSetupScript() + @"
 try {
-    # Explicitly import MicrosoftTeams to ensure cmdlets are available
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftTeams + @" -Force -ErrorAction Stop
+" + GetTeamsModuleSetupScript() + @"
 
     # MicrosoftTeams 7.9.0 enables WAM by default on Windows. PhoneDesk hosts
     # PowerShell in-process and has no console HWND for the module to parent WAM to.
     # Use Microsoft's documented compatibility switch for unsupported hosts.
-    Connect-MicrosoftTeams -DisableWAM -ErrorAction Stop
+    & $teamsConnectCommand -DisableWAM -ErrorAction Stop
     $connection = Get-CsTenant -ErrorAction Stop
     if ($connection) {
         Write-Host 'SUCCESS: Connected to Microsoft Teams'
@@ -119,6 +118,24 @@ catch {
     Write-Host ""ERROR: Failed to connect to Microsoft Teams: $_""
 }";
         }
+
+        private static string GetTeamsModuleSetupScript() => @"
+    # Import by manifest path: a name-only import can select an older module
+    # from an earlier PSModulePath entry, even when a newer version is available.
+    if (-not $bundledModulesPath) {
+        throw 'Bundled MicrosoftTeams module was not found. Reinstall PhoneDesk and restart the application.'
+    }
+    $teamsManifest = Join-Path $bundledModulesPath 'MicrosoftTeams/MicrosoftTeams.psd1'
+    if (-not (Test-Path -LiteralPath $teamsManifest -PathType Leaf)) {
+        throw ""Bundled MicrosoftTeams manifest was not found at '$teamsManifest'. Reinstall PhoneDesk and restart the application.""
+    }
+    $teamsModule = Import-Module -Name $teamsManifest -Force -PassThru -ErrorAction Stop
+    Write-Host ""INFO: Loaded MicrosoftTeams $($teamsModule.Version) from $($teamsModule.Path)""
+    $teamsConnectCommand = $teamsModule.ExportedCommands['Connect-MicrosoftTeams']
+    if (-not $teamsConnectCommand -or -not $teamsConnectCommand.Parameters.ContainsKey('DisableWAM')) {
+        throw ""Bundled MicrosoftTeams $($teamsModule.Version) does not expose Connect-MicrosoftTeams -DisableWAM. Restart PhoneDesk; if this persists, reinstall PhoneDesk to restore its bundled modules.""
+    }
+";
 
         public string GetConnectGraphWithTokenCommand(string accessToken)
         {

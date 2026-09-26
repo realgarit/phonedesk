@@ -40,7 +40,7 @@ namespace PhoneDesk.Tests
             var builder = new CommonScriptBuilder(_mockSanitizer.Object);
             var script = builder.GetConnectTeamsCommand();
 
-            Assert.Contains("Connect-MicrosoftTeams -DisableWAM -ErrorAction Stop", script);
+            Assert.Contains("& $teamsConnectCommand -DisableWAM -ErrorAction Stop", script);
             Assert.DoesNotContain("Connect-MicrosoftTeams -ErrorAction Stop", script);
         }
     }

@@ -134,19 +134,18 @@ public sealed class TeamsModuleSelectionTests : IDisposable
     private static void WriteTeamsModule(string root, string version, bool supportsDisableWam)
     {
         var parameters = supportsDisableWam ? "[switch] $DisableWAM" : "";
-        WriteModule(root, "MicrosoftTeams", version, $$"""
-            function Connect-MicrosoftTeams {
-                [CmdletBinding()]
-                param({{parameters}})
-                Write-Host "STUB-CONNECT: {{version}} DisableWAM=$DisableWAM"
-            }
-            function Get-CsTenant {
-                [CmdletBinding()]
-                param()
-                [pscustomobject]@{ DisplayName = 'Local fixture'; TenantId = 'stub-tenant' }
-            }
-            Export-ModuleMember -Function Connect-MicrosoftTeams, Get-CsTenant
-            """);
+        WriteModule(root, "MicrosoftTeams", version,
+            "function Connect-MicrosoftTeams {\n" +
+            "    [CmdletBinding()]\n" +
+            "    param(" + parameters + ")\n" +
+            "    Write-Host \"STUB-CONNECT: " + version + " DisableWAM=$DisableWAM\"\n" +
+            "}\n" +
+            "function Get-CsTenant {\n" +
+            "    [CmdletBinding()]\n" +
+            "    param()\n" +
+            "    [pscustomobject]@{ DisplayName = 'Local fixture'; TenantId = 'stub-tenant' }\n" +
+            "}\n" +
+            "Export-ModuleMember -Function Connect-MicrosoftTeams, Get-CsTenant\n");
     }
 
     private static void WriteModule(string root, string name, string version, string script)

@@ -5,7 +5,9 @@ namespace PhoneDesk.IntegrationTests;
 
 // PSModulePath is process-wide. These fixtures must not overlap other runspace tests.
 [CollectionDefinition("Teams module selection", DisableParallelization = true)]
-public sealed class TeamsModuleSelectionCollection;
+public sealed class TeamsModuleSelectionCollection
+{
+}
 
 [Collection("Teams module selection")]
 public sealed class TeamsModuleSelectionTests : IDisposable

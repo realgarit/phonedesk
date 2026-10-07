@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.29.3](https://github.com/realgarit/phonedesk/compare/v3.29.2...v3.29.3) (2026-10-07)
+
+
+### Bug Fixes
+
+* **ci:** satisfy dependency rollout security checks ([187ffd0](https://github.com/realgarit/phonedesk/commit/187ffd07a2f0dc825f07a0e100f308e1b8a3c502))
+* **deps:** validate schedules and close security blockers ([09a4e68](https://github.com/realgarit/phonedesk/commit/09a4e6803d2431e1102485d7c9caaa7540dd9565))
+
 ## [3.29.2](https://github.com/realgarit/phonedesk/compare/v3.29.1...v3.29.2) (2026-09-26)
 
 

@@ -1,4 +1,4 @@
-# Weekly version updates; security fixes remain event-driven. Major updates stay separate.
+# Routine version updates wait seven days; security fixes are not delayed.
 version: 2
 updates:
 - package-ecosystem: github-actions
@@ -23,6 +23,8 @@ updates:
       update-types:
       - minor
       - patch
+  cooldown:
+    default-days: 7
 - package-ecosystem: nuget
   directory: /
   schedule:
@@ -45,3 +47,5 @@ updates:
       update-types:
       - minor
       - patch
+  cooldown:
+    default-days: 7

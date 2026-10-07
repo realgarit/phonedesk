@@ -80,6 +80,12 @@ Always: **branch → commit → push + open PR → CI green → merge (merge com
 
 ## Working notes
 
+- 2026-10-08: Dependabot alerts/security updates are enabled. Version updates run
+  weekly on Monday at 06:00 Europe/Zurich for the manifests in .github/dependabot.yml.
+  Minor/patch updates are grouped, majors stay separate, and merging remains review-driven.
+  Routine versions have a seven-day cooldown; security updates are not delayed.
+
+
 <!-- Any agent: append short dated notes here (YYYY-MM-DD — note). Prune notes when stale or once folded into the sections above. -->
 
 - 2026-07-21 — **Rebranded to PhoneDesk** (Store name "PhoneDesk") after MS Store cert failure 10.1.1.1 (name led with "Teams" trademark). Repo is now `realgarit/phonedesk` (git/release URLs redirect; GitHub Pages URLs did NOT — Store package URL updated). FROZEN despite rebrand: macOS bundle id `ch.realgar.teams-phonemanager`, signing identity `Teams Phone Manager Self-Signed` (cert CN), Inno `AppId` GUID, ScriptBuilders output. **Legacy updater bridge**: pre-rebrand in-app updaters only accept a release asset named exactly `teams-phonemanager-win-x64-setup.exe` — CI attaches the installer under both names + both SHA256SUMS entries; keep until old installs are negligible.

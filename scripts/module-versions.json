@@ -2,27 +2,27 @@
   "modules": [
     {
       "name": "MicrosoftTeams",
-      "version": "7.9.0"
+      "version": "8.0.0"
     },
     {
       "name": "Microsoft.Graph.Authentication",
-      "version": "2.39.0"
+      "version": "2.40.0"
     },
     {
       "name": "Microsoft.Graph.Users",
-      "version": "2.39.0"
+      "version": "2.40.0"
     },
     {
       "name": "Microsoft.Graph.Users.Actions",
-      "version": "2.39.0"
+      "version": "2.40.0"
     },
     {
       "name": "Microsoft.Graph.Groups",
-      "version": "2.39.0"
+      "version": "2.40.0"
     },
     {
       "name": "Microsoft.Graph.Identity.DirectoryManagement",
-      "version": "2.39.0"
+      "version": "2.40.0"
     }
   ],
   "powerShellSdkVersion": "7.6.0"

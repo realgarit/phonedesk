@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.34.2](https://github.com/realgarit/phonedesk/compare/v3.34.1...v3.34.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* **release:** retire the PhoneDesk Classic Store product and release 3.34.2 ([2ee93ab](https://github.com/realgarit/phonedesk/commit/2ee93abab981591c794d9b6aca8098d1d2cdbbb2))
+* **release:** retire the PhoneDesk Classic Store product and release 3.34.2 ([3a2a994](https://github.com/realgarit/phonedesk/commit/3a2a9947142afdaf1ba270c03b29a5ec594c0668))
+
 ## [3.34.1](https://github.com/realgarit/phonedesk/compare/v3.34.0...v3.34.1) (2026-10-31)
 
 

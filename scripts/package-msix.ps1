@@ -138,6 +138,22 @@ try {
     $manifestPath = Join-Path $staging 'AppxManifest.xml'
     [System.IO.File]::WriteAllText($manifestPath, $manifest, [System.Text.UTF8Encoding]::new($false))
 
+    # Index the qualified assets (scale-*, targetsize-*, altform-unplated). Without
+    # resources.pri Windows resolves only the literal file names from the manifest, never
+    # finds the unplated taskbar icons, and plates the logo with the accent colour.
+    $makepri = Find-SdkTool -Name 'makepri.exe'
+    $priConfig = Join-Path $staging 'priconfig.xml'
+    & $makepri createconfig /cf $priConfig /dq en-US /pv 10.0.0 /o
+    if ($LASTEXITCODE -ne 0) {
+        throw "makepri.exe createconfig failed with exit code $LASTEXITCODE."
+    }
+    & $makepri new /pr $staging /cf $priConfig /mn $manifestPath /of (Join-Path $staging 'resources.pri') /o
+    if ($LASTEXITCODE -ne 0) {
+        throw "makepri.exe new failed with exit code $LASTEXITCODE."
+    }
+    Remove-Item -LiteralPath $priConfig -Force
+    Get-ChildItem -Path $staging -Filter 'resources.*.pri' -File | Remove-Item -Force
+
     $makeappx = Find-SdkTool -Name 'makeappx.exe'
     Write-Host "Packing with $makeappx"
     if (Test-Path $packagePath) { Remove-Item $packagePath -Force }

@@ -56,6 +56,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# CI passes repository variables straight through; empty means "not configured yet".
+if ([string]::IsNullOrWhiteSpace($IdentityName)) { $IdentityName = 'PhoneDesk.Dev' }
+if ([string]::IsNullOrWhiteSpace($Publisher)) { $Publisher = 'CN=PhoneDesk Development' }
+if ([string]::IsNullOrWhiteSpace($PublisherDisplayName)) { $PublisherDisplayName = 'Patrik Lleshaj' }
+if ([string]::IsNullOrWhiteSpace($DisplayName)) { $DisplayName = 'PhoneDesk' }
+
 if (-not $IsWindows) {
     throw 'MSIX packaging requires Windows (makeappx.exe from the Windows SDK).'
 }

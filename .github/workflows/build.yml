@@ -267,11 +267,8 @@ jobs:
         VERSION: ${{ needs.validate-release.outputs.version }}
         MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
         MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
-      run: |
-        $identity = @{}
-        if ($env:MSIX_IDENTITY_NAME) { $identity.IdentityName = $env:MSIX_IDENTITY_NAME }
-        if ($env:MSIX_PUBLISHER) { $identity.Publisher = $env:MSIX_PUBLISHER }
-        ./scripts/package-msix.ps1 -PublishDir ./publish/win-x64 -Version $env:VERSION -OutputDir ./dist @identity
+      # Empty identity values make the script fall back to its development identity.
+      run: ./scripts/package-msix.ps1 -PublishDir ./publish/win-x64 -Version $env:VERSION -OutputDir ./dist -IdentityName $env:MSIX_IDENTITY_NAME -Publisher $env:MSIX_PUBLISHER
 
     - name: Package (Linux zip)
       if: matrix.runtime == 'linux-x64'

@@ -116,7 +116,48 @@ def main():
             name = f"icon_{pts}x{pts}" + ("@2x" if scale == 2 else "") + ".png"
             master.resize((px, px), Image.LANCZOS).save(os.path.join(iconset, name))
 
-    print("Wrote icon-512.png, icon.ico, icon.iconset/")
+    write_msix_assets(master, os.path.join(here, "..", "installer", "msix", "Assets"))
+
+    print("Wrote icon-512.png, icon.ico, icon.iconset/, installer/msix/Assets/")
+
+
+def write_msix_assets(master, out_dir):
+    """MSIX visual assets for the Microsoft Store package (installer/msix).
+
+    Tile images get transparent padding so the badge does not touch the tile
+    edge; the Windows tile background colour is declared in AppxManifest.xml.
+    targetsize-* icons are unpadded so they match other taskbar icons.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    def padded(width, height, fill_ratio):
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        side = round(min(width, height) * fill_ratio)
+        glyph = master.resize((side, side), Image.LANCZOS)
+        canvas.alpha_composite(glyph, ((width - side) // 2, (height - side) // 2))
+        return canvas
+
+    tiles = {
+        "Square44x44Logo": (44, 44, 0.75),
+        "Square71x71Logo": (71, 71, 0.66),
+        "Square150x150Logo": (150, 150, 0.66),
+        "Square310x310Logo": (310, 310, 0.66),
+        "Wide310x150Logo": (310, 150, 0.66),
+        "StoreLogo": (50, 50, 1.0),
+    }
+    for name, (w, h, fill) in tiles.items():
+        for scale in (100, 200):
+            img = padded(w * scale // 100, h * scale // 100, fill)
+            img.save(os.path.join(out_dir, f"{name}.scale-{scale}.png"))
+            if scale == 100:
+                # Unqualified copy: makeappx validates manifest references
+                # against literal file names when no resources.pri is built.
+                img.save(os.path.join(out_dir, f"{name}.png"))
+
+    for px in (16, 24, 32, 48, 256):
+        icon = master.resize((px, px), Image.LANCZOS)
+        icon.save(os.path.join(out_dir, f"Square44x44Logo.targetsize-{px}.png"))
+        icon.save(os.path.join(out_dir, f"Square44x44Logo.targetsize-{px}_altform-unplated.png"))
 
 
 if __name__ == "__main__":

@@ -256,6 +256,23 @@ jobs:
         Compress-Archive -Path ./publish/win-x64/* -DestinationPath ./dist/phonedesk-win-x64.zip
         iscc /DAppVersion=$env:VERSION /DPublishDir=..\..\publish\win-x64 /O.\dist installer\windows\phonedesk.iss
 
+    - name: Package (Microsoft Store MSIX)
+      # Unsigned by design: the Store re-signs MSIX packages during publishing.
+      # MSIX_IDENTITY_NAME / MSIX_PUBLISHER are repository variables copied from
+      # Partner Center > Product identity; without them the package carries a
+      # development identity that the Store rejects but that still proves the build.
+      if: matrix.runtime == 'win-x64'
+      shell: pwsh
+      env:
+        VERSION: ${{ needs.validate-release.outputs.version }}
+        MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+        MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      run: |
+        $identity = @{}
+        if ($env:MSIX_IDENTITY_NAME) { $identity.IdentityName = $env:MSIX_IDENTITY_NAME }
+        if ($env:MSIX_PUBLISHER) { $identity.Publisher = $env:MSIX_PUBLISHER }
+        ./scripts/package-msix.ps1 -PublishDir ./publish/win-x64 -Version $env:VERSION -OutputDir ./dist @identity
+
     - name: Package (Linux zip)
       if: matrix.runtime == 'linux-x64'
       run: |
@@ -313,6 +330,7 @@ jobs:
         gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
           artifacts/phonedesk-win-x64.zip \
           artifacts/phonedesk-win-x64-setup.exe \
+          artifacts/phonedesk-win-x64.msix \
           artifacts/teams-phonemanager-win-x64-setup.exe \
           artifacts/phonedesk-osx-x64.zip \
           artifacts/phonedesk-osx-arm64.zip \
@@ -472,3 +490,8 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path ./dist | Out-Null
         iscc /DAppVersion=0.0.0 /DPublishDir=..\..\publish\win-x64 /O.\dist installer\windows\phonedesk.iss
+
+    - name: Package smoke (Microsoft Store MSIX)
+      if: matrix.runtime == 'win-x64'
+      shell: pwsh
+      run: ./scripts/package-msix.ps1 -PublishDir ./publish/win-x64 -Version 0.0.0 -OutputDir ./dist

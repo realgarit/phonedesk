@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.34.0](https://github.com/realgarit/phonedesk/compare/v3.33.0...v3.34.0) (2026-10-31)
+
+
+### Features
+
+* build an MSIX package for Microsoft Store delivery ([86661f8](https://github.com/realgarit/phonedesk/commit/86661f866f79dbf74be8d8e341c5875a263b19df))
+* Microsoft Store delivery as MSIX package ([68346d1](https://github.com/realgarit/phonedesk/commit/68346d1f6dc54b100fb41a8d254ba955623df382))
+
+
+### Bug Fixes
+
+* load bundled Microsoft.Graph modules by manifest path ([e16e057](https://github.com/realgarit/phonedesk/commit/e16e057692cc67822a70c2e61d12f50915639c3d))
+
 ## [3.33.0](https://github.com/realgarit/phonedesk/compare/v3.32.0...v3.33.0) (2026-10-21)
 
 

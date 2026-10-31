@@ -158,6 +158,7 @@ def write_msix_assets(master, out_dir):
         icon = master.resize((px, px), Image.LANCZOS)
         icon.save(os.path.join(out_dir, f"Square44x44Logo.targetsize-{px}.png"))
         icon.save(os.path.join(out_dir, f"Square44x44Logo.targetsize-{px}_altform-unplated.png"))
+        icon.save(os.path.join(out_dir, f"Square44x44Logo.targetsize-{px}_altform-lightunplated.png"))
 
 
 if __name__ == "__main__":

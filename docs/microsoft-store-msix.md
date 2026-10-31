@@ -65,7 +65,19 @@ Add-AppxPackage -Path ./dist/phonedesk-win-x64.msix
 Get-AppxPackage PhoneDesk.Dev | Remove-AppxPackage   # clean up afterwards
 ```
 
-Remove the test certificate from `Cert:\LocalMachine\TrustedPeople` after testing.
+The script keeps the test certificate in `Cert:\CurrentUser\My` (friendly name
+"PhoneDesk MSIX test signing") and reuses it on later builds, so the elevated import is a
+one-time step per machine. Remove it from both stores after testing.
+
+Sideload findings (3.33.0 test build): the app starts with package identity from
+`C:\Program Files\WindowsApps`, the bundled MicrosoftTeams 8.0.0 loads from the package,
+Teams sign-in works, and preferences written by the Inno Setup install are visible
+read-through. The first Graph sign-in failed on a machine with a user-scope
+Microsoft.Graph.Authentication 2.41.2: a name-only `Import-Module` picked it over the bundled
+2.41.1 and the other bundled Graph modules then failed with "Microsoft.Graph.Authentication.Loader
+... is already loaded". This is not MSIX-specific; the Graph connect script now imports every
+bundled Graph module by manifest path (same pattern as Teams), covered by
+`GraphModuleSelectionTests`.
 
 ## Partner Center steps
 

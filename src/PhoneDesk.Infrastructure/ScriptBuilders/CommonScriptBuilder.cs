@@ -137,6 +137,38 @@ catch {
     }
 ";
 
+        private static string GetGraphModuleSetupScript() => @"
+    # Import by manifest path: a name-only import selects the highest version on
+    # PSModulePath, so a user-scope Microsoft.Graph.* install (for example 2.41.2 in
+    # Documents\PowerShell\Modules) wins over the bundled set. The other bundled
+    # Microsoft.Graph.* modules then load against a foreign Microsoft.Graph.Authentication
+    # and fail with 'Microsoft.Graph.Authentication.Loader ... is already loaded'.
+    # Loading every module from the same bundled set keeps the assembly versions consistent.
+    $graphModuleNames = @(
+        '" + ConstantsService.PowerShellModules.MicrosoftGraphAuthentication + @"',
+        '" + ConstantsService.PowerShellModules.MicrosoftGraphUsers + @"',
+        '" + ConstantsService.PowerShellModules.MicrosoftGraphUsersActions + @"',
+        '" + ConstantsService.PowerShellModules.MicrosoftGraphGroups + @"',
+        '" + ConstantsService.PowerShellModules.MicrosoftGraphIdentityDirectoryManagement + @"'
+    )
+    foreach ($graphModuleName in $graphModuleNames) {
+        $graphManifest = $null
+        if ($bundledModulesPath) {
+            $graphCandidate = Join-Path $bundledModulesPath ($graphModuleName + '/' + $graphModuleName + '.psd1')
+            if (Test-Path -LiteralPath $graphCandidate -PathType Leaf) {
+                $graphManifest = $graphCandidate
+            }
+        }
+        if ($graphManifest) {
+            $graphModule = Import-Module -Name $graphManifest -Force -PassThru -ErrorAction Stop
+            Write-Host ""INFO: Loaded $graphModuleName $($graphModule.Version) from $($graphModule.Path)""
+        }
+        else {
+            Import-Module -Name $graphModuleName -Force -ErrorAction Stop
+        }
+    }
+";
+
         public string GetConnectGraphWithTokenCommand(string accessToken)
         {
             // SECURITY: Pass the access token via environment variable to avoid logging it in clear text.
@@ -144,12 +176,7 @@ catch {
             // Using a unique variable name to avoid conflicts.
             return GetCommonSetupScript() + @"
 try {
-    # Import Microsoft.Graph modules
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphAuthentication + @" -Force
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphUsers + @" -Force
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphUsersActions + @" -Force
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphGroups + @" -Force
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphIdentityDirectoryManagement + @" -Force
+" + GetGraphModuleSetupScript() + @"
 
     # Convert the access token to SecureString as required by Connect-MgGraph
     # Token is passed via environment variable to avoid logging
@@ -189,8 +216,11 @@ catch {
         {
             return @"
 try {
-    # Import Microsoft.Graph modules
-    Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphAuthentication + @" -Force
+    # Disconnect through the module that Connect-MgGraph loaded. Importing by name
+    # here could pull a second Microsoft.Graph.Authentication version into the runspace.
+    if (-not (Get-Module -Name " + ConstantsService.PowerShellModules.MicrosoftGraphAuthentication + @")) {
+        Import-Module " + ConstantsService.PowerShellModules.MicrosoftGraphAuthentication + @" -Force
+    }
 
     Disconnect-MgGraph -ErrorAction Stop
     Write-Host 'SUCCESS: Disconnected from Microsoft Graph'

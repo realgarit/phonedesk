@@ -148,22 +148,28 @@ try {
 
     if ($TestCertificate) {
         $signtool = Find-SdkTool -Name 'signtool.exe'
-        $cert = New-SelfSignedCertificate -Type Custom -Subject $Publisher `
-            -KeyUsage DigitalSignature -FriendlyName 'PhoneDesk MSIX test signing' `
-            -CertStoreLocation 'Cert:\CurrentUser\My' `
-            -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
-        try {
-            $cerPath = [System.IO.Path]::ChangeExtension($packagePath, '.test.cer')
-            Export-Certificate -Cert $cert -FilePath $cerPath | Out-Null
-            & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint $packagePath
-            if ($LASTEXITCODE -ne 0) {
-                throw "signtool.exe failed with exit code $LASTEXITCODE."
-            }
-            Write-Host "Signed with a throwaway test certificate; public key exported to $cerPath"
+        # Reuse the test certificate across rebuilds so the machine-level trust (which
+        # needs elevation) is set up once. Remove it from Cert:\CurrentUser\My and from
+        # Cert:\LocalMachine\TrustedPeople when the sideload tests are over.
+        $friendlyName = 'PhoneDesk MSIX test signing'
+        $cert = Get-ChildItem -Path 'Cert:\CurrentUser\My' |
+            Where-Object { $_.Subject -eq $Publisher -and $_.FriendlyName -eq $friendlyName -and $_.NotAfter -gt (Get-Date).AddDays(1) } |
+            Sort-Object NotAfter -Descending |
+            Select-Object -First 1
+        if (-not $cert) {
+            $cert = New-SelfSignedCertificate -Type Custom -Subject $Publisher `
+                -KeyUsage DigitalSignature -FriendlyName $friendlyName `
+                -CertStoreLocation 'Cert:\CurrentUser\My' `
+                -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+            Write-Host "Created test certificate $($cert.Thumbprint) in Cert:\CurrentUser\My"
         }
-        finally {
-            Remove-Item -Path "Cert:\CurrentUser\My\$($cert.Thumbprint)" -Force -ErrorAction SilentlyContinue
+        $cerPath = [System.IO.Path]::ChangeExtension($packagePath, '.test.cer')
+        Export-Certificate -Cert $cert -FilePath $cerPath | Out-Null
+        & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint $packagePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "signtool.exe failed with exit code $LASTEXITCODE."
         }
+        Write-Host "Signed with test certificate $($cert.Thumbprint); public key exported to $cerPath"
     }
 
     $size = (Get-Item $packagePath).Length

@@ -60,7 +60,13 @@ class Program
                 [AppLanguage.German] = TranslationCatalogLoader.Load(
                     new Uri("avares://PhoneDesk.Presentation/Resources/Localization/Strings.de.json"))
             }));
-        services.AddSingleton<IUpdateCheckService, GitHubUpdateCheckService>();
+        // Microsoft Store (MSIX) installs are updated by the Store: keep the GitHub
+        // updater off there so the app never offers to run a foreign installer.
+        services.AddSingleton<IInstallationContext, WindowsInstallationContext>();
+        services.AddSingleton<IUpdateCheckService>(provider =>
+            provider.GetRequiredService<IInstallationContext>().IsPackaged
+                ? new StoreManagedUpdateCheckService()
+                : new GitHubUpdateCheckService());
         services.AddSingleton<IUpdateInstallerService, GitHubUpdateInstallerService>();
 
         // Persistent audit log (issue #67): per-tenant JSON-lines under the app-data directory.

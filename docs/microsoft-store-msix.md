@@ -79,18 +79,46 @@ Microsoft.Graph.Authentication 2.41.2: a name-only `Import-Module` picked it ove
 bundled Graph module by manifest path (same pattern as Teams), covered by
 `GraphModuleSelectionTests`.
 
-## Partner Center steps
+## Partner Center state
 
-1. The current EXE product (`53a8f446-bbf3-4c01-9156-3ef5b44aaf57`, Store ID `XPFD7Z5V0SHCCH`)
-   owns the reserved name "PhoneDesk". Partner Center only allows one product per name,
-   so the EXE product has to release the name (delete the product, or rename it) before the
-   MSIX product can reserve "PhoneDesk". The Store ID and deep link change with the new product.
-2. Create a new app (type MSIX / packaged app), reserve the name, and copy the
-   Package/Identity/Name and Publisher values into the repository variables above.
-3. Run a release. Upload `phonedesk-win-x64.msix` from the GitHub release on the Packages page.
-   No package URL and no gh-pages copy is needed for MSIX.
-4. Re-create the listing (description, screenshots from `GENERATE_SCREENSHOTS=1 SCREENSHOT_FRAMELESS=1`,
-   age rating, properties, privacy policy URL) and submit.
+The MSIX product is live since 2026-10-31:
 
-Once the MSIX product is live, the `publish-store-package.yml` workflow and the `store/`
-folder on `gh-pages` are no longer needed.
+| Item | Value |
+|------|-------|
+| Store listing | <https://apps.microsoft.com/detail/9MVR67P7JXXX> |
+| Store ID | `9MVR67P7JXXX` |
+| Package/Identity/Name | `PatrikLleshaj.PhoneDesk` |
+| Package family name | `PatrikLleshaj.PhoneDesk_v6461hzrg2ce6` |
+| Publisher | `CN=B994E854-E53F-4DEA-B666-2AB47B0BC40D` (repository variable `MSIX_PUBLISHER`) |
+| Submission | Submission 1, package `3.34.0.0`, Windows 10/11 Desktop, English + German listings |
+
+The former EXE product (`53a8f446-bbf3-4c01-9156-3ef5b44aaf57`, Store ID `XPFD7Z5V0SHCCH`) was
+renamed "PhoneDesk Classic" to release the reserved name. Partner Center allows one product per
+name, so the MSIX product had to be created as a new product with a new Store ID and deep link.
+The old product still serves its last published 3.22.3 Inno installer from `gh-pages/store/` and
+can never be updated again (policy 10.2.9 rejects unsigned EXE packages); unpublish it once the
+MSIX listing has replaced it for existing customers.
+
+### Publishing an update
+
+1. Merge the release PR; CI attaches `phonedesk-win-x64.msix` with the Store identity to the
+   GitHub release.
+2. In Partner Center open the product, choose **Start update**, replace the package on the
+   Packages page with the MSIX from the release, update **What's new** in both listings and
+   submit. No package URL and no gh-pages copy is needed.
+
+### Certification rules learned
+
+- **10.1.1.1 Product name**: the Store product name may not contain any Microsoft product name;
+  the listing is plain "PhoneDesk" and "for Microsoft Teams" lives only in the description.
+- **10.1.3 Search terms**: keywords may not contain Microsoft product titles either
+  ("Microsoft 365", "Teams Phone", "Teams telephony" were rejected); the description may mention
+  them. At most seven keywords, 40 characters each, 21 words in total.
+- **10.2.9 Code signing**: EXE/MSI packages must be Authenticode-signed; the Store re-signs MSIX
+  only, so the MSIX is uploaded unsigned.
+- Field limits that the UI reports only as "Incomplete": copyright/trademark text 200 characters,
+  `runFullTrust` justification 500 characters.
+
+The `publish-store-package.yml` workflow that copied the Inno installer to `gh-pages/store/`
+was removed in 3.34.1. The `store/` folder on `gh-pages` stays until the Classic product is
+unpublished.

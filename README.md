@@ -52,8 +52,9 @@ PowerShell 7 and the required Microsoft modules are included.
 
 ### Windows
 
-Run `phonedesk-win-x64-setup.exe`. It supports per-user and all-users
-installation and upgrades in place. Until code signing is enabled, Windows may show a
+Install from the [Microsoft Store](https://apps.microsoft.com/detail/9MVR67P7JXXX) to get
+automatic updates, or run `phonedesk-win-x64-setup.exe` from the GitHub release. The installer
+supports per-user and all-users installation and upgrades in place. Until code signing is enabled, Windows may show a
 SmartScreen warning.
 
 Portable alternative: download `phonedesk-win-x64.zip`, extract, run

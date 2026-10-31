@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.34.1](https://github.com/realgarit/phonedesk/compare/v3.34.0...v3.34.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **release:** publish 3.34.1 after the Microsoft Store cutover ([163c8c8](https://github.com/realgarit/phonedesk/commit/163c8c8145962728094b4ce07f3a4142f6ca32d8))
+* **release:** publish 3.34.1 after the Microsoft Store cutover ([b4a0cd1](https://github.com/realgarit/phonedesk/commit/b4a0cd1a0d141a623f2bd153f916ef1ece2268b2))
+
 ## [3.34.0](https://github.com/realgarit/phonedesk/compare/v3.33.0...v3.34.0) (2026-10-31)
 
 

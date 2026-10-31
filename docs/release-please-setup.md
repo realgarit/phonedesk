@@ -68,7 +68,6 @@ checks all sources before packaging.
 | File | Purpose |
 |------|---------|
 | `.github/workflows/build.yml` | CI/CD pipeline: release-please, validation, build, publish, Homebrew |
-| `.github/workflows/publish-store-package.yml` | Published-release workflow for the direct Microsoft Store installer URL on `gh-pages` |
 | `.github/workflows/module-compatibility.yml` | Weekly module pin check and releaseable dependency PR |
 | `release-please-config.json` | Release-please config: release type, anchor, extra files, draft mode |
 | `.release-please-manifest.json` | Release-please-managed package version |
@@ -85,10 +84,8 @@ checks all sources before packaging.
    builds and tests the PR across Windows, macOS Intel, macOS ARM, and Linux.
 3. **When the release PR is merged**: release-please creates the Git tag and draft
    GitHub release, then `build` → `upload-release-assets` → `bump-homebrew-cask` runs.
-4. **When the GitHub release is published**: `publish-store-package.yml` copies the
-   Windows installer to `gh-pages/store/<version>/` and verifies the public URL. The
-   workflow can also be dispatched manually with an existing tag to recover a failed
-   Pages publication.
+4. **Microsoft Store**: the release MSIX is uploaded manually in Partner Center as a
+   product update (see `docs/microsoft-store-msix.md`).
 
 ## Troubleshooting
 

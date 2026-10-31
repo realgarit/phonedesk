@@ -95,9 +95,10 @@ The MSIX product is live since 2026-10-31:
 The former EXE product (`53a8f446-bbf3-4c01-9156-3ef5b44aaf57`, Store ID `XPFD7Z5V0SHCCH`) was
 renamed "PhoneDesk Classic" to release the reserved name. Partner Center allows one product per
 name, so the MSIX product had to be created as a new product with a new Store ID and deep link.
-The old product still serves its last published 3.22.3 Inno installer from `gh-pages/store/` and
-can never be updated again (policy 10.2.9 rejects unsigned EXE packages); unpublish it once the
-MSIX listing has replaced it for existing customers.
+The old product could never be updated again (policy 10.2.9 rejects unsigned EXE packages) and
+was made unavailable on 2026-10-31 (Win32 app overview > Store presence > Modify availability >
+"Make product unavailable"). Existing installs keep working; nobody can find or acquire it.
+Its stale 3.33.0 update draft in Partner Center is left unsubmitted.
 
 ### Publishing an update
 
@@ -120,5 +121,5 @@ MSIX listing has replaced it for existing customers.
   `runFullTrust` justification 500 characters.
 
 The `publish-store-package.yml` workflow that copied the Inno installer to `gh-pages/store/`
-was removed in 3.34.1. The `store/` folder on `gh-pages` stays until the Classic product is
-unpublished.
+was removed in 3.34.1, and the `store/` installer folder on `gh-pages` was deleted in 3.34.2
+after the Classic product became unavailable. Installers are served only from GitHub releases.

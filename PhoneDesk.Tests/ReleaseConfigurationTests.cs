@@ -52,7 +52,7 @@ public sealed class ReleaseConfigurationTests
         var buildWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "build.yml"));
         var match = System.Text.RegularExpressions.Regex.Match(
             buildWorkflow,
-            @"uses: googleapis/release-please-action@[^\n]*\n\s*with:\n(?:\s*#[^\n]*\n)*\s*token: ([^\n]+)");
+            @"uses: googleapis/release-please-action@[^\r\n]*\r?\n\s*with:\r?\n(?:\s*#[^\r\n]*\r?\n)*\s*token: ([^\r\n]+)");
         Assert.True(match.Success, "release-please token not found in build.yml");
         Assert.Equal("${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}", match.Groups[1].Value.Trim());
     }

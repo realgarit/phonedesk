@@ -42,7 +42,10 @@ jobs:
       if: github.event_name != 'workflow_dispatch' || inputs.release_tag == ''
       uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        # GITHUB_TOKEN cannot create a release tag once the release range modifies workflow files
+        # ("Resource not accessible by integration" on create-a-reference, 3.34.3), and its
+        # release PRs wait for a manual CI approval. PAT_TOKEN avoids both.
+        token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         config-file: release-please-config.json
         manifest-file: .release-please-manifest.json
 
@@ -92,7 +95,8 @@ jobs:
     - name: Sync app.manifest on release pull request
       if: steps.release.outputs.prs_created == 'true'
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Same token as release-please, so the synced commit re-runs the PR's checks.
+        GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         RELEASE_PR: ${{ steps.release.outputs.pr }}
       run: |
         set -euo pipefail

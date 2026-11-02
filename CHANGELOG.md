@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.34.3](https://github.com/realgarit/phonedesk/compare/v3.34.2...v3.34.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deps:** bump bundled PowerShell module versions ([57758d5](https://github.com/realgarit/phonedesk/commit/57758d5e64457443613238c5ba1b1e96f7849a22))
+* **deps:** bump bundled PowerShell module versions ([2b07c5f](https://github.com/realgarit/phonedesk/commit/2b07c5f939fc5bcd8565778ba7814ae89d6b4bfb))
+
 ## [3.34.2](https://github.com/realgarit/phonedesk/compare/v3.34.1...v3.34.2) (2026-10-31)
 
 

@@ -21,13 +21,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # Pushes made with GITHUB_TOKEN do not start other workflows, so the update PR would
-          # wait for a manual CI approval. PAT_TOKEN pushes run Build and Release normally.
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          # Keep the push token out of .git/config while restore/build/test run NuGet build code.
+          persist-credentials: false
 
+      # Pushes made with GITHUB_TOKEN do not start other workflows, so the update PR would wait
+      # for a manual CI approval. PAT_TOKEN pushes run Build and Release normally. The token is
+      # passed only on the push command line and never stored in the checkout.
       - name: Verify push token
         env:
           HAS_PAT: ${{ secrets.PAT_TOKEN != '' }}
+          PUSH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           set -euo pipefail
           if [[ "$HAS_PAT" != "true" ]]; then
@@ -35,7 +38,8 @@ jobs:
             exit 0
           fi
           # Fails early when PAT_TOKEN has expired or lost write access to this repository.
-          git push --dry-run origin HEAD:refs/heads/module-compatibility/token-check
+          git push --dry-run "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:refs/heads/module-compatibility/token-check
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -115,9 +119,12 @@ jobs:
           git checkout -B "$BRANCH"
           git add scripts/module-versions.json
           git commit -m "$TITLE"
-          git push --force origin "$BRANCH"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
 
-          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          # Same-repository PRs only: a fork can use the same branch name, but only accounts with
+          # write access can create branches here.
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number,isCrossRepository \
+            --jq 'map(select(.isCrossRepository == false)) | .[0].number // empty')
           if [[ -n "$EXISTING" ]]; then
             gh pr edit "$EXISTING" --title "$TITLE" --body-file "$BODY_FILE"
             PR="$EXISTING"
@@ -126,8 +133,8 @@ jobs:
           fi
 
           # Close update PRs from the old dated branches; the PR above carries the newer pins.
-          gh pr list --state open --json number,headRefName \
-            --jq ".[] | select(.headRefName | startswith(\"module-compatibility/\")) | select(.headRefName != \"$BRANCH\") | .number" |
+          gh pr list --state open --json number,headRefName,isCrossRepository \
+            --jq ".[] | select(.isCrossRepository == false) | select(.headRefName | startswith(\"module-compatibility/\")) | select(.headRefName != \"$BRANCH\") | .number" |
           while read -r OLD; do
             gh pr close "$OLD" --delete-branch --comment "Superseded by $PR."
           done

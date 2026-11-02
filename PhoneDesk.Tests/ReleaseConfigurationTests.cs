@@ -45,6 +45,19 @@ public sealed class ReleaseConfigurationTests
     }
 
     [Fact]
+    public void ReleasePlease_UsesPatToken()
+    {
+        // GITHUB_TOKEN cannot create the release tag once the release range modifies workflow files.
+        var root = FindRepositoryRoot();
+        var buildWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "build.yml"));
+        var match = System.Text.RegularExpressions.Regex.Match(
+            buildWorkflow,
+            @"uses: googleapis/release-please-action@[^\n]*\n\s*with:\n(?:\s*#[^\n]*\n)*\s*token: ([^\n]+)");
+        Assert.True(match.Success, "release-please token not found in build.yml");
+        Assert.Equal("${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}", match.Groups[1].Value.Trim());
+    }
+
+    [Fact]
     public void MacOsMinimumVersion_MatchesBundleAndHomebrewCask()
     {
         // .NET 10 supports macOS 15 and later (dotnet/core release-notes/10.0/supported-os.json).

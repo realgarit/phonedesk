@@ -20,6 +20,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Keep the push token out of .git/config while restore/build/test run NuGet build code.
+          persist-credentials: false
+
+      # Pushes made with GITHUB_TOKEN do not start other workflows, so the update PR would wait
+      # for a manual CI approval. PAT_TOKEN pushes run Build and Release normally. The token is
+      # passed only on the push command line and never stored in the checkout.
+      - name: Verify push token
+        env:
+          HAS_PAT: ${{ secrets.PAT_TOKEN != '' }}
+          PUSH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ "$HAS_PAT" != "true" ]]; then
+            echo "::warning::PAT_TOKEN is not set. Update PRs will need a manual CI approval."
+            exit 0
+          fi
+          # Fails early when PAT_TOKEN has expired or lost write access to this repository.
+          git push --dry-run "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:refs/heads/module-compatibility/token-check
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -69,51 +89,84 @@ jobs:
         id: build
         continue-on-error: true
         run: |
+          # pipefail: without it `tee` hides a test failure and the PR would still be opened.
+          set -euo pipefail
           dotnet restore PhoneDesk.slnx
           dotnet build PhoneDesk.slnx --configuration Release --no-restore
           dotnet test PhoneDesk.Tests/PhoneDesk.Tests.csproj --configuration Release --no-build 2>&1 | tee "$RUNNER_TEMP/build-output.log"
 
-      - name: Open pull request with bumped versions
+      - name: Open or update pull request with bumped versions
         if: steps.query.outputs.has_update == 'true' && steps.build.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          SUMMARY_FILE: ${{ steps.query.outputs.summary_file }}
         run: |
           set -euo pipefail
-          BRANCH="module-compatibility/$(date +%Y%m%d)"
+          # One fixed branch: a later run updates the open PR instead of opening another one.
+          BRANCH="module-compatibility/bundled-modules"
+          TITLE="fix(deps): bump bundled PowerShell module versions"
+          BODY_FILE="$RUNNER_TEMP/pr-body.md"
+          {
+            echo "Weekly module compatibility check found newer versions on the PowerShell Gallery."
+            echo
+            cat "$SUMMARY_FILE"
+            echo
+            echo "Build and tests passed against the updated pins. Review the changelog links above before merging."
+          } > "$BODY_FILE"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          git checkout -B "$BRANCH"
           git add scripts/module-versions.json
-          git commit -m "fix(deps): bump bundled PowerShell module versions"
-          git push origin "$BRANCH"
-          gh pr create --title "fix(deps): bump bundled PowerShell module versions" \
-            --body "$(cat <<EOF
-          Weekly module compatibility check found newer versions on the PowerShell Gallery.
+          git commit -m "$TITLE"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
 
-          $(cat "${{ steps.query.outputs.summary_file }}")
+          # Same-repository PRs only: a fork can use the same branch name, but only accounts with
+          # write access can create branches here.
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number,isCrossRepository \
+            --jq 'map(select(.isCrossRepository == false)) | .[0].number // empty')
+          if [[ -n "$EXISTING" ]]; then
+            gh pr edit "$EXISTING" --title "$TITLE" --body-file "$BODY_FILE"
+            PR="$EXISTING"
+          else
+            PR=$(gh pr create --head "$BRANCH" --title "$TITLE" --body-file "$BODY_FILE")
+          fi
 
-          Build and tests passed against the updated pins. Review the changelog links above before merging.
-          EOF
-          )"
+          # Close update PRs from the old dated branches; the PR above carries the newer pins.
+          gh pr list --state open --json number,headRefName,isCrossRepository \
+            --jq ".[] | select(.isCrossRepository == false) | select(.headRefName | startswith(\"module-compatibility/\")) | select(.headRefName != \"$BRANCH\") | .number" |
+          while read -r OLD; do
+            gh pr close "$OLD" --delete-branch --comment "Superseded by $PR."
+          done
 
-      - name: Open issue on build/test failure
+      - name: Open or update issue on build/test failure
         if: steps.query.outputs.has_update == 'true' && steps.build.outcome != 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUMMARY_FILE: ${{ steps.query.outputs.summary_file }}
         run: |
           set -euo pipefail
-          gh issue create --title "Module compatibility check: build/test failure with newer module versions" \
-            --body "$(cat <<EOF
-          The weekly module compatibility check found newer versions of one or more bundled
-          PowerShell modules, but the build/test run against the updated pins failed. No PR
-          was opened; the pin file was left unchanged.
+          TITLE="Module compatibility check: build/test failure with newer module versions"
+          BODY_FILE="$RUNNER_TEMP/issue-body.md"
+          {
+            echo "The weekly module compatibility check found newer versions of one or more bundled"
+            echo "PowerShell modules, but the build/test run against the updated pins failed. No PR"
+            echo "was opened; the pin file was left unchanged."
+            echo
+            cat "$SUMMARY_FILE"
+            echo
+            echo "Build/test output:"
+            echo
+            echo '```'
+            tail -c 20000 "$RUNNER_TEMP/build-output.log" 2>/dev/null || echo "No output captured."
+            echo '```'
+          } > "$BODY_FILE"
 
-          $(cat "${{ steps.query.outputs.summary_file }}")
-
-          Build/test output:
-
-          $(printf '```')
-          $(tail -c 20000 "$RUNNER_TEMP/build-output.log" 2>/dev/null || echo "No output captured.")
-          $(printf '```')
-          EOF
-          )"
+          # Comment on the open failure issue instead of opening a new one every week.
+          EXISTING=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title \
+            --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
+          if [[ -n "$EXISTING" ]]; then
+            gh issue comment "$EXISTING" --body-file "$BODY_FILE"
+          else
+            gh issue create --title "$TITLE" --body-file "$BODY_FILE"
+          fi

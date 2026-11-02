@@ -87,6 +87,32 @@ jobs:
         echo "tag_name=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+    # release-please must not manage app.manifest (its XML updater writes a three-part version),
+    # so the Windows four-part assemblyIdentity version is synced here on the release branch.
+    - name: Sync app.manifest on release pull request
+      if: steps.release.outputs.prs_created == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_PR: ${{ steps.release.outputs.pr }}
+      run: |
+        set -euo pipefail
+        RELEASE_REF="$(jq -r '.headBranchName' <<< "$RELEASE_PR")"
+        git clone --quiet --depth 1 --branch "$RELEASE_REF" \
+          "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" release-pr
+        cd release-pr
+        VERSION="$(tr -d '[:space:]' < version.txt)"
+        # First four-part version only: the app's own assemblyIdentity, not dependency entries.
+        sed -i -E "0,/version=\"[0-9]+(\.[0-9]+){3}\"/ s//version=\"${VERSION}.0\"/" app.manifest
+        bash scripts/validate-version-sync.sh "$VERSION"
+        if git diff --quiet -- app.manifest; then
+          echo "app.manifest already at ${VERSION}.0"
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit --quiet -m "chore: sync app.manifest version to ${VERSION}" -- app.manifest
+        git push --quiet origin "HEAD:${RELEASE_REF}"
+
     - name: Start release pull request validation
       if: steps.release.outputs.prs_created == 'true'
       env:

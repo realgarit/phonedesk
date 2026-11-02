@@ -34,6 +34,14 @@ public sealed class ReleaseConfigurationTests
 
         var expectedVersion = File.ReadAllText(versionPath).Trim();
         Assert.Equal($"{expectedVersion}.0", versionAttribute!.Value);
+
+        // Without the build.yml sync step, every release PR fails version validation.
+        var buildWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "build.yml"));
+        Assert.Contains("name: Sync app.manifest on release pull request", buildWorkflow);
+        Assert.True(
+            buildWorkflow.IndexOf("name: Sync app.manifest on release pull request", StringComparison.Ordinal)
+                < buildWorkflow.IndexOf("name: Start release pull request validation", StringComparison.Ordinal),
+            "app.manifest must be synced before release pull request validation starts");
     }
 
     [Fact]

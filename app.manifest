@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <!-- release-please updates this attribute through release-please-config.json -->
+  <!-- build.yml syncs this attribute on release pull requests; release-please must not manage it -->
   <assemblyIdentity 
     version="3.34.2.0"
     name="PhoneDesk"

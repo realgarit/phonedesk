@@ -122,4 +122,6 @@ Its stale 3.33.0 update draft in Partner Center is left unsubmitted.
 
 The `publish-store-package.yml` workflow that copied the Inno installer to `gh-pages/store/`
 was removed in 3.34.1, and the `store/` installer folder on `gh-pages` was deleted in 3.34.2
-after the Classic product became unavailable. Installers are served only from GitHub releases.
+after the Classic product became unavailable. The `gh-pages` branch itself was deleted on
+2026-11-02, which also removed the GitHub Pages site. Installers are served only from GitHub
+releases.

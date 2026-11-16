@@ -21,7 +21,7 @@
          Skia or renders. -->
     <PackageReference Include="Avalonia.Headless" Version="[11.3.22,12.0.0)" />
     <PackageReference Include="Avalonia.Skia" Version="[11.3.22,12.0.0)" />
-    <PackageReference Include="xunit.v3.mtp-off" Version="4.0.2" />
+    <PackageReference Include="xunit.v3.mtp-off" Version="4.0.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -30,6 +30,8 @@ updates:
   # Accepted Avalonia 11 compatibility limit: realgarit/phonedesk#203.
   # Dependabot rejects open NuGet interval notation such as "[12.0.0,)"
   # (illformed_requirement), so the limits use comparison operators.
+  # The updater can still step past these while it resolves a related update
+  # (PR 243); PhoneDesk.Tests/DependencyLimitTests.cs fails such a PR.
   ignore:
   - dependency-name: "Avalonia*"
     versions: [">= 12.0.0"]

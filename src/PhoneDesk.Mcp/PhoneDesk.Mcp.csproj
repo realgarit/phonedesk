@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PhoneDesk.Mcp — headless composition root that exposes PhoneDesk operations to AI clients
+    over the Model Context Protocol (stdio transport).
+
+    It is a second head beside the Avalonia app: it references Domain, Application and
+    Infrastructure only, never Presentation or any UI framework.
+
+    stdout carries the protocol, so nothing in this project may write to it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PhoneDesk.Mcp</RootNamespace>
+    <AssemblyName>phonedesk-mcp</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhoneDesk.Domain\PhoneDesk.Domain.csproj" />
+    <ProjectReference Include="..\PhoneDesk.Application\PhoneDesk.Application.csproj" />
+    <ProjectReference Include="..\PhoneDesk.Infrastructure\PhoneDesk.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The frozen setup script looks for the bundled modules beside the executable. -->
+    <Content Include="..\..\Modules\**\*" Link="Modules\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

@@ -42,7 +42,7 @@
     <PackageReference Include="System.IO.Packaging" Version="11.0.0" />
     <PackageReference Include="System.Management.Automation" Version="7.6.10" />
     <!-- Transitive dependency overrides to resolve known vulnerabilities -->
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.15" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="11.0.0" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.2" />
   </ItemGroup>
 

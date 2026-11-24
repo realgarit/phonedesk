@@ -48,8 +48,18 @@ internal sealed class CreatedObjectGuard
     /// prove the object is new, or when the backup already contains it.
     /// </summary>
     public void Claim(TenantObjectType type, string name, string operation, string? output)
+        => Claim(type, name, operation, output, provenByItsOwnOutputLine: false);
+
+    /// <param name="provenByItsOwnOutputLine">
+    /// True when the caller found this object's own "created" line in the output. A "reused" line
+    /// for another object in the same output then says nothing about this one.
+    /// </param>
+    private void Claim(TenantObjectType type, string name, string operation, string? output, bool provenByItsOwnOutputLine)
     {
-        if (ReusedExistingObject(output) || _tenant.BaselineSnapshot is not { } baseline || ExistedIn(baseline, type, name))
+        if (string.IsNullOrWhiteSpace(name) ||
+            (!provenByItsOwnOutputLine && ReusedExistingObject(output)) ||
+            _tenant.BaselineSnapshot is not { } baseline ||
+            ExistedIn(baseline, type, name))
         {
             return;
         }
@@ -78,10 +88,23 @@ internal sealed class CreatedObjectGuard
         }
     }
 
+    /// <summary>
+    /// Records an object whose own "created" line is in the output of a script that made several
+    /// objects. The script can have failed later, and the tenant does not have to show the object
+    /// yet: a new resource account is not visible for some seconds. The pre-change backup must
+    /// still show that the object did not exist before.
+    /// </summary>
+    public Task ClaimProvenAsync(TenantObjectType type, string name, string operation, string? output, CancellationToken cancellationToken)
+        => ClaimAndStoreIdAsync(type, name, operation, output, provenByItsOwnOutputLine: true, cancellationToken);
+
     /// <summary>Records a created object and stores its immutable ID when the tenant already shows it.</summary>
-    public async Task ClaimAsync(TenantObjectType type, string name, string operation, string? output, CancellationToken cancellationToken)
+    public Task ClaimAsync(TenantObjectType type, string name, string operation, string? output, CancellationToken cancellationToken)
+        => ClaimAndStoreIdAsync(type, name, operation, output, provenByItsOwnOutputLine: false, cancellationToken);
+
+    private async Task ClaimAndStoreIdAsync(
+        TenantObjectType type, string name, string operation, string? output, bool provenByItsOwnOutputLine, CancellationToken cancellationToken)
     {
-        Claim(type, name, operation, output);
+        Claim(type, name, operation, output, provenByItsOwnOutputLine);
         if (type == TenantObjectType.M365Group || !_ledger.Contains(_tenant.TenantId, type, name))
         {
             return;

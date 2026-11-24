@@ -28,6 +28,11 @@ keeps a Direct Routing number there after the resource account it was assigned t
 The server records a number that `assign_phone_number`, Guided Setup step 6 or `bulk_setup` added
 to the inventory, and releases only such a number. An assigned number, and a number from an operator or from Microsoft, is never released.
 
+`bulk_setup` can fail on its first run, because a new resource account is not visible to Microsoft
+Graph for some seconds, and complete on a second run. The server records every object a run
+created from that object's own line in the output, also when the run failed later, so
+`created_objects` lists the objects of all runs.
+
 The desktop Tenant Report is not a separate tool. `tenant_details` returns the same data in
 structured form, and the AI client writes the report in the language and layout you ask for.
 

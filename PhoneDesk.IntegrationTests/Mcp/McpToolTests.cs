@@ -637,6 +637,99 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task BulkSetup_RecordsObjectsOfFailedRunsThatALaterRunReuses()
+    {
+        // A new resource account is not visible for some seconds, so the first run fails after it
+        // created objects, and the runs after it report those objects as reused.
+        using var host = new McpTestHost(skipBackup: false).Connected();
+        var tools = host.Tool<BulkTools>();
+        var header = McpTestHost.Parse(tools.Template()).GetProperty("template").GetString()!.Split('\n')[0].TrimEnd('\r');
+        var csv = header + "\nfabrikam,empfang,@fabrikam.onmicrosoft.com,haupt,de-DE,W. Europe Standard Time,CH,+41441234568,DirectRouting,08:00,12:00,13:00,17:00\n";
+        const string group = "ttgrp-fabrikam-empfang";
+        const string groupId = "66666666-2222-3333-4444-555555555555";
+        const string racq = "racq-fabrikam-empfang@fabrikam.onmicrosoft.com";
+        const string raaa = "raaa-fabrikam-haupt-empfang@fabrikam.onmicrosoft.com";
+        const string queue = "cq-fabrikam-empfang";
+        const string attendant = "aa-fabrikam-haupt-empfang";
+        var ledger = host.Get<CreatedObjectLedger>();
+
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "[1/1] Processing: fabrikam - empfang\n" +
+                     $"SUCCESS: {group} created successfully with ID: {groupId}\n" +
+                     $"SUCCESS: Resource account {racq} created successfully\n" +
+                     "ERROR: Failed to update usage location: Resource does not exist\n" +
+                     "ERROR: Failed to create call queue: userId was not found\n" +
+                     $"SUCCESS: Resource account {raaa} created successfully\n" +
+                     "ERROR: Failed to assign phone number: The user is not found\n" +
+                     $"SUCCESS: Auto attendant {attendant} is ready\n"
+        };
+        var first = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        Assert.Equal("failed", first.GetProperty("status").GetString());
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.M365Group, groupId));
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.ResourceAccount, racq));
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.ResourceAccount, raaa));
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.AutoAttendant, attendant));
+        Assert.False(ledger.Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, queue));
+        Assert.False(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234568"));
+
+        var reused =
+            "[1/1] Processing: fabrikam - empfang\n" +
+            $"SUCCESS: {group} already exists. The existing group is used (ID: {groupId})\n" +
+            $"SUCCESS: Resource account {racq} already exists. The existing account is used.\n" +
+            $"SUCCESS: Resource account {raaa} already exists. The existing account is used.\n" +
+            $"INFO: Auto attendant {attendant} already existed and was updated to the current Configuration.\n" +
+            $"SUCCESS: Auto attendant {attendant} is ready\n";
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = reused +
+                     $"SUCCESS: Call queue {queue} is ready and associated with {racq}\n" +
+                     "ERROR: Failed to assign phone number: User lacks appropriate licenses\n"
+        };
+        var second = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        Assert.Equal("failed", second.GetProperty("status").GetString());
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, queue));
+        Assert.False(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234568"));
+
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = reused +
+                     $"INFO: Call queue {queue} already existed and was updated to the current Configuration.\n" +
+                     $"SUCCESS: Call queue {queue} is ready and associated with {racq}\n" +
+                     "SUCCESS: Phone number assigned successfully\n"
+        };
+        var third = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        Assert.Equal("applied", third.GetProperty("status").GetString());
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234568"));
+        Assert.Equal(6, ledger.List(McpTestHost.TenantId).Count);
+    }
+
+    [Fact]
+    public async Task BulkSetup_DoesNotRecordObjectsARunOnlyReused()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected();
+        var tools = host.Tool<BulkTools>();
+        var header = McpTestHost.Parse(tools.Template()).GetProperty("template").GetString()!.Split('\n')[0].TrimEnd('\r');
+        var csv = header + "\nfabrikam,empfang,@fabrikam.onmicrosoft.com,haupt,de-DE,W. Europe Standard Time,CH,+41441234568,DirectRouting,08:00,12:00,13:00,17:00\n";
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "[1/1] Processing: fabrikam - empfang\n" +
+                     "SUCCESS: ttgrp-fabrikam-empfang already exists. The existing group is used (ID: 66666666-2222-3333-4444-555555555555)\n" +
+                     "SUCCESS: Resource account racq-fabrikam-empfang@fabrikam.onmicrosoft.com already exists. The existing account is used.\n" +
+                     "INFO: Call queue cq-fabrikam-empfang already existed and was updated to the current Configuration.\n" +
+                     "SUCCESS: Call queue cq-fabrikam-empfang is ready and associated with racq-fabrikam-empfang@fabrikam.onmicrosoft.com\n" +
+                     "SUCCESS: Resource account raaa-fabrikam-haupt-empfang@fabrikam.onmicrosoft.com already exists. The existing account is used.\n" +
+                     "INFO: Auto attendant aa-fabrikam-haupt-empfang already existed and was updated to the current Configuration.\n" +
+                     "SUCCESS: Auto attendant aa-fabrikam-haupt-empfang is ready\n"
+        };
+
+        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+
+        Assert.Equal("applied", applied.GetProperty("status").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
     public async Task HealthCheck_ReturnsFindingsAndHonoursSuppression()
     {
         using var host = new McpTestHost().Connected();

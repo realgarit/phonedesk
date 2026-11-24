@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.35.2](https://github.com/realgarit/phonedesk/compare/v3.35.1...v3.35.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* **mcp:** record objects of failed bulk runs that a later run reuses ([3f93837](https://github.com/realgarit/phonedesk/commit/3f93837d80fedf57a74ae9739ee994940903267c))
+* **mcp:** record objects of failed bulk runs that a later run reuses ([9e5244e](https://github.com/realgarit/phonedesk/commit/9e5244ee952ef3f4684539ca7ab3ae83b0f49221))
+
 ## [3.35.1](https://github.com/realgarit/phonedesk/compare/v3.35.0...v3.35.1) (2026-11-24)
 
 

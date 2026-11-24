@@ -114,11 +114,11 @@ internal sealed class GuidedSetupTools
                         state.Status = GuidedStepStatus.Completed;
                         state.Error = null;
                         state.Fingerprint = GuidedSetupScriptFactory.ComputeFingerprint(script);
-                        if (created is not null)
-                        {
-                            _guard.Claim(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput);
-                        }
                     },
+                    OnSuccessAsync = created is null
+                        ? null
+                        : (result, token) => _guard.ClaimAsync(
+                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput, token),
                     OnFailure = result =>
                     {
                         state.Status = GuidedStepStatus.Failed;

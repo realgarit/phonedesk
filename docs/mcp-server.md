@@ -40,8 +40,9 @@ The server enforces these rules itself. It does not rely on the AI client to fol
    It is not an automatic restore.
 3. **Delete only what the server created.** A delete tool accepts an object only when the server
    created it. The server counts an object as its own only when the backup taken before the change
-   proves it did not exist. Groups are checked by object ID. A delete by name runs only when the
-   name is unique in the tenant.
+   proves it did not exist. The server stores the immutable object ID of each object it created
+   and compares it before a delete, so another object that later gets the same name is not
+   deleted. A delete by name also runs only when the name is unique in the tenant.
 4. **Same audit log.** Every read and change goes to the audit log the desktop app shows on its
    History page.
 5. **Sign-in is yours.** The server opens the same browser sign-in as the desktop app and keeps

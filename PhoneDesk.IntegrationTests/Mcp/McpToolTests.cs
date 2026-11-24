@@ -171,7 +171,9 @@ public sealed class McpToolTests
 
         var second = await PlanAndApplyAsync(planId => tools.CreateCallQueue(planId: planId, cancellationToken: Cancellation));
         Assert.Equal(backupFile, second.GetProperty("backupFile").GetString());
-        Assert.Equal(readsForBackup + 2, host.PowerShell.Executed.Count);
+        // The second change did not read the backup sources again.
+        var tenantInfo = host.Get<IDocumentationScriptBuilder>().GetExportTenantInfoCommand();
+        Assert.Equal(1, host.PowerShell.Executed.Count(script => script == tenantInfo));
     }
 
     [Fact]
@@ -335,6 +337,58 @@ public sealed class McpToolTests
         var attendant = await PlanAndApplyAsync(planId => tools.CreateAutoAttendant(planId: planId, cancellationToken: Cancellation));
         Assert.Equal("applied", attendant.GetProperty("status").GetString());
         Assert.Contains("the change was made", attendant.GetProperty("note").GetString());
+    }
+
+    [Fact]
+    public async Task Delete_IsRefusedWhenAnotherObjectLaterTookTheName()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var topology = host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand();
+        var delete = host.Tool<DeleteTools>();
+        await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+
+        // The created queue becomes visible: the server stores its immutable ID.
+        host.PowerShell.Respond(topology, "TOPCQ: cq-contoso-reception|cq-created|Attendant|30||grp-1|ra-obj-1\n" + McpTestHost.TopologyOutput);
+        Assert.Equal("planned", McpTestHost.Parse(await delete.DeleteCallQueue("cq-contoso-reception", cancellationToken: Cancellation)).GetProperty("status").GetString());
+        Assert.Equal("cq-created", host.Get<CreatedObjectLedger>().Find(McpTestHost.TenantId, TenantObjectType.CallQueue, "cq-contoso-reception")!.ObjectId);
+
+        // Someone deletes it and creates another queue with the same name.
+        host.PowerShell.Respond(topology, "TOPCQ: cq-contoso-reception|cq-replacement|Attendant|30||grp-1|ra-obj-1\n" + McpTestHost.TopologyOutput);
+        var result = McpTestHost.Parse(await delete.DeleteCallQueue("cq-contoso-reception", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("different object ID", result.GetProperty("error").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Delete_IsRefusedForARecordWithoutAnObjectIdFromAnEarlierSession()
+    {
+        using var host = new McpTestHost().Connected();
+        host.Get<CreatedObjectLedger>().Record(McpTestHost.TenantId, TenantObjectType.CallQueue, "Support CQ", "CreateCallQueue");
+
+        var result = McpTestHost.Parse(await host.Tool<DeleteTools>().DeleteCallQueue("Support CQ", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("without its object ID", result.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task TenantDetails_AreNotServedFromAnotherTenantOrAfterDisconnect()
+    {
+        using var host = new McpTestHost().Connected();
+        var tools = host.Tool<TenantReadTools>();
+        Assert.True(McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation)).TryGetProperty("sections", out _));
+        var readsForOneSnapshot = host.PowerShell.Executed.Count;
+
+        // Another tenant in the same server process: the snapshot is read again.
+        host.Get<ISessionManager>().UpdateTenantInfo("tenant-2", "Fabrikam");
+        Assert.True(McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation)).TryGetProperty("sections", out _));
+        Assert.Equal(readsForOneSnapshot * 2, host.PowerShell.Executed.Count);
+
+        host.Get<ISessionManager>().ResetSession();
+        var afterDisconnect = McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation));
+        Assert.False(afterDisconnect.GetProperty("success").GetBoolean());
     }
 
     [Fact]

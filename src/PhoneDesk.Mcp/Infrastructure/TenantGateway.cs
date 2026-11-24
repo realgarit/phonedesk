@@ -24,6 +24,8 @@ internal sealed class TenantGateway
     private string? _sessionBackupTenantId;
     private BackupInfo? _sessionBackup;
     private string? _baselineTenantId;
+    private string? _latestSnapshotTenantId;
+    private TopologySnapshotDocument? _latestSnapshot;
     private TopologySnapshotDocument? _baseline;
 
     public TenantGateway(
@@ -48,15 +50,21 @@ internal sealed class TenantGateway
         _environment = environment;
     }
 
-    /// <summary>The most recent full snapshot read in this session.</summary>
-    public TopologySnapshotDocument? LatestSnapshot { get; private set; }
+    /// <summary>
+    /// The most recent full snapshot of the connected tenant read in this session. Null when the
+    /// snapshot belongs to another tenant or nothing is connected.
+    /// </summary>
+    public TopologySnapshotDocument? LatestSnapshot
+        => _connection.IsReady && string.Equals(_latestSnapshotTenantId, TenantId, StringComparison.OrdinalIgnoreCase)
+            ? _latestSnapshot
+            : null;
 
     /// <summary>
     /// The first backup of the connected tenant in this session. It shows what was in the tenant
     /// before this session changed anything. Null until a backup was taken.
     /// </summary>
     public TopologySnapshotDocument? BaselineSnapshot
-        => string.Equals(_baselineTenantId, TenantId, StringComparison.OrdinalIgnoreCase) ? _baseline : null;
+        => _connection.IsReady && string.Equals(_baselineTenantId, TenantId, StringComparison.OrdinalIgnoreCase) ? _baseline : null;
 
     public string TenantId => _session.TenantId ?? string.Empty;
 
@@ -103,9 +111,12 @@ internal sealed class TenantGateway
     public async Task<TopologySnapshotDocument> CollectSnapshotAsync(CancellationToken cancellationToken)
     {
         RequireReady();
-        LatestSnapshot = await _snapshotCollector.CollectAsync(
+        var tenantId = TenantId;
+        var snapshot = await _snapshotCollector.CollectAsync(
             (command, operation) => ReadAsync(command, operation, cancellationToken));
-        return LatestSnapshot;
+        _latestSnapshotTenantId = tenantId;
+        _latestSnapshot = snapshot;
+        return snapshot;
     }
 
     /// <summary>Reads the full tenant snapshot and writes it to the backup folder of the tenant.</summary>

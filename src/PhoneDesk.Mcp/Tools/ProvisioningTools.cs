@@ -330,7 +330,7 @@ internal sealed class ProvisioningTools
         => new(operation, key, script, summary)
         {
             // A failed script can still have created the object; the guard then confirms it in the tenant.
-            OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput),
+            OnSuccessAsync = (result, token) => _guard.ClaimAsync(type, key, operation, result.RawOutput, token),
             OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token),
             ChangeWasMadeDespiteError = type == TenantObjectType.AutoAttendant
                 ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(type, key, result, token)

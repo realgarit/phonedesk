@@ -68,7 +68,14 @@ internal sealed class BulkTools
                 {
                     // The bulk script prints progress lines, not one SUCCESS line: it failed when an error was reported.
                     IsSuccess = result => result.IsSuccess && !result.HasErrorMarker,
-                    OnSuccess = result => ClaimAll(entries, result.RawOutput),
+                    OnSuccessAsync = async (result, token) =>
+                    {
+                        // One combined output: when any row reused an object, no row can be proven new.
+                        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
+                        {
+                            await _guard.ClaimAsync(type, name, "BulkOperations", result.RawOutput, token);
+                        }
+                    },
                     // A script that failed part of the way can still have created objects; the guard
                     // records only those a new read of the tenant confirms.
                     OnFailureAsync = async (result, token) =>
@@ -82,15 +89,6 @@ internal sealed class BulkTools
                 planId,
                 cancellationToken);
         });
-
-    /// <summary>One combined output: when any row reused an object, no row can be proven new.</summary>
-    private void ClaimAll(IReadOnlyList<ConfigurationDocumentVariables> entries, string? output)
-    {
-        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
-        {
-            _guard.Claim(type, name, "BulkOperations", output);
-        }
-    }
 
     private static IEnumerable<(TenantObjectType Type, string Name)> CreatedObjects(ConfigurationDocumentVariables entry)
     {

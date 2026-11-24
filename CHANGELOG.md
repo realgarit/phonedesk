@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.35.1](https://github.com/realgarit/phonedesk/compare/v3.35.0...v3.35.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* confirm late module errors in the tenant and track failed creates ([54cbee2](https://github.com/realgarit/phonedesk/commit/54cbee2eebe59b43bac38480d4e228863e202824))
+* harden the MCP delete guard and handle late module errors ([88e22b4](https://github.com/realgarit/phonedesk/commit/88e22b45ed5b29ec53f9d709b99f86b13468566c))
+* keep a failed auto attendant update reported as failed ([a0b4c81](https://github.com/realgarit/phonedesk/commit/a0b4c81a4b1dff7805ee1162a488251d8293d394))
+* keep script output when a cmdlet writes a null value, add release_phone_number ([fccef03](https://github.com/realgarit/phonedesk/commit/fccef03e46a9635a397a0e8101c6243510c5fe72))
+* record an object after a failed create only when the tenant has it ([1ade545](https://github.com/realgarit/phonedesk/commit/1ade545e0c934e77e51fb0411bf0d495bcd4e3b1))
+* release only unassigned Direct Routing numbers, without the -Force switch ([72c727f](https://github.com/realgarit/phonedesk/commit/72c727fd09d68fa8c1f310fc9bd3f440eb0a1aeb))
+* verify the object ID before an MCP delete and scope the snapshot cache ([c01bfc2](https://github.com/realgarit/phonedesk/commit/c01bfc2f8eb59d13de5580b111601b8c2f7e58a2))
+
 ## [3.35.0](https://github.com/realgarit/phonedesk/compare/v3.34.3...v3.35.0) (2026-11-24)
 
 

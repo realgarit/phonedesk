@@ -290,6 +290,39 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task Create_ThatFailsLateStillRecordsTheNewObjectAndConfirmsAnAutoAttendantInTheTenant()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var commands = host.Get<IPowerShellCommandService>();
+        var tools = host.Tool<ProvisioningTools>();
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "ERROR: Object reference not set to an instance of an object.",
+            HadErrors = true,
+            Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Object reference not set to an instance of an object." } }
+        };
+
+        // The call queue is not there afterwards: the failure stands, but the name is tracked.
+        var queue = await PlanAndApplyAsync(planId => tools.CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("failed", queue.GetProperty("status").GetString());
+        Assert.True(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, "cq-contoso-reception"));
+
+        // The auto attendant is in the tenant afterwards: the module failed after the work was done.
+        host.PowerShell.AfterRun = script =>
+        {
+            if (script.Contains("aa-contoso-main-reception", StringComparison.Ordinal))
+            {
+                host.PowerShell.Respond(
+                    commands.GetRetrieveTenantTopologyCommand(),
+                    "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
+            }
+        };
+        var attendant = await PlanAndApplyAsync(planId => tools.CreateAutoAttendant(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("applied", attendant.GetProperty("status").GetString());
+        Assert.Contains("the change was made", attendant.GetProperty("note").GetString());
+    }
+
+    [Fact]
     public async Task Create_DoesNotClaimAnObjectThatAlreadyExisted()
     {
         using var host = new McpTestHost(skipBackup: false).Connected().Configured();

@@ -93,7 +93,7 @@ internal sealed class DeleteTools
                 new ChangeRequest(operation, target, buildScript(target), summary)
                 {
                     OnSuccess = _ => _guard.Forget(type, target),
-                    ChangeWasMadeDespiteError = async token => !await _guard.ExistsAsync(type, target, token)
+                    ChangeWasMadeDespiteError = async (_, token) => !await _guard.ExistsAsync(type, target, token)
                 },
                 planId,
                 cancellationToken);

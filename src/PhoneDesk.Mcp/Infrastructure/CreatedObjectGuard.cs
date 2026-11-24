@@ -66,6 +66,17 @@ internal sealed class CreatedObjectGuard
         _ledger.Record(_tenant.TenantId, type, name, operation, name);
     }
 
+    /// <summary>
+    /// True when a script failed only at the very end: the Teams module can throw a null reference
+    /// after the script finished its work, and the host then returns that error instead of the
+    /// script's output. The object is read from the tenant again to confirm it is there.
+    /// </summary>
+    public async Task<bool> ExistsAfterLateModuleErrorAsync(
+        TenantObjectType type, string key, Services.OperationResult<string> result, CancellationToken cancellationToken)
+        => (result.ErrorMessage ?? result.RawOutput).Contains(
+               "Object reference not set to an instance of an object", StringComparison.OrdinalIgnoreCase) &&
+           await ExistsAsync(type, key, cancellationToken);
+
     public void Forget(TenantObjectType type, string key) => _ledger.Remove(_tenant.TenantId, type, key);
 
     /// <summary>Throws when a delete tool must not remove the object.</summary>

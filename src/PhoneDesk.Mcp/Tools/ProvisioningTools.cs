@@ -296,7 +296,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "import_audio_file", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = true)]
-    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold." + ChangeNote)]
+    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold. Teams removes an uploaded file by itself after 48 to 72 hours when no call queue or auto attendant uses it; it cannot be removed earlier." + ChangeNote)]
     public Task<string> ImportAudioFile(
         [Description("Full path of the audio file on this computer.")] string path,
         [Description(PlanIdDescription)] string? planId = null,
@@ -329,7 +329,12 @@ internal sealed class ProvisioningTools
     private ChangeRequest Creating(TenantObjectType type, string key, string operation, string script, string summary)
         => new(operation, key, script, summary)
         {
-            OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput)
+            // A failed script can still have created the object, so both outcomes report to the guard.
+            OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput),
+            OnFailure = result => _guard.Claim(type, key, operation, result.RawOutput),
+            ChangeWasMadeDespiteError = type == TenantObjectType.AutoAttendant
+                ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(type, key, result, token)
+                : null
         };
 
     internal static bool IsCallQueue(string kind)

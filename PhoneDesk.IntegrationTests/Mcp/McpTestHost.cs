@@ -162,6 +162,9 @@ internal sealed class FakePowerShell : IPowerShellContextService
 
     public PowerShellExecutionResult DefaultResult { get; set; } = new() { Output = "SUCCESS: done" };
 
+    /// <summary>Runs after a script, for example to change what the tenant returns from then on.</summary>
+    public Action<string>? AfterRun { get; set; }
+
     public void Respond(string script, string output, bool hadErrors = false)
         => _responses[script] = new PowerShellExecutionResult
         {
@@ -216,6 +219,8 @@ internal sealed class FakePowerShell : IPowerShellContextService
     private PowerShellExecutionResult Run(string command)
     {
         Executed.Add(command);
-        return _responses.TryGetValue(command, out var result) ? result : DefaultResult;
+        var answer = _responses.TryGetValue(command, out var result) ? result : DefaultResult;
+        AfterRun?.Invoke(command);
+        return answer;
     }
 }

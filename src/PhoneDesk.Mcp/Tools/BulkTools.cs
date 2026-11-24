@@ -10,18 +10,18 @@ namespace PhoneDesk.Mcp.Tools;
 internal sealed class BulkTools
 {
     private readonly BulkSetupScriptBuilder _bulk;
-    private readonly IValidationService _validation;
+    private readonly IDryRunPlanBuilder _planBuilder;
     private readonly ChangeGate _changes;
     private readonly CreatedObjectGuard _guard;
 
     public BulkTools(
         BulkSetupScriptBuilder bulk,
-        IValidationService validation,
+        IDryRunPlanBuilder planBuilder,
         ChangeGate changes,
         CreatedObjectGuard guard)
     {
         _bulk = bulk;
-        _validation = validation;
+        _planBuilder = planBuilder;
         _changes = changes;
         _guard = guard;
     }
@@ -48,10 +48,13 @@ internal sealed class BulkTools
                 throw new InvalidOperationException("The CSV has no data rows. It needs the header row and at least one row.");
             }
 
-            var problems = entries
-                .Select((entry, index) => new { row = index + 1, issues = _validation.ValidateVariables(entry).Issues })
-                .Where(item => item.issues.Count > 0)
-                .Select(item => $"Row {item.row}: {string.Join(" ", item.issues.Select(issue => issue.Message))}")
+            // The same row rules and cross-row checks as the desktop bulk page.
+            var problems = _planBuilder.BuildBulkPlan(entries).Entries
+                .Where(entry => !entry.IsValid)
+                .Select(entry => $"Row {entry.RowNumber}: " + string.Join(" ", entry.ValidationErrors.Concat(
+                    entry.PreflightChecks
+                        .Where(check => check.Status == Planning.PreflightStatus.Fail)
+                        .Select(check => check.Detail))))
                 .ToList();
             if (problems.Count > 0)
             {
@@ -68,9 +71,9 @@ internal sealed class BulkTools
                     OnSuccess = result =>
                     {
                         // One combined output: when any row reused an object, no row can be proven new.
-                        // The group is not claimed: the combined output does not tie a group ID to a row.
                         foreach (var entry in entries)
                         {
+                            _guard.Claim(TenantObjectType.M365Group, entry.M365Group, "BulkOperations", result.RawOutput);
                             _guard.Claim(TenantObjectType.ResourceAccount, entry.RacqUPN, "BulkOperations", result.RawOutput);
                             _guard.Claim(TenantObjectType.CallQueue, entry.CqDisplayName, "BulkOperations", result.RawOutput);
                             _guard.Claim(TenantObjectType.ResourceAccount, entry.RaaaUPN, "BulkOperations", result.RawOutput);

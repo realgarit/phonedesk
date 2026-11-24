@@ -235,6 +235,61 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task Delete_ThatReportsAnErrorButRemovedTheObjectCountsAsDone()
+    {
+        using var host = new McpTestHost(allowDeleteExisting: true).Connected();
+        var commands = host.Get<IPowerShellCommandService>();
+        host.Get<CreatedObjectLedger>().Record(McpTestHost.TenantId, TenantObjectType.AutoAttendant, "Main AA", "CreateAutoAttendant");
+        var delete = host.Tool<DeleteTools>();
+
+        var plan = McpTestHost.Parse(await delete.DeleteAutoAttendant("Main AA", cancellationToken: Cancellation));
+        // The script removes the auto attendant and then fails in a later step.
+        var remove = commands.GetRemoveAutoAttendantCommand("Main AA");
+        host.PowerShell.Respond(remove, "ERROR: Object reference not set to an instance of an object.", hadErrors: true);
+        host.PowerShell.AfterRun = script =>
+        {
+            if (script == remove)
+            {
+                host.PowerShell.Respond(
+                    commands.GetRetrieveTenantTopologyCommand(),
+                    "TOPGRP: Support Group|grp-1|support|Support team\nSUCCESS: Tenant topology retrieved\n");
+            }
+        };
+        var result = McpTestHost.Parse(await delete.DeleteAutoAttendant("Main AA", plan.GetProperty("planId").GetString(), Cancellation));
+
+        Assert.Equal("applied", result.GetProperty("status").GetString());
+        Assert.Contains("the change was made", result.GetProperty("note").GetString());
+        Assert.False(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.AutoAttendant, "Main AA"));
+    }
+
+    [Fact]
+    public async Task Delete_ThatFailsAndLeavesTheObjectStaysFailed()
+    {
+        using var host = new McpTestHost(allowDeleteExisting: true).Connected();
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRemoveAutoAttendantCommand("Main AA"), "ERROR: access denied", hadErrors: true);
+        var delete = host.Tool<DeleteTools>();
+
+        var result = await PlanAndApplyAsync(planId => delete.DeleteAutoAttendant("Main AA", planId, Cancellation));
+
+        Assert.Equal("failed", result.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Delete_OfAnObjectThatIsAlreadyGoneForgetsIt()
+    {
+        using var host = new McpTestHost().Connected();
+        var ledger = host.Get<CreatedObjectLedger>();
+        ledger.Record(McpTestHost.TenantId, TenantObjectType.HolidaySchedule, "hd-contoso-2027", "CreateHolidaySeries");
+
+        var result = McpTestHost.Parse(await host.Tool<DeleteTools>().DeleteHolidaySchedule("hd-contoso-2027", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("not found", result.GetProperty("error").GetString());
+        Assert.Empty(ledger.List(McpTestHost.TenantId));
+    }
+
+    [Fact]
     public async Task Create_DoesNotClaimAnObjectThatAlreadyExisted()
     {
         using var host = new McpTestHost(skipBackup: false).Connected().Configured();
@@ -290,6 +345,9 @@ public sealed class McpToolTests
     {
         using var host = new McpTestHost().Connected();
         host.Get<CreatedObjectLedger>().Record(McpTestHost.TenantId, TenantObjectType.M365Group, GroupId, "CreateM365Group", "ttgrp-contoso-reception");
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            $"TOPGRP: ttgrp-contoso-reception|{GroupId}|ttgrp-contoso-reception|\n" + McpTestHost.TopologyOutput);
         var delete = host.Tool<DeleteTools>();
 
         var otherGroup = McpTestHost.Parse(await delete.DeleteM365Group(
@@ -369,6 +427,30 @@ public sealed class McpToolTests
 
         Assert.False(result.GetProperty("success").GetBoolean());
         Assert.Contains("Row 1", result.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task BulkSetup_AcceptsTheTemplateRowAndClaimsEachGroupByItsOwnId()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected();
+        var tools = host.Tool<BulkTools>();
+        var template = McpTestHost.Parse(tools.Template()).GetProperty("template").GetString()!;
+        var csv = template + "fabrikam,empfang,@fabrikam.onmicrosoft.com,haupt,de-DE,W. Europe Standard Time,CH,+41441234568,DirectRouting,08:00,12:00,13:00,17:00\n";
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "SUCCESS: ttgrp-contoso-hauptnummer created successfully with ID: 11111111-2222-3333-4444-555555555555\n" +
+                     "SUCCESS: ttgrp-fabrikam-empfang created successfully with ID: 66666666-2222-3333-4444-555555555555\n"
+        };
+
+        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+
+        Assert.Equal("applied", applied.GetProperty("status").GetString());
+        var ledger = host.Get<CreatedObjectLedger>();
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.M365Group, "66666666-2222-3333-4444-555555555555"));
+        Assert.Equal(
+            "ttgrp-fabrikam-empfang",
+            ledger.List(McpTestHost.TenantId).Single(item => item.Key == "66666666-2222-3333-4444-555555555555").DisplayName);
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, "cq-fabrikam-empfang"));
     }
 
     [Fact]

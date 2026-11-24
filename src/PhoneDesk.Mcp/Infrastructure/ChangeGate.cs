@@ -15,6 +15,13 @@ internal sealed record ChangeRequest(string Operation, string Target, string Scr
     /// <summary>Runs after a successful change, for example to record a created object.</summary>
     public Action<OperationResult<string>>? OnSuccess { get; init; }
 
+    /// <summary>
+    /// Checks the tenant after the script reported an error. Returns true when the change was made
+    /// all the same. A script can fail in a late step after its main work is done; the tenant, not
+    /// the script's last line, decides what happened.
+    /// </summary>
+    public Func<CancellationToken, Task<bool>>? ChangeWasMadeDespiteError { get; init; }
+
     /// <summary>Runs after a failed change.</summary>
     public Action<OperationResult<string>>? OnFailure { get; init; }
 }
@@ -81,6 +88,15 @@ internal sealed class ChangeGate
         var result = outcome.Result;
         var success = outcome.Status == TenantCommandStatus.Completed && request.IsSuccess(result);
         _tenant.InvalidateTopology();
+        string? note = null;
+        if (!success && outcome.Status == TenantCommandStatus.Completed && request.ChangeWasMadeDespiteError is not null &&
+            await request.ChangeWasMadeDespiteError(cancellationToken))
+        {
+            success = true;
+            note = "The script reported an error, but a check of the tenant shows the change was made: " +
+                   (result.ErrorMessage ?? "unknown error");
+        }
+
         if (success)
         {
             request.OnSuccess?.Invoke(result);
@@ -96,6 +112,7 @@ internal sealed class ChangeGate
             success,
             operation = request.Operation,
             target = request.Target,
+            note,
             error = success ? null : result.ErrorMessage,
             errorCategory = success ? (OperationErrorCategory?)null : result.Category,
             output = McpJson.Truncate(result.RawOutput),

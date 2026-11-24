@@ -11,7 +11,7 @@ namespace PhoneDesk.Mcp;
 /// change proves it did not exist, and a name-based delete runs only when the name is unique in
 /// the live tenant.
 /// </summary>
-internal sealed partial class CreatedObjectGuard
+internal sealed class CreatedObjectGuard
 {
     private readonly TenantGateway _tenant;
     private readonly CreatedObjectLedger _ledger;
@@ -48,8 +48,13 @@ internal sealed partial class CreatedObjectGuard
 
         if (type == TenantObjectType.M365Group)
         {
-            // A group is deleted by its object ID, so the ID is what the ledger must hold.
-            var match = CreatedGroupId().Match(output ?? string.Empty);
+            // A group is deleted by its object ID, so the ID is what the ledger must hold. The ID is
+            // taken from this group's own line, so a script that created several groups is safe.
+            var match = Regex.Match(
+                output ?? string.Empty,
+                Regex.Escape(name.Trim()) + @" created successfully with ID:\s*(?<id>[0-9a-fA-F-]{36})",
+                RegexOptions.CultureInvariant,
+                TimeSpan.FromSeconds(1));
             if (match.Success)
             {
                 _ledger.Record(_tenant.TenantId, type, match.Groups["id"].Value, operation, name);
@@ -76,18 +81,12 @@ internal sealed partial class CreatedObjectGuard
                 $"{McpEnvironment.AllowDeleteExistingVariable}=1, or delete the object in the desktop app or the Teams admin center.");
         }
 
-        var matches = type switch
-        {
-            TenantObjectType.CallQueue => (await _tenant.GetTopologyAsync(refresh: true, cancellationToken))
-                .CallQueues.Count(item => SameName(item.Name, key)),
-            TenantObjectType.AutoAttendant => (await _tenant.GetTopologyAsync(refresh: true, cancellationToken))
-                .AutoAttendants.Count(item => SameName(item.Name, key)),
-            TenantObjectType.HolidaySchedule => await CountSchedulesAsync(key, cancellationToken),
-            _ => 1
-        };
+        var matches = await CountInTenantAsync(type, key, cancellationToken);
         if (matches == 0)
         {
-            throw new InvalidOperationException($"'{key}' was not found in the tenant.");
+            // The object is gone, for example removed together with its auto attendant: nothing is left to track.
+            _ledger.Remove(_tenant.TenantId, type, key);
+            throw new InvalidOperationException($"'{key}' was not found in the tenant. There is nothing to delete.");
         }
 
         if (matches > 1)
@@ -96,6 +95,28 @@ internal sealed partial class CreatedObjectGuard
                 $"The tenant has {matches} objects named '{key}'. The delete script cannot tell them apart, so nothing is deleted. " +
                 "Delete the right one in the Teams admin center.");
         }
+    }
+
+    /// <summary>True when the live tenant still has the object. Reads the tenant again.</summary>
+    public async Task<bool> ExistsAsync(TenantObjectType type, string key, CancellationToken cancellationToken)
+        => await CountInTenantAsync(type, key, cancellationToken) > 0;
+
+    private async Task<int> CountInTenantAsync(TenantObjectType type, string key, CancellationToken cancellationToken)
+    {
+        if (type == TenantObjectType.HolidaySchedule)
+        {
+            return await CountSchedulesAsync(key, cancellationToken);
+        }
+
+        var topology = await _tenant.GetTopologyAsync(refresh: true, cancellationToken);
+        return type switch
+        {
+            TenantObjectType.CallQueue => topology.CallQueues.Count(item => SameName(item.Name, key)),
+            TenantObjectType.AutoAttendant => topology.AutoAttendants.Count(item => SameName(item.Name, key)),
+            TenantObjectType.ResourceAccount => topology.ResourceAccounts.Count(item => SameName(item.UserPrincipalName, key)),
+            TenantObjectType.M365Group => topology.Groups.Count(item => SameName(item.Id, key)),
+            _ => 0
+        };
     }
 
     private async Task<int> CountSchedulesAsync(string name, CancellationToken cancellationToken)
@@ -128,7 +149,4 @@ internal sealed partial class CreatedObjectGuard
 
     private static bool SameName(string? left, string right)
         => string.Equals(left?.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase);
-
-    [GeneratedRegex(@"created successfully with ID:\s*(?<id>[0-9a-fA-F-]{36})")]
-    private static partial Regex CreatedGroupId();
 }

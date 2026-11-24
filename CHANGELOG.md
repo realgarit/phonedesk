@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.35.0](https://github.com/realgarit/phonedesk/compare/v3.34.3...v3.35.0) (2026-11-24)
+
+
+### Features
+
+* add an MCP server for AI clients ([6f4e076](https://github.com/realgarit/phonedesk/commit/6f4e076d0ac5fbbb872317d62b85177448cae189))
+* add MCP server spike with sign-in and topology tools ([019bba7](https://github.com/realgarit/phonedesk/commit/019bba7654ce3f716d8627f4b81ad4bfb3b33e2f))
+* add the complete MCP tool set ([6394db7](https://github.com/realgarit/phonedesk/commit/6394db723ade5b9ad4408a53455273c8d98325db))
+
+
+### Bug Fixes
+
+* accept an informational cmdlet warning in the tenant snapshot ([866a81b](https://github.com/realgarit/phonedesk/commit/866a81b8a70bf30e2a81d4b7d50afa5805c9493e))
+* correct MCP bulk validation and verify deletes in the tenant ([6d9a13c](https://github.com/realgarit/phonedesk/commit/6d9a13cee26c69a4f4dbca3aaf2d6402d5f5d434))
+* end an MCP sign-in that nobody completes ([beaa3ca](https://github.com/realgarit/phonedesk/commit/beaa3ca569fd4546796a6f97b66af1d8fa080e6a))
+* harden the MCP delete guard and file tools ([f6a05f6](https://github.com/realgarit/phonedesk/commit/f6a05f6ec45a280b400b635be5ad59f4aadf098c))
+* keep a group's object ID when its name contains the separator ([cced87e](https://github.com/realgarit/phonedesk/commit/cced87eb09b0855604062b2b94f53caa43d5507b))
+* let an MCP sign-in continue across calls ([7e3f0b5](https://github.com/realgarit/phonedesk/commit/7e3f0b59b8cd3fe4f6b24bffb0475b2c03523619))
+
 ## [3.34.3](https://github.com/realgarit/phonedesk/compare/v3.34.2...v3.34.3) (2026-11-02)
 
 

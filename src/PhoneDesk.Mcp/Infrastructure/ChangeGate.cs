@@ -24,6 +24,9 @@ internal sealed record ChangeRequest(string Operation, string Target, string Scr
 
     /// <summary>Runs after a failed change.</summary>
     public Action<OperationResult<string>>? OnFailure { get; init; }
+
+    /// <summary>Runs after a failed change, for work that must read the tenant.</summary>
+    public Func<OperationResult<string>, CancellationToken, Task>? OnFailureAsync { get; init; }
 }
 
 /// <summary>
@@ -105,6 +108,10 @@ internal sealed class ChangeGate
         else
         {
             request.OnFailure?.Invoke(result);
+            if (request.OnFailureAsync is not null)
+            {
+                await request.OnFailureAsync(result, cancellationToken);
+            }
         }
 
         return new

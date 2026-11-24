@@ -302,10 +302,25 @@ public sealed class McpToolTests
             Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Object reference not set to an instance of an object." } }
         };
 
-        // The call queue is not there afterwards: the failure stands, but the name is tracked.
+        // The call queue is not in the tenant afterwards: the failure stands and nothing is recorded.
         var queue = await PlanAndApplyAsync(planId => tools.CreateCallQueue(planId: planId, cancellationToken: Cancellation));
         Assert.Equal("failed", queue.GetProperty("status").GetString());
-        Assert.True(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, "cq-contoso-reception"));
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+
+        // A failed create that did leave the object in the tenant is recorded, so it can be cleaned up.
+        host.PowerShell.AfterRun = script =>
+        {
+            if (script.Contains("racq-contoso-reception", StringComparison.Ordinal) && !script.Contains("TOPRA", StringComparison.Ordinal))
+            {
+                host.PowerShell.Respond(
+                    commands.GetRetrieveTenantTopologyCommand(),
+                    "TOPRA: racq|racq-contoso-reception@contoso.onmicrosoft.com|ra-obj-9||CallQueue|True\n" + McpTestHost.TopologyOutput);
+            }
+        };
+        var account = await PlanAndApplyAsync(planId => tools.CreateResourceAccount("callQueue", planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("failed", account.GetProperty("status").GetString());
+        Assert.True(host.Get<CreatedObjectLedger>().Contains(
+            McpTestHost.TenantId, TenantObjectType.ResourceAccount, "racq-contoso-reception@contoso.onmicrosoft.com"));
 
         // The auto attendant is in the tenant afterwards: the module failed after the work was done.
         host.PowerShell.AfterRun = script =>

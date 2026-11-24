@@ -68,9 +68,16 @@ internal sealed class BulkTools
                 {
                     // The bulk script prints progress lines, not one SUCCESS line: it failed when an error was reported.
                     IsSuccess = result => result.IsSuccess && !result.HasErrorMarker,
-                    // A script that failed part of the way can still have created objects.
                     OnSuccess = result => ClaimAll(entries, result.RawOutput),
-                    OnFailure = result => ClaimAll(entries, result.RawOutput)
+                    // A script that failed part of the way can still have created objects; the guard
+                    // records only those a new read of the tenant confirms.
+                    OnFailureAsync = async (result, token) =>
+                    {
+                        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
+                        {
+                            await _guard.ClaimAfterFailureAsync(type, name, "BulkOperations", result, token);
+                        }
+                    }
                 },
                 planId,
                 cancellationToken);
@@ -79,14 +86,19 @@ internal sealed class BulkTools
     /// <summary>One combined output: when any row reused an object, no row can be proven new.</summary>
     private void ClaimAll(IReadOnlyList<ConfigurationDocumentVariables> entries, string? output)
     {
-        foreach (var entry in entries)
+        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
         {
-            _guard.Claim(TenantObjectType.M365Group, entry.M365Group, "BulkOperations", output);
-            _guard.Claim(TenantObjectType.ResourceAccount, entry.RacqUPN, "BulkOperations", output);
-            _guard.Claim(TenantObjectType.CallQueue, entry.CqDisplayName, "BulkOperations", output);
-            _guard.Claim(TenantObjectType.ResourceAccount, entry.RaaaUPN, "BulkOperations", output);
-            _guard.Claim(TenantObjectType.AutoAttendant, entry.AaDisplayName, "BulkOperations", output);
+            _guard.Claim(type, name, "BulkOperations", output);
         }
+    }
+
+    private static IEnumerable<(TenantObjectType Type, string Name)> CreatedObjects(ConfigurationDocumentVariables entry)
+    {
+        yield return (TenantObjectType.M365Group, entry.M365Group);
+        yield return (TenantObjectType.ResourceAccount, entry.RacqUPN);
+        yield return (TenantObjectType.CallQueue, entry.CqDisplayName);
+        yield return (TenantObjectType.ResourceAccount, entry.RaaaUPN);
+        yield return (TenantObjectType.AutoAttendant, entry.AaDisplayName);
     }
 
     /// <summary>A CSV row over an otherwise empty configuration, as the desktop bulk page builds it.</summary>

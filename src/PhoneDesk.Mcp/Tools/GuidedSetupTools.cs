@@ -124,12 +124,12 @@ internal sealed class GuidedSetupTools
                         state.Status = GuidedStepStatus.Failed;
                         state.Error = result.ErrorMessage;
                         state.Fingerprint = null;
-                        if (created is not null)
-                        {
-                            // A failed script can still have created the object.
-                            _guard.Claim(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput);
-                        }
                     },
+                    // A failed script can still have created the object; the guard then confirms it in the tenant.
+                    OnFailureAsync = created is null
+                        ? null
+                        : (result, token) => _guard.ClaimAfterFailureAsync(
+                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result, token),
                     ChangeWasMadeDespiteError = created is { Type: TenantObjectType.AutoAttendant }
                         ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(created.Value.Type, created.Value.Key, result, token)
                         : null

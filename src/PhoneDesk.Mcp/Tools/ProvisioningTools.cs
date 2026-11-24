@@ -329,9 +329,9 @@ internal sealed class ProvisioningTools
     private ChangeRequest Creating(TenantObjectType type, string key, string operation, string script, string summary)
         => new(operation, key, script, summary)
         {
-            // A failed script can still have created the object, so both outcomes report to the guard.
+            // A failed script can still have created the object; the guard then confirms it in the tenant.
             OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput),
-            OnFailure = result => _guard.Claim(type, key, operation, result.RawOutput),
+            OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token),
             ChangeWasMadeDespiteError = type == TenantObjectType.AutoAttendant
                 ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(type, key, result, token)
                 : null

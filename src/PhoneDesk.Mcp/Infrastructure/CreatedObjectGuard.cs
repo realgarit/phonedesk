@@ -77,6 +77,34 @@ internal sealed class CreatedObjectGuard
                "Object reference not set to an instance of an object", StringComparison.OrdinalIgnoreCase) &&
            await ExistsAsync(type, key, cancellationToken);
 
+    /// <summary>
+    /// Records an object after a create script that reported an error. A failed script proves
+    /// nothing by itself, so the object is recorded only when a new read of the tenant shows it
+    /// exists (and, as always, the pre-change backup shows it did not exist before). A group
+    /// needs its own "created" line with the object ID in the output.
+    /// </summary>
+    public async Task ClaimAfterFailureAsync(
+        TenantObjectType type, string name, string operation, Services.OperationResult<string> result, CancellationToken cancellationToken)
+    {
+        var text = result.RawOutput + "\n" + result.ErrorMessage;
+        if (ReusedExistingObject(text))
+        {
+            return;
+        }
+
+        try
+        {
+            if (type == TenantObjectType.M365Group || await ExistsAsync(type, name, cancellationToken))
+            {
+                Claim(type, name, operation, text);
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException)
+        {
+            // The tenant could not be read: nothing is recorded.
+        }
+    }
+
     public void Forget(TenantObjectType type, string key) => _ledger.Remove(_tenant.TenantId, type, key);
 
     /// <summary>Throws when a delete tool must not remove the object.</summary>

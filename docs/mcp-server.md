@@ -76,6 +76,50 @@ Two environment variables change these rules. Set them only when you understand 
 | macOS | `/Applications/PhoneDesk.app/Contents/MacOS/phonedesk-mcp` |
 | Linux | `phonedesk-mcp` in the folder where you unpacked the zip |
 
+## Quick start
+
+1. Install PhoneDesk 3.35 or later. The server is in the app's folder (see the table above).
+2. Add the server to your AI client (see [Connect an AI client](#connect-an-ai-client)), or
+   let the client do it with the [setup prompt](#setup-prompt-for-an-ai-client).
+3. Start a new session in the AI client. A session that is already open does not load a
+   server that was added later.
+4. Ask in plain words (see [First session](#first-session)).
+
+## Setup prompt for an AI client
+
+Use this prompt in an AI client that can run commands on your computer, for example Claude
+Code, Codex, or GitHub Copilot in agent mode. Copy the whole block. The prompt tells the client
+to ask you before it downloads or installs anything.
+
+```text
+Set up the PhoneDesk MCP server on this computer and connect yourself to it.
+
+1. Look for an installed server first:
+   - Windows installer: %LOCALAPPDATA%\Programs\PhoneDesk\phonedesk-mcp.exe
+     (or the folder that was chosen for an all-users install)
+   - Microsoft Store: the command phonedesk-mcp.exe
+   - macOS: /Applications/PhoneDesk.app/Contents/MacOS/phonedesk-mcp
+   - Linux: phonedesk-mcp in the folder where PhoneDesk was unpacked
+2. If there is no server, or the installed PhoneDesk is older than 3.35, tell me, and ask me
+   before you download anything. Then get the latest release from
+   https://github.com/realgarit/phonedesk/releases/latest :
+   - Windows: phonedesk-win-x64-setup.exe (start it and let me click through the installer)
+   - macOS: brew tap realgarit/tap, brew trust realgarit/tap, then brew install --cask phonedesk
+   - Linux: phonedesk-linux-x64.zip, unpacked completely into a folder of its own;
+     make phonedesk-mcp executable
+   Compare the SHA-256 of a downloaded file with the SHA256SUMS file of the same release
+   before you use it. Stop if they differ.
+3. Register the server in your own MCP configuration under the name "phonedesk", as a local
+   stdio server whose command is the full path from step 1 or 2, with no arguments.
+   Do not set PHONEDESK_MCP_SKIP_BACKUP or PHONEDESK_MCP_ALLOW_DELETE_EXISTING.
+4. Tell me the path you registered, and tell me to start a new session: a running session
+   does not load a server that was added later.
+5. In the new session, call session_status and check_modules and report the result. Do not
+   call connect_teams or connect_graph, and do not change anything in a tenant, until I ask.
+```
+
+After the new session has started, continue with [First session](#first-session).
+
 ## Connect an AI client
 
 Replace the command with the one for your install. On Windows, write the full path with your
@@ -136,6 +180,12 @@ Ask the AI client in plain words, for example:
 
 The client then calls `session_status`, `check_modules`, `connect_teams` and `connect_graph`.
 Two browser windows open, one after the other. Sign in to both with the same organization.
+When the browser still has a session for that account, a sign-in can complete without a
+visible page.
+
+A step right after a new resource account was created can fail once or twice, because the
+account is not visible to all Microsoft services for some minutes. The result then carries a
+`retryHint`; the client waits and applies a new plan.
 
 ## Files
 

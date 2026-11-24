@@ -104,8 +104,31 @@ call queues and auto attendants with the same scripts as the desktop app.
 
 The server keeps you in control: every change is shown as a plan before it runs, a tenant
 backup is written before the first change of a session, and the server deletes only objects it
-created itself. See [docs/mcp-server.md](docs/mcp-server.md) for the tools and for how to
-connect a client.
+created itself.
+
+### Quick start
+
+1. **Install PhoneDesk** 3.35 or later (see [Installation](#installation)). The server
+   `phonedesk-mcp` is installed with the app.
+2. **Connect your AI client.** For Claude Code on Windows, with your own user name in the path:
+
+   ```powershell
+   claude mcp add phonedesk -- "C:\Users\<you>\AppData\Local\Programs\PhoneDesk\phonedesk-mcp.exe"
+   ```
+
+   For Visual Studio Code (GitHub Copilot), Claude Desktop, Codex, macOS and Linux, see
+   [Connect an AI client](docs/mcp-server.md#connect-an-ai-client).
+3. **Start a new session** in the AI client. A session that is already open does not load a
+   server that was added later.
+4. **Ask in plain words**, for example: "Connect to my tenant and tell me what is wrong with
+   the phone system." Two browser sign-ins follow, one for Microsoft Teams and one for
+   Microsoft Graph.
+
+If your AI client can run commands, it can do steps 1 and 2 for you: copy the
+[setup prompt](docs/mcp-server.md#setup-prompt-for-an-ai-client) into it.
+
+See [docs/mcp-server.md](docs/mcp-server.md) for all tools, the safety rules and the other
+clients.
 
 ## Updates
 

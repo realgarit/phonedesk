@@ -171,7 +171,13 @@ internal sealed class ProvisioningTools
                     $"Assign {number} ({type}) to '{accountUpn}'.")
                 {
                     // A number the tenant did not have before is recorded, so release_phone_number can remove it later.
-                    OnSuccess = result => _guard.Claim(TenantObjectType.PhoneNumber, number.Trim(), "AssignPhoneNumber", result.RawOutput)
+                    OnSuccess = result =>
+                    {
+                        if (string.Equals(type.Trim(), "DirectRouting", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _guard.Claim(TenantObjectType.PhoneNumber, number.Trim(), "AssignPhoneNumber", result.RawOutput);
+                        }
+                    }
                 },
                 planId,
                 cancellationToken);

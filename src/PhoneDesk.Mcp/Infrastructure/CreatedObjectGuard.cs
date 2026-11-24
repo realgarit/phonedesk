@@ -282,8 +282,8 @@ internal sealed class CreatedObjectGuard
     }
 
     /// <summary>
-    /// Throws when the number cannot be released: it is not in the tenant's number inventory, or
-    /// it is assigned to a user or a resource account. Reads the tenant again.
+    /// Throws when the number cannot be released: it is not in the tenant's number inventory, it is
+    /// not a Direct Routing number, or it is assigned to a user or a resource account. Reads the tenant again.
     /// </summary>
     public async Task RequireUnassignedPhoneNumberAsync(string number, CancellationToken cancellationToken)
     {
@@ -295,6 +295,14 @@ internal sealed class CreatedObjectGuard
             throw new InvalidOperationException($"'{number}' is not in the tenant's phone number inventory. There is nothing to release.");
         }
 
+        // A number from an operator or from Microsoft belongs to the tenant's contract: releasing it
+        // gives it back. Only a Direct Routing number is an entry an assignment created.
+        if (rows.Any(item => !string.Equals(item.Type, "DirectRouting", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"'{number}' has the type {rows[0].Type}. Only a Direct Routing number is released by this server.");
+        }
+
         if (rows.Any(item => !string.IsNullOrWhiteSpace(item.AssignedTo) ||
                              !string.Equals(item.Status, "Unassigned", StringComparison.OrdinalIgnoreCase)))
         {
@@ -303,7 +311,7 @@ internal sealed class CreatedObjectGuard
         }
     }
 
-    private async Task<IReadOnlyList<(string Number, string AssignedTo, string Status)>> ReadPhoneNumbersAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<(string Number, string Type, string AssignedTo, string Status)>> ReadPhoneNumbersAsync(CancellationToken cancellationToken)
     {
         var result = await _tenant.ReadAsync(_documentationScripts.GetExportPhoneNumbersCommand(), "ReadPhoneNumbers", cancellationToken);
         var text = result.Value ?? string.Empty;
@@ -320,7 +328,7 @@ internal sealed class CreatedObjectGuard
             .Where(line => line.StartsWith(marker, StringComparison.Ordinal))
             .Select(line => line[marker.Length..].Split('|'))
             .Where(fields => fields.Length >= 4)
-            .Select(fields => (fields[0].Trim(), fields[2].Trim(), fields[3].Trim()))
+            .Select(fields => (fields[0].Trim(), fields[1].Trim(), fields[2].Trim(), fields[3].Trim()))
             .ToList();
     }
 

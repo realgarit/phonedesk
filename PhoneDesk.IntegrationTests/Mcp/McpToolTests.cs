@@ -295,13 +295,19 @@ public sealed class McpToolTests
             "DOCDATA_PHONE: +41441234567|DirectRouting||Unassigned|Activated||VoiceApplicationAssignment\n" +
             "DOCDATA_PHONE: +41442222222|OperatorConnect||Unassigned|Activated||UserAssignment\n" +
             "DOCDATA_PHONE: +41443333333|OperatorConnect|user-1|UserAssigned|Activated||UserAssignment\n" +
+            "DOCDATA_PHONE: +41444444444|DirectRouting|ra-1|VoiceApplicationAssigned|Activated||VoiceApplicationAssignment\n" +
             "DOCDATA_PHONE_END");
 
-        var assigned = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41443333333", cancellationToken: Cancellation));
+        var assigned = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41444444444", cancellationToken: Cancellation));
         Assert.Contains("is assigned", assigned.GetProperty("error").GetString());
 
-        var foreign = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41442222222", cancellationToken: Cancellation));
-        Assert.Contains("was not created by this server", foreign.GetProperty("error").GetString());
+        // A number from an operator or from Microsoft is never released, assigned or not, recorded or not.
+        var operatorNumber = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41443333333", cancellationToken: Cancellation));
+        Assert.Contains("Only a Direct Routing number", operatorNumber.GetProperty("error").GetString());
+        ledger.Record(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41442222222", "AssignPhoneNumber");
+        operatorNumber = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41442222222", cancellationToken: Cancellation));
+        Assert.Contains("Only a Direct Routing number", operatorNumber.GetProperty("error").GetString());
+        ledger.Remove(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41442222222");
 
         var missing = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41449999999", cancellationToken: Cancellation));
         Assert.Contains("not in the tenant's phone number inventory", missing.GetProperty("error").GetString());
@@ -311,7 +317,7 @@ public sealed class McpToolTests
 
         var released = await PlanAndApplyAsync(planId => delete.ReleasePhoneNumber("+41441234567", planId, Cancellation));
         Assert.Equal("applied", released.GetProperty("status").GetString());
-        Assert.Contains(host.PowerShell.Executed, script => script.Contains("Remove-CsOnlineTelephoneNumber -TelephoneNumber \"+41441234567\" -Force", StringComparison.Ordinal));
+        Assert.Contains(host.PowerShell.Executed, script => script.Contains("Remove-CsOnlineTelephoneNumber -TelephoneNumber \"+41441234567\" -ErrorAction Stop", StringComparison.Ordinal));
         Assert.Empty(ledger.List(McpTestHost.TenantId));
     }
 

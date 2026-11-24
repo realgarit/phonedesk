@@ -23,10 +23,10 @@ with the app; there is nothing extra to download.
 | Bulk | `bulk_setup_template`, `bulk_setup` |
 | Delete | `delete_call_queue`, `delete_auto_attendant`, `delete_holiday_schedule`, `delete_resource_account`, `delete_m365_group`, `release_phone_number` |
 
-`release_phone_number` removes an unassigned number from the tenant's number inventory. Teams
+`release_phone_number` removes an unassigned Direct Routing number from the tenant's number inventory. Teams
 keeps a Direct Routing number there after the resource account it was assigned to is deleted.
 The server records a number that `assign_phone_number`, Guided Setup step 6 or `bulk_setup` added
-to the inventory, and releases only such a number. An assigned number is never released.
+to the inventory, and releases only such a number. An assigned number, and a number from an operator or from Microsoft, is never released.
 
 The desktop Tenant Report is not a separate tool. `tenant_details` returns the same data in
 structured form, and the AI client writes the report in the language and layout you ask for.

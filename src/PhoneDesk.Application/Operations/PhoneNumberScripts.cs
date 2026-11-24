@@ -10,7 +10,9 @@ public static partial class PhoneNumberScripts
 
     /// <summary>
     /// Removes an unassigned number from the tenant's number inventory. Teams refuses the removal
-    /// when the number is assigned to a user or a resource account.
+    /// when the number is assigned to a user or a resource account. The -Force switch is not
+    /// used: the function of MicrosoftTeams 8.0.0 lists it, but its inner command rejects it. The
+    /// command does not ask for confirmation (confirm impact Medium).
     /// </summary>
     public static string GetReleaseUnassignedPhoneNumberCommand(string number)
     {
@@ -21,7 +23,7 @@ public static partial class PhoneNumberScripts
 
         return $@"
 try {{
-    $result = Remove-CsOnlineTelephoneNumber -TelephoneNumber ""{number}"" -Force -ErrorAction Stop
+    $result = Remove-CsOnlineTelephoneNumber -TelephoneNumber ""{number}"" -ErrorAction Stop
     $notReleased = @($result.NumberIdsDeleteFailed) + @($result.NumberIdsNotOwnedByTenant) + @($result.NumberIdsManagedByServiceDesk) | Where-Object {{ $_ }}
     if ($notReleased) {{
         Write-Host ""ERROR: Phone number {number} was not released: $($notReleased -join ', ')""

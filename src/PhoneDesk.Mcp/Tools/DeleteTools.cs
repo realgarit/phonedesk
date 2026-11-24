@@ -78,7 +78,7 @@ internal sealed class DeleteTools
             $"Delete Microsoft 365 group '{groupName}' ({groupId}).", planId, cancellationToken);
 
     [McpServerTool(Name = "release_phone_number", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
-    [Description("Removes an unassigned phone number from the tenant's number inventory. A Direct Routing number that assign_phone_number added stays in the inventory after its resource account is deleted; this removes it. An assigned number is never released." + DeleteNote)]
+    [Description("Removes an unassigned Direct Routing phone number from the tenant's number inventory. A number from an operator or from Microsoft is never released. A Direct Routing number that assign_phone_number added stays in the inventory after its resource account is deleted; this removes it. An assigned number is never released." + DeleteNote)]
     public Task<string> ReleasePhoneNumber(
         [Description("Phone number in E.164 format, for example +41441234567.")] string phoneNumber,
         [Description(PlanIdDescription)] string? planId = null,

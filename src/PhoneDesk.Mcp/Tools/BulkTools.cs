@@ -70,25 +70,58 @@ internal sealed class BulkTools
                     IsSuccess = result => result.IsSuccess && !result.HasErrorMarker,
                     OnSuccessAsync = async (result, token) =>
                     {
-                        // One combined output: when any row reused an object, no row can be proven new.
-                        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
+                        if (!CreatedObjectGuard.ReusedExistingObject(result.RawOutput))
                         {
-                            await _guard.ClaimAsync(type, name, "BulkOperations", result.RawOutput, token);
+                            // Nothing was reused: every object of every row is new.
+                            foreach (var (type, name) in entries.SelectMany(CreatedObjects))
+                            {
+                                await _guard.ClaimAsync(type, name, "BulkOperations", result.RawOutput, token);
+                            }
+
+                            return;
                         }
+
+                        // A run after a failed run reuses what the failed run made. Only an object
+                        // with its own "created" line in this output is new.
+                        await ClaimProvenAsync(entries, result.RawOutput, token);
                     },
-                    // A script that failed part of the way can still have created objects; the guard
-                    // records only those a new read of the tenant confirms.
+                    // A script that failed part of the way can still have created objects. An object
+                    // with its own "created" line is recorded at once: a new resource account is not
+                    // visible in the tenant for some seconds, so a read of the tenant can miss it.
+                    // For the other objects the guard records only those a new read confirms.
                     OnFailureAsync = async (result, token) =>
                     {
-                        foreach (var (type, name) in entries.SelectMany(CreatedObjects))
+                        var proven = await ClaimProvenAsync(entries, result.RawOutput + "\n" + result.ErrorMessage, token);
+                        foreach (var item in entries.SelectMany(CreatedObjects).Where(item => !proven.Contains(item)))
                         {
-                            await _guard.ClaimAfterFailureAsync(type, name, "BulkOperations", result, token);
+                            await _guard.ClaimAfterFailureAsync(item.Type, item.Name, "BulkOperations", result, token);
                         }
                     }
                 },
                 planId,
                 cancellationToken);
         });
+
+    /// <summary>Records every object whose own "created" line is in the output, and returns them.</summary>
+    private async Task<HashSet<(TenantObjectType Type, string Name)>> ClaimProvenAsync(
+        IReadOnlyList<ConfigurationDocumentVariables> entries, string output, CancellationToken cancellationToken)
+    {
+        var proven = new HashSet<(TenantObjectType Type, string Name)>();
+        for (var index = 0; index < entries.Count; index++)
+        {
+            var rowOutput = BulkOutputEvidence.RowOutput(output, index, entries.Count);
+            foreach (var item in CreatedObjects(entries[index]))
+            {
+                if (BulkOutputEvidence.Created(output, rowOutput, item.Type, item.Name))
+                {
+                    await _guard.ClaimProvenAsync(item.Type, item.Name, "BulkOperations", output, cancellationToken);
+                    proven.Add(item);
+                }
+            }
+        }
+
+        return proven;
+    }
 
     private static IEnumerable<(TenantObjectType Type, string Name)> CreatedObjects(ConfigurationDocumentVariables entry)
     {
@@ -97,7 +130,13 @@ internal sealed class BulkTools
         yield return (TenantObjectType.CallQueue, entry.CqDisplayName);
         yield return (TenantObjectType.ResourceAccount, entry.RaaaUPN);
         yield return (TenantObjectType.AutoAttendant, entry.AaDisplayName);
-        yield return (TenantObjectType.PhoneNumber, entry.RaaAnr.Trim());
+
+        // Only a Direct Routing number is an inventory entry an assignment created.
+        if (!string.IsNullOrWhiteSpace(entry.RaaAnr) &&
+            string.Equals(entry.PhoneNumberType.Trim(), "DirectRouting", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return (TenantObjectType.PhoneNumber, entry.RaaAnr.Trim());
+        }
     }
 
     /// <summary>A CSV row over an otherwise empty configuration, as the desktop bulk page builds it.</summary>

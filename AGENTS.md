@@ -10,6 +10,9 @@
 - `PhoneDesk.Infrastructure` — PowerShell/MSAL adapters (only layer with `System.Management.Automation` and `Microsoft.Identity.Client`)
 - `PhoneDesk.Presentation` — Avalonia/MVVM UI (depends only on Domain + Application)
 - `phonedesk` (repo root exe) — composition root (DI, app.manifest, version, Modules content)
+- `PhoneDesk.Mcp` (`src/PhoneDesk.Mcp`, exe `phonedesk-mcp`) — second composition root: a stdio MCP server for AI clients. Depends on Domain + Application + Infrastructure only, never Presentation or a UI framework.
+
+**Two heads, one logic**: operation logic both heads need (command runner with audit, Guided Setup step scripts, snapshot, health check, output parsing, bulk script) lives in `PhoneDesk.Application/Operations`. ViewModels and MCP tools only adapt it. See `docs/mcp-server.md` and the `phonedesk-mcp` skill in `.agents/skills/`.
 
 **Dependency Rule**: enforced by `DependencyRuleTests` — forbidden inward deps fail the build.
 **ObservableObject models** = Presentation concern. **VM-first ViewLocator** (no service locator).

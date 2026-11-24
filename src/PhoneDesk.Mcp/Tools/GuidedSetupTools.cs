@@ -109,7 +109,7 @@ internal sealed class GuidedSetupTools
                     created.Value.Type, created.Value.Key, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)
                 : null;
             return await _changes.PlanOrApplyAsync(
-                new ChangeRequest($"GuidedSetupStep{step}", created?.Key ?? variables.AaDisplayName, script, $"Step {step}: {definition.Title}. {definition.Description}")
+                new ChangeRequest($"GuidedSetupStep{step}", TargetFor((GuidedSetupStep)step, variables), script, $"Step {step}: {definition.Title}. {definition.Description}")
                 {
                     // Any error record fails the step, even when the script printed its own SUCCESS line first.
                     IsSuccess = result => result.IsSuccess,
@@ -167,6 +167,17 @@ internal sealed class GuidedSetupTools
         _progress.Reset();
         return new { success = true, nextStep = _progress.NextStep };
     });
+
+    /// <summary>The object a step works on, for the plan, the result and the audit log.</summary>
+    private static string TargetFor(GuidedSetupStep step, ConfigurationDocumentVariables variables)
+        => step switch
+        {
+            GuidedSetupStep.CreateM365Group => variables.M365Group,
+            GuidedSetupStep.CreateCallQueueResourceAccount or GuidedSetupStep.LicenseCallQueueResourceAccount => variables.RacqUPN,
+            GuidedSetupStep.CreateCallQueue => variables.CqDisplayName,
+            GuidedSetupStep.CreateAutoAttendantResourceAccount or GuidedSetupStep.LicenseAutoAttendantResourceAccount => variables.RaaaUPN,
+            _ => variables.AaDisplayName
+        };
 
     private static (TenantObjectType Type, string Key)? CreatedObjectFor(GuidedSetupStep step, ConfigurationDocumentVariables variables)
         => step switch

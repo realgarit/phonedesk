@@ -39,7 +39,7 @@ internal sealed class DeleteTools
             key => _commands.GetRemoveCallQueueCommand(key), $"Delete call queue '{name}'.", planId, cancellationToken);
 
     [McpServerTool(Name = "delete_auto_attendant", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
-    [Description("Deletes an auto attendant by name. Its resource account associations are released and the schedules it owns are removed." + DeleteNote)]
+    [Description("Deletes an auto attendant by name. Its resource account associations are released and the schedules attached to it are removed, also a holiday schedule that was created separately and attached; such a schedule needs no delete_holiday_schedule call afterwards." + DeleteNote)]
     public Task<string> DeleteAutoAttendant(
         [Description("Exact auto attendant name.")] string name,
         [Description(PlanIdDescription)] string? planId = null,

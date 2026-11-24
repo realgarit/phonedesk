@@ -493,7 +493,7 @@ public sealed class McpToolTests
             "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
 
         var created = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateAutoAttendant(
-            simple: true, planId: planId, cancellationToken: Cancellation));
+            planId: planId, cancellationToken: Cancellation));
 
         Assert.Equal("applied", created.GetProperty("status").GetString());
         Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
@@ -587,6 +587,37 @@ public sealed class McpToolTests
         Assert.Equal("completed", status.GetProperty("steps")[0].GetProperty("status").GetString());
         Assert.Equal("failed", status.GetProperty("steps")[1].GetProperty("status").GetString());
         Assert.False(status.GetProperty("steps")[2].GetProperty("canRun").GetBoolean());
+    }
+
+    [Fact]
+    public async Task GuidedSetup_NamesTheObjectAStepWorksOnAndGivesARetryHintForTheDelayAfterANewAccount()
+    {
+        using var host = new McpTestHost().Connected().Configured();
+        var tools = host.Tool<GuidedSetupTools>();
+        Assert.Equal("applied", (await PlanAndApplyAsync(planId => tools.RunStep(1, planId, Cancellation))).GetProperty("status").GetString());
+        Assert.Equal("applied", (await PlanAndApplyAsync(planId => tools.RunStep(2, planId, Cancellation))).GetProperty("status").GetString());
+
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "ERROR: Failed to update usage location: Resource does not exist or one of its queried reference-property objects are not present.",
+            HadErrors = true,
+            Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Resource does not exist or one of its queried reference-property objects are not present." } }
+        };
+        var third = await PlanAndApplyAsync(planId => tools.RunStep(3, planId, Cancellation));
+
+        Assert.Equal("failed", third.GetProperty("status").GetString());
+        // Step 3 sets the usage location and license of the call queue resource account.
+        Assert.StartsWith("racq-", third.GetProperty("target").GetString());
+        Assert.Contains("Wait 30 to 60 seconds", third.GetProperty("retryHint").GetString());
+    }
+
+    [Fact]
+    public void RetryHint_IsGivenOnlyForErrorsADelayCanCause()
+    {
+        Assert.NotNull(ChangeGate.RetryHint("Failed to assign phone number: User 'x' lacks appropriate licenses to assign a 'DirectRouting' number"));
+        Assert.NotNull(ChangeGate.RetryHint("Failed to create call queue: userId was not found"));
+        Assert.Null(ChangeGate.RetryHint("no license available"));
+        Assert.Null(ChangeGate.RetryHint(null));
     }
 
     [Fact]

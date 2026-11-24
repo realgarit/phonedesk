@@ -166,6 +166,7 @@ internal sealed class TenantReadTools
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
+            _tenant.RequireReady();
             var snapshot = refresh || _tenant.LatestSnapshot is null
                 ? await _tenant.CollectSnapshotAsync(cancellationToken)
                 : _tenant.LatestSnapshot;

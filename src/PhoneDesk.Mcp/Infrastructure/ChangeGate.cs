@@ -20,10 +20,16 @@ internal sealed record ChangeRequest(string Operation, string Target, string Scr
     /// all the same. A script can fail in a late step after its main work is done; the tenant, not
     /// the script's last line, decides what happened.
     /// </summary>
-    public Func<CancellationToken, Task<bool>>? ChangeWasMadeDespiteError { get; init; }
+    public Func<OperationResult<string>, CancellationToken, Task<bool>>? ChangeWasMadeDespiteError { get; init; }
+
+    /// <summary>Runs after a successful change, for work that must read the tenant.</summary>
+    public Func<OperationResult<string>, CancellationToken, Task>? OnSuccessAsync { get; init; }
 
     /// <summary>Runs after a failed change.</summary>
     public Action<OperationResult<string>>? OnFailure { get; init; }
+
+    /// <summary>Runs after a failed change, for work that must read the tenant.</summary>
+    public Func<OperationResult<string>, CancellationToken, Task>? OnFailureAsync { get; init; }
 }
 
 /// <summary>
@@ -89,8 +95,9 @@ internal sealed class ChangeGate
         var success = outcome.Status == TenantCommandStatus.Completed && request.IsSuccess(result);
         _tenant.InvalidateTopology();
         string? note = null;
-        if (!success && outcome.Status == TenantCommandStatus.Completed && request.ChangeWasMadeDespiteError is not null &&
-            await request.ChangeWasMadeDespiteError(cancellationToken))
+        if (!success && outcome.Status is TenantCommandStatus.Completed or TenantCommandStatus.Faulted &&
+            request.ChangeWasMadeDespiteError is not null &&
+            await request.ChangeWasMadeDespiteError(result, cancellationToken))
         {
             success = true;
             note = "The script reported an error, but a check of the tenant shows the change was made: " +
@@ -100,10 +107,18 @@ internal sealed class ChangeGate
         if (success)
         {
             request.OnSuccess?.Invoke(result);
+            if (request.OnSuccessAsync is not null)
+            {
+                await request.OnSuccessAsync(result, cancellationToken);
+            }
         }
         else
         {
             request.OnFailure?.Invoke(result);
+            if (request.OnFailureAsync is not null)
+            {
+                await request.OnFailureAsync(result, cancellationToken);
+            }
         }
 
         return new

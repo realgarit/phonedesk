@@ -38,6 +38,21 @@ public sealed class PowerShellContextServiceIntegrationTests
     }
 
     [Fact]
+    public async Task NullPipelineOutputDoesNotReplaceTheScriptOutputWithAnError()
+    {
+        // Some Teams cmdlets write a null value to the pipeline after their work is done.
+        using var service = CreateService();
+
+        var result = await service.ExecuteCommandWithDetailsAsync(
+            "Write-Host 'SUCCESS: done'; $null; 'after'", null, null, TestContext.Current.CancellationToken);
+
+        Assert.False(result.HadErrors, result.Output);
+        Assert.Empty(result.Errors);
+        Assert.Contains("SUCCESS: done", result.Output, StringComparison.Ordinal);
+        Assert.Contains("after", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CancellationStopsLongRunningCommandAndLeavesRunspaceReusable()
     {
         using var service = CreateService();

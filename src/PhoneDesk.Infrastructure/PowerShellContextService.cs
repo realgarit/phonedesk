@@ -221,7 +221,11 @@ $ErrorActionPreference = 'Continue'
 
                     foreach (var item in result)
                     {
-                        output.AppendLine(item.ToString());
+                        // A cmdlet can write a null value to the pipeline; it carries no text.
+                        if (item is not null)
+                        {
+                            output.AppendLine(item.ToString());
+                        }
                     }
 
                     var hadErrors = _powerShell.HadErrors;
@@ -409,7 +413,10 @@ $status -join ""`n""
                 var output = new StringBuilder();
                 foreach (var item in result)
                 {
-                    output.AppendLine(item.ToString());
+                    if (item is not null)
+                    {
+                        output.AppendLine(item.ToString());
+                    }
                 }
 
                 return output.ToString();

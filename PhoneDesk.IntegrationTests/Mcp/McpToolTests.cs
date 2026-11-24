@@ -39,7 +39,7 @@ public sealed class McpToolTests
             }
 
             // A delete tool must be marked destructive, and no other changing tool may be.
-            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal))
+            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal) || tool.Name == "release_phone_number")
             {
                 Assert.False(tool.ReadOnly);
                 Assert.True(tool.Destructive);
@@ -171,7 +171,9 @@ public sealed class McpToolTests
 
         var second = await PlanAndApplyAsync(planId => tools.CreateCallQueue(planId: planId, cancellationToken: Cancellation));
         Assert.Equal(backupFile, second.GetProperty("backupFile").GetString());
-        Assert.Equal(readsForBackup + 2, host.PowerShell.Executed.Count);
+        // The second change did not read the backup sources again.
+        var tenantInfo = host.Get<IDocumentationScriptBuilder>().GetExportTenantInfoCommand();
+        Assert.Equal(1, host.PowerShell.Executed.Count(script => script == tenantInfo));
     }
 
     [Fact]
@@ -276,6 +278,64 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task ReleasePhoneNumber_RemovesOnlyAnUnassignedNumberThisServerAdded()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var ledger = host.Get<CreatedObjectLedger>();
+        var delete = host.Tool<DeleteTools>();
+
+        // The assignment adds a Direct Routing number the tenant did not have before.
+        var assign = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().AssignPhoneNumber(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("applied", assign.GetProperty("status").GetString());
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234567"));
+
+        host.PowerShell.Respond(
+            host.Get<IDocumentationScriptBuilder>().GetExportPhoneNumbersCommand(),
+            "DOCDATA_PHONE_START\n" +
+            "DOCDATA_PHONE: +41441234567|DirectRouting||Unassigned|Activated||VoiceApplicationAssignment\n" +
+            "DOCDATA_PHONE: +41442222222|OperatorConnect||Unassigned|Activated||UserAssignment\n" +
+            "DOCDATA_PHONE: +41443333333|OperatorConnect|user-1|UserAssigned|Activated||UserAssignment\n" +
+            "DOCDATA_PHONE: +41444444444|DirectRouting|ra-1|VoiceApplicationAssigned|Activated||VoiceApplicationAssignment\n" +
+            "DOCDATA_PHONE_END");
+
+        var assigned = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41444444444", cancellationToken: Cancellation));
+        Assert.Contains("is assigned", assigned.GetProperty("error").GetString());
+
+        // A number from an operator or from Microsoft is never released, assigned or not, recorded or not.
+        var operatorNumber = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41443333333", cancellationToken: Cancellation));
+        Assert.Contains("Only a Direct Routing number", operatorNumber.GetProperty("error").GetString());
+        ledger.Record(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41442222222", "AssignPhoneNumber");
+        operatorNumber = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41442222222", cancellationToken: Cancellation));
+        Assert.Contains("Only a Direct Routing number", operatorNumber.GetProperty("error").GetString());
+        ledger.Remove(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41442222222");
+
+        var missing = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41449999999", cancellationToken: Cancellation));
+        Assert.Contains("not in the tenant's phone number inventory", missing.GetProperty("error").GetString());
+
+        var malformed = McpTestHost.Parse(await delete.ReleasePhoneNumber("0441234567\"; Remove-Item", cancellationToken: Cancellation));
+        Assert.Contains("E.164", malformed.GetProperty("error").GetString());
+
+        var released = await PlanAndApplyAsync(planId => delete.ReleasePhoneNumber("+41441234567", planId, Cancellation));
+        Assert.Equal("applied", released.GetProperty("status").GetString());
+        Assert.Contains(host.PowerShell.Executed, script => script.Contains("Remove-CsOnlineTelephoneNumber -TelephoneNumber \"+41441234567\" -ErrorAction Stop", StringComparison.Ordinal));
+        Assert.Empty(ledger.List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task AssignPhoneNumber_DoesNotClaimANumberTheTenantAlreadyHad()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        host.PowerShell.Respond(
+            host.Get<IDocumentationScriptBuilder>().GetExportPhoneNumbersCommand(),
+            "DOCDATA_PHONE_START\nDOCDATA_PHONE: +41441234567|OperatorConnect||Unassigned|Activated||VoiceApplicationAssignment\nDOCDATA_PHONE_END");
+
+        var assign = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().AssignPhoneNumber(planId: planId, cancellationToken: Cancellation));
+
+        Assert.Equal("applied", assign.GetProperty("status").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
     public async Task Delete_OfAnObjectThatIsAlreadyGoneForgetsIt()
     {
         using var host = new McpTestHost().Connected();
@@ -287,6 +347,129 @@ public sealed class McpToolTests
         Assert.False(result.GetProperty("success").GetBoolean());
         Assert.Contains("not found", result.GetProperty("error").GetString());
         Assert.Empty(ledger.List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Create_ThatFailsLateStillRecordsTheNewObjectAndConfirmsAnAutoAttendantInTheTenant()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var commands = host.Get<IPowerShellCommandService>();
+        var tools = host.Tool<ProvisioningTools>();
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "ERROR: Object reference not set to an instance of an object.",
+            HadErrors = true,
+            Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Object reference not set to an instance of an object." } }
+        };
+
+        // The call queue is not in the tenant afterwards: the failure stands and nothing is recorded.
+        var queue = await PlanAndApplyAsync(planId => tools.CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("failed", queue.GetProperty("status").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+
+        // A failed create that did leave the object in the tenant is recorded, so it can be cleaned up.
+        host.PowerShell.AfterRun = script =>
+        {
+            if (script.Contains("racq-contoso-reception", StringComparison.Ordinal) && !script.Contains("TOPRA", StringComparison.Ordinal))
+            {
+                host.PowerShell.Respond(
+                    commands.GetRetrieveTenantTopologyCommand(),
+                    "TOPRA: racq|racq-contoso-reception@contoso.onmicrosoft.com|ra-obj-9||CallQueue|True\n" + McpTestHost.TopologyOutput);
+            }
+        };
+        var account = await PlanAndApplyAsync(planId => tools.CreateResourceAccount("callQueue", planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("failed", account.GetProperty("status").GetString());
+        Assert.True(host.Get<CreatedObjectLedger>().Contains(
+            McpTestHost.TenantId, TenantObjectType.ResourceAccount, "racq-contoso-reception@contoso.onmicrosoft.com"));
+
+        // The auto attendant is in the tenant afterwards: the module failed after the work was done.
+        host.PowerShell.AfterRun = script =>
+        {
+            if (script.Contains("aa-contoso-main-reception", StringComparison.Ordinal))
+            {
+                host.PowerShell.Respond(
+                    commands.GetRetrieveTenantTopologyCommand(),
+                    "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
+            }
+        };
+        var attendant = await PlanAndApplyAsync(planId => tools.CreateAutoAttendant(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("applied", attendant.GetProperty("status").GetString());
+        Assert.Contains("the change was made", attendant.GetProperty("note").GetString());
+    }
+
+    [Fact]
+    public async Task Delete_IsRefusedWhenAnotherObjectLaterTookTheName()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var topology = host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand();
+        var delete = host.Tool<DeleteTools>();
+        await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+
+        // The created queue becomes visible: the server stores its immutable ID.
+        host.PowerShell.Respond(topology, "TOPCQ: cq-contoso-reception|cq-created|Attendant|30||grp-1|ra-obj-1\n" + McpTestHost.TopologyOutput);
+        Assert.Equal("planned", McpTestHost.Parse(await delete.DeleteCallQueue("cq-contoso-reception", cancellationToken: Cancellation)).GetProperty("status").GetString());
+        Assert.Equal("cq-created", host.Get<CreatedObjectLedger>().Find(McpTestHost.TenantId, TenantObjectType.CallQueue, "cq-contoso-reception")!.ObjectId);
+
+        // Someone deletes it and creates another queue with the same name.
+        host.PowerShell.Respond(topology, "TOPCQ: cq-contoso-reception|cq-replacement|Attendant|30||grp-1|ra-obj-1\n" + McpTestHost.TopologyOutput);
+        var result = McpTestHost.Parse(await delete.DeleteCallQueue("cq-contoso-reception", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("different object ID", result.GetProperty("error").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Delete_IsRefusedForARecordWithoutAnObjectIdFromAnEarlierSession()
+    {
+        using var host = new McpTestHost().Connected();
+        host.Get<CreatedObjectLedger>().Record(McpTestHost.TenantId, TenantObjectType.CallQueue, "Support CQ", "CreateCallQueue");
+
+        var result = McpTestHost.Parse(await host.Tool<DeleteTools>().DeleteCallQueue("Support CQ", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("without its object ID", result.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task TenantDetails_AreNotServedFromAnotherTenantOrAfterDisconnect()
+    {
+        using var host = new McpTestHost().Connected();
+        var tools = host.Tool<TenantReadTools>();
+        Assert.True(McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation)).TryGetProperty("sections", out _));
+        var readsForOneSnapshot = host.PowerShell.Executed.Count;
+
+        // Another tenant in the same server process: the snapshot is read again.
+        host.Get<ISessionManager>().UpdateTenantInfo("tenant-2", "Fabrikam");
+        Assert.True(McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation)).TryGetProperty("sections", out _));
+        Assert.Equal(readsForOneSnapshot * 2, host.PowerShell.Executed.Count);
+
+        host.Get<ISessionManager>().ResetSession();
+        var afterDisconnect = McpTestHost.Parse(await tools.Details(cancellationToken: Cancellation));
+        Assert.False(afterDisconnect.GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Update_OfAnExistingAutoAttendantThatFailsStaysFailed()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        // The auto attendant exists before the call: its existence afterwards proves nothing about the update.
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "ERROR: Object reference not set to an instance of an object.",
+            HadErrors = true,
+            Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Object reference not set to an instance of an object." } }
+        };
+
+        var update = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateAutoAttendant(planId: planId, cancellationToken: Cancellation));
+        var step = await PlanAndApplyAsync(planId => host.Tool<GuidedSetupTools>().RunStep(1, planId, Cancellation));
+
+        Assert.Equal("failed", update.GetProperty("status").GetString());
+        Assert.False(update.TryGetProperty("note", out _));
+        Assert.Equal("failed", step.GetProperty("status").GetString());
     }
 
     [Fact]

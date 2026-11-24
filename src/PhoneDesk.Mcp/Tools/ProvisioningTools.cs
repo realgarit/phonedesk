@@ -168,7 +168,17 @@ internal sealed class ProvisioningTools
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest("AssignPhoneNumber", accountUpn,
                     _commands.GetAssignPhoneNumberToAutoAttendantCommand(accountUpn, number, type),
-                    $"Assign {number} ({type}) to '{accountUpn}'."),
+                    $"Assign {number} ({type}) to '{accountUpn}'.")
+                {
+                    // A number the tenant did not have before is recorded, so release_phone_number can remove it later.
+                    OnSuccess = result =>
+                    {
+                        if (string.Equals(type.Trim(), "DirectRouting", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _guard.Claim(TenantObjectType.PhoneNumber, number.Trim(), "AssignPhoneNumber", result.RawOutput);
+                        }
+                    }
+                },
                 planId,
                 cancellationToken);
         });
@@ -204,7 +214,11 @@ internal sealed class ProvisioningTools
                 : _commands.GetCreateAutoAttendantCommand(variables);
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.AutoAttendant, name, "CreateAutoAttendant", script,
-                    $"Create {(simple ? "a minimal " : string.Empty)}auto attendant '{name}'."),
+                    $"Create {(simple ? "a minimal " : string.Empty)}auto attendant '{name}'.") with
+                {
+                    ChangeWasMadeDespiteError = await _guard.CreatedDespiteLateModuleErrorAsync(
+                        TenantObjectType.AutoAttendant, name, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)
+                },
                 planId,
                 cancellationToken);
         });
@@ -296,7 +310,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "import_audio_file", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = true)]
-    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold." + ChangeNote)]
+    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold. Teams removes an uploaded file by itself after 48 to 72 hours when no call queue or auto attendant uses it; it cannot be removed earlier." + ChangeNote)]
     public Task<string> ImportAudioFile(
         [Description("Full path of the audio file on this computer.")] string path,
         [Description(PlanIdDescription)] string? planId = null,
@@ -329,7 +343,9 @@ internal sealed class ProvisioningTools
     private ChangeRequest Creating(TenantObjectType type, string key, string operation, string script, string summary)
         => new(operation, key, script, summary)
         {
-            OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput)
+            // A failed script can still have created the object; the guard then confirms it in the tenant.
+            OnSuccessAsync = (result, token) => _guard.ClaimAsync(type, key, operation, result.RawOutput, token),
+            OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token)
         };
 
     internal static bool IsCallQueue(string kind)

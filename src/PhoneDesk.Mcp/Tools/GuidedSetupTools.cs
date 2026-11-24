@@ -104,6 +104,10 @@ internal sealed class GuidedSetupTools
             var script = _scripts.GetProvisioningScript(step, variables);
             var definition = GuidedSetupProgress.Steps.First(item => item.Step == step);
             var created = CreatedObjectFor((GuidedSetupStep)step, variables);
+            var lateErrorCheck = created is { Type: TenantObjectType.AutoAttendant }
+                ? await _guard.CreatedDespiteLateModuleErrorAsync(
+                    created.Value.Type, created.Value.Key, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)
+                : null;
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest($"GuidedSetupStep{step}", created?.Key ?? variables.AaDisplayName, script, $"Step {step}: {definition.Title}. {definition.Description}")
                 {
@@ -114,17 +118,23 @@ internal sealed class GuidedSetupTools
                         state.Status = GuidedStepStatus.Completed;
                         state.Error = null;
                         state.Fingerprint = GuidedSetupScriptFactory.ComputeFingerprint(script);
-                        if (created is not null)
-                        {
-                            _guard.Claim(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput);
-                        }
                     },
+                    OnSuccessAsync = created is null
+                        ? null
+                        : (result, token) => _guard.ClaimAsync(
+                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput, token),
                     OnFailure = result =>
                     {
                         state.Status = GuidedStepStatus.Failed;
                         state.Error = result.ErrorMessage;
                         state.Fingerprint = null;
-                    }
+                    },
+                    // A failed script can still have created the object; the guard then confirms it in the tenant.
+                    OnFailureAsync = created is null
+                        ? null
+                        : (result, token) => _guard.ClaimAfterFailureAsync(
+                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result, token),
+                    ChangeWasMadeDespiteError = lateErrorCheck
                 },
                 planId,
                 cancellationToken);
@@ -165,6 +175,7 @@ internal sealed class GuidedSetupTools
             GuidedSetupStep.CreateCallQueueResourceAccount => (TenantObjectType.ResourceAccount, variables.RacqUPN),
             GuidedSetupStep.CreateCallQueue => (TenantObjectType.CallQueue, variables.CqDisplayName),
             GuidedSetupStep.CreateAutoAttendantResourceAccount => (TenantObjectType.ResourceAccount, variables.RaaaUPN),
+            GuidedSetupStep.LicenseAutoAttendantResourceAccount => (TenantObjectType.PhoneNumber, variables.RaaAnr.Trim()),
             GuidedSetupStep.CreateAutoAttendant => (TenantObjectType.AutoAttendant, variables.AaDisplayName),
             _ => null
         };

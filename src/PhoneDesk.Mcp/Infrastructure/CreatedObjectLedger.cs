@@ -8,10 +8,27 @@ internal enum TenantObjectType
     ResourceAccount,
     CallQueue,
     AutoAttendant,
-    HolidaySchedule
+    HolidaySchedule,
+
+    /// <summary>
+    /// A phone number an assignment added to the tenant's number inventory. A Direct Routing
+    /// number stays there as unassigned after its account is deleted.
+    /// </summary>
+    PhoneNumber
 }
 
-internal sealed record CreatedObject(TenantObjectType Type, string Key, DateTimeOffset CreatedUtc, string Operation, string? DisplayName = null);
+/// <param name="Key">What a delete script identifies the object by: a name, a UPN, or a group object ID.</param>
+/// <param name="ObjectId">
+/// The immutable ID of the object in the tenant. A name can be reused by another object later;
+/// the ID cannot. Null until the server could read it.
+/// </param>
+internal sealed record CreatedObject(
+    TenantObjectType Type,
+    string Key,
+    DateTimeOffset CreatedUtc,
+    string Operation,
+    string? DisplayName = null,
+    string? ObjectId = null);
 
 /// <summary>
 /// Remembers, for each tenant, the objects this server created. The delete tools accept only
@@ -35,8 +52,30 @@ internal sealed class CreatedObjectLedger
         }
     }
 
-    public bool Contains(string tenantId, TenantObjectType type, string key)
-        => List(tenantId).Any(item => item.Type == type && Matches(item.Key, key));
+    public bool Contains(string tenantId, TenantObjectType type, string key) => Find(tenantId, type, key) is not null;
+
+    public CreatedObject? Find(string tenantId, TenantObjectType type, string key)
+        => List(tenantId).FirstOrDefault(item => item.Type == type && Matches(item.Key, key));
+
+    /// <summary>Stores the immutable ID of a recorded object.</summary>
+    public void SetObjectId(string tenantId, TenantObjectType type, string key, string objectId)
+    {
+        lock (_gate)
+        {
+            var all = Read();
+            if (!all.TryGetValue(tenantId, out var objects))
+            {
+                return;
+            }
+
+            var index = objects.FindIndex(item => item.Type == type && Matches(item.Key, key));
+            if (index >= 0)
+            {
+                objects[index] = objects[index] with { ObjectId = objectId.Trim() };
+                Write(all);
+            }
+        }
+    }
 
     public void Record(string tenantId, TenantObjectType type, string key, string operation, string? displayName = null)
     {

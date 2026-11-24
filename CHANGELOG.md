@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.35.3](https://github.com/realgarit/phonedesk/compare/v3.35.2...v3.35.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **mcp:** correct what a real AI client run found in the tools ([73f81e7](https://github.com/realgarit/phonedesk/commit/73f81e70602f1011de96b7ced66308eda8d698a0))
+* **mcp:** correct what a real AI client run found in the tools ([1913e9b](https://github.com/realgarit/phonedesk/commit/1913e9b5ac762d210f50d01ccd5bd6923ed5c7ff))
+
 ## [3.35.2](https://github.com/realgarit/phonedesk/compare/v3.35.1...v3.35.2) (2026-11-24)
 
 

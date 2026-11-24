@@ -14,8 +14,10 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 rescap">
+  IgnorableNamespaces="uap uap5 uap10 desktop4 rescap">
 
   <Identity
     Name="__IDENTITY_NAME__"
@@ -52,6 +54,38 @@
           Square71x71Logo="Assets\Square71x71Logo.png"
           Square310x310Logo="Assets\Square310x310Logo.png" />
       </uap:VisualElements>
+    </Application>
+
+    <!--
+      The MCP server for AI clients: a console program without a Start menu entry. A packaged
+      executable cannot be started by its path from outside the package, so the alias puts
+      "phonedesk-mcp.exe" on the user's PATH. A console alias needs an application that
+      supports multiple instances, so the server is its own application and the desktop app
+      keeps its activation behaviour.
+    -->
+    <Application
+      Id="PhoneDeskMcp"
+      Executable="phonedesk-mcp.exe"
+      EntryPoint="Windows.FullTrustApplication"
+      desktop4:Subsystem="console"
+      desktop4:SupportsMultipleInstances="true">
+      <uap:VisualElements
+        DisplayName="__DISPLAY_NAME__ MCP server"
+        Description="PhoneDesk MCP server for AI clients"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        AppListEntry="none" />
+      <Extensions>
+        <uap5:Extension
+          Category="windows.appExecutionAlias"
+          Executable="phonedesk-mcp.exe"
+          EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias desktop4:Subsystem="console">
+            <uap5:ExecutionAlias Alias="phonedesk-mcp.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

@@ -45,6 +45,10 @@ updates:
     versions: [">= 7.7.0"]
   - dependency-name: "System.Management.Automation"
     versions: [">= 7.7.0"]
+  # The MCP server shares the app folder. Hosting 11 ships System.* files that differ from the
+  # .NET 10 runtime files of the app; scripts/publish-mcp-server.sh fails on such a difference.
+  - dependency-name: "Microsoft.Extensions.Hosting"
+    versions: [">= 11.0.0"]
   schedule:
     interval: weekly
     day: monday

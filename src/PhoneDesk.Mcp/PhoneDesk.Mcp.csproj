@@ -22,7 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <!--
+      The server is published into the desktop app's folder and shares its files. Keep these
+      versions such that no shared file differs: Hosting stays on 10.0.x (its System.* dependencies
+      then come from the .NET 10 runtime, as in the app) and DependencyInjection matches the app.
+      ReleaseConfigurationTests and the packaging step check this.
+    -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
     <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
   </ItemGroup>
 

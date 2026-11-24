@@ -2,10 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PhoneDesk.Mcp;
-using PhoneDesk.Services;
-using PhoneDesk.Services.Interfaces;
-using PhoneDesk.Services.ScriptBuilders;
-using PhoneDesk.Topology;
 
 // stdout carries the protocol. The transport opens the raw stdout stream itself, so sending
 // Console.Out to stderr keeps stray console writes (for example from a PowerShell module)
@@ -19,30 +15,18 @@ Environment.SetEnvironmentVariable("AZURE_IDENTITY_DISABLE_WAM", "true", Environ
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = Microsoft.Extensions.Logging.LogLevel.Trace);
+builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
 
-var services = builder.Services;
-
-services.AddSingleton<ILoggingService, StderrLoggingService>();
-services.AddSingleton<ISessionManager, SessionManager>();
-services.AddSingleton<IPowerShellContextService, PowerShellContextService>();
-services.AddSingleton<IMsalGraphAuthenticationService, MsalGraphAuthenticationService>();
-services.AddSingleton<ITenantTopologyCache, TenantTopologyCache>();
-
-services.AddTransient<IPowerShellSanitizationService, PowerShellSanitizationService>();
-services.AddTransient<IPowerShellCommandService, PowerShellCommandService>();
-services.AddTransient<CommonScriptBuilder>();
-services.AddTransient<CallQueueScriptBuilder>();
-services.AddTransient<AutoAttendantScriptBuilder>();
-services.AddTransient<HolidayScriptBuilder>();
-services.AddTransient<ResourceAccountScriptBuilder>();
-services.AddTransient<DashboardScriptBuilder>();
-services.AddTransient<ITenantTopologyAssembler, TenantTopologyAssembler>();
-
-services.AddSingleton<SessionOperations>();
-
-services
-    .AddMcpServer()
+builder.Services.AddPhoneDeskMcp();
+builder.Services
+    .AddMcpServer(options =>
+    {
+        var version = PhoneDesk.Models.AppVersion.TryParse(PhoneDesk.Services.ConstantsService.Application.Version, out var parsed)
+            ? $"{parsed.Major}.{parsed.Minor}.{parsed.Patch}"
+            : "0.0.0";
+        options.ServerInfo = new() { Name = "phonedesk", Version = version };
+        options.ServerInstructions = ServerInstructions.Text;
+    })
     .WithStdioServerTransport()
     .WithToolsFromAssembly();
 

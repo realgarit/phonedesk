@@ -22,15 +22,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
     <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The frozen setup script looks for the bundled modules beside the executable. -->
-    <Content Include="..\..\Modules\**\*" Link="Modules\%(RecursiveDir)%(Filename)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <InternalsVisibleTo Include="PhoneDesk.IntegrationTests" />
   </ItemGroup>
+
+  <!--
+    The frozen setup script looks for the bundled modules in "Modules" beside the executable, or
+    one folder up. An installed server sits in the application folder and shares the application's
+    modules. A local build gets its own copy here. A target copies them (not Content items) so the
+    several hundred megabytes do not flow into projects that reference this one.
+  -->
+  <Target Name="CopyBundledModulesForLocalRun" AfterTargets="Build" Condition="Exists('$(MSBuildThisFileDirectory)..\..\Modules')">
+    <ItemGroup>
+      <BundledModuleFile Include="$(MSBuildThisFileDirectory)..\..\Modules\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundledModuleFile)"
+          DestinationFiles="@(BundledModuleFile->'$(OutDir)Modules\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

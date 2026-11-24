@@ -59,6 +59,7 @@ internal static class ServiceRegistration
         services.AddSingleton<GuidedSetupProgress>();
         services.AddSingleton<TenantGateway>();
         services.AddSingleton<ChangeGate>();
+        services.AddSingleton<CreatedObjectGuard>();
 
         return services;
     }

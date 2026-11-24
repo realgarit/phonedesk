@@ -37,6 +37,8 @@ internal sealed class McpEnvironment
 
     public string CreatedObjectsFile => Path.Combine(DataDirectory, "created-objects.json");
 
+    public string ExportDirectory => Path.Combine(DataDirectory, "exports");
+
     public string BackupDirectory(string tenantId) => Path.Combine(DataDirectory, "backups", SafeName(tenantId));
 
     private static string SafeName(string value)

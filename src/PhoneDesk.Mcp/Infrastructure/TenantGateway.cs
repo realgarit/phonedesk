@@ -23,6 +23,8 @@ internal sealed class TenantGateway
 
     private string? _sessionBackupTenantId;
     private BackupInfo? _sessionBackup;
+    private string? _baselineTenantId;
+    private TopologySnapshotDocument? _baseline;
 
     public TenantGateway(
         ITenantCommandRunner runner,
@@ -48,6 +50,13 @@ internal sealed class TenantGateway
 
     /// <summary>The most recent full snapshot read in this session.</summary>
     public TopologySnapshotDocument? LatestSnapshot { get; private set; }
+
+    /// <summary>
+    /// The first backup of the connected tenant in this session. It shows what was in the tenant
+    /// before this session changed anything. Null until a backup was taken.
+    /// </summary>
+    public TopologySnapshotDocument? BaselineSnapshot
+        => string.Equals(_baselineTenantId, TenantId, StringComparison.OrdinalIgnoreCase) ? _baseline : null;
 
     public string TenantId => _session.TenantId ?? string.Empty;
 
@@ -109,6 +118,12 @@ internal sealed class TenantGateway
             directory,
             $"phonedesk-topology-{snapshot.RetrievedAtUtc.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}.json");
         await File.WriteAllTextAsync(file, _tenantAsCode.SerializeTopology(snapshot), cancellationToken);
+
+        if (BaselineSnapshot is null)
+        {
+            _baselineTenantId = TenantId;
+            _baseline = snapshot;
+        }
 
         _sessionBackupTenantId = TenantId;
         _sessionBackup = new BackupInfo(

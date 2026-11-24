@@ -12,11 +12,13 @@ internal sealed class ConfigurationTools
 {
     private readonly ConfigurationStore _store;
     private readonly IValidationService _validation;
+    private readonly McpEnvironment _environment;
 
-    public ConfigurationTools(ConfigurationStore store, IValidationService validation)
+    public ConfigurationTools(ConfigurationStore store, IValidationService validation, McpEnvironment environment)
     {
         _store = store;
         _validation = validation;
+        _environment = environment;
     }
 
     [McpServerTool(Name = "configuration_get", ReadOnly = true, Idempotent = true, OpenWorld = false)]
@@ -40,30 +42,37 @@ internal sealed class ConfigurationTools
     public string Reset() => McpJson.Run(() => WithChanges(_store.Reset()));
 
     [McpServerTool(Name = "configuration_export", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Writes the current configuration to a JSON file that the desktop app can import. An existing file is not overwritten unless overwrite is true.")]
+    [Description("Writes the current configuration to a JSON file that the desktop app can import. The file goes to the server's export folder on this computer; the result gives the full path. An existing file with the same name is not replaced.")]
     public string Export(
-        [Description("Full path of the file to write.")] string path,
-        [Description("True to replace an existing file.")] bool overwrite = false)
+        [Description("File name only, for example contoso-reception.json. No folder.")] string fileName)
         => McpJson.Run(() =>
         {
-            var fullPath = Path.GetFullPath(path);
-            if (File.Exists(fullPath) && !overwrite)
+            var name = (fileName ?? string.Empty).Trim();
+            if (name.Length == 0 || name != Path.GetFileName(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"'{fullPath}' already exists. Pass overwrite=true to replace it.");
+                throw new ArgumentException("fileName must be a plain file name that ends with .json, without a folder.");
             }
 
-            File.WriteAllText(fullPath, _store.ToJson());
+            Directory.CreateDirectory(_environment.ExportDirectory);
+            var fullPath = Path.Combine(_environment.ExportDirectory, name);
+            using (var stream = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write))
+            using (var writer = new StreamWriter(stream))
+            {
+                writer.Write(_store.ToJson());
+            }
+
             return new { success = true, file = fullPath };
         });
 
     [McpServerTool(Name = "configuration_import", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Reads a PhoneDesk configuration file (from the desktop app or configuration_export). With apply=false it only lists what would change. With apply=true it replaces the current configuration. Local only.")]
+    [Description("Reads a PhoneDesk configuration file (from the desktop app or configuration_export). With apply=false it only lists what would change. With apply=true it replaces the current configuration. Local only. The file content is never returned, only the differences to the current configuration.")]
     public string Import(
-        [Description("Full path of the configuration file.")] string path,
+        [Description("Full path of the configuration .json file.")] string path,
         [Description("False to preview the differences, true to apply them.")] bool apply = false)
         => McpJson.Run(() =>
         {
-            var json = File.ReadAllText(Path.GetFullPath(path));
+            var json = McpFiles.ReadJsonFile(path, maxBytes: 1024 * 1024);
             return apply
                 ? WithChanges(_store.Replace(json))
                 : new { applied = false, changes = _store.Preview(json) };

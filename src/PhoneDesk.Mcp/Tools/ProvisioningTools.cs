@@ -15,29 +15,27 @@ internal sealed class ProvisioningTools
     private const string PlanIdDescription = "The planId from the first call. Omit to get the plan.";
     private const string ChangeNote = " CHANGES THE TENANT. Call it first without planId: it returns the exact script as a plan and changes nothing. Show the plan to the user, then call it again with the same arguments and the planId to run it.";
 
+    private static readonly string[] AudioExtensions = { ".wav", ".mp3", ".wma" };
+
     private readonly ConfigurationStore _store;
     private readonly IPowerShellCommandService _commands;
     private readonly ChangeGate _changes;
     private readonly TenantGateway _tenant;
-    private readonly CreatedObjectLedger _ledger;
+    private readonly CreatedObjectGuard _guard;
 
     public ProvisioningTools(
         ConfigurationStore store,
         IPowerShellCommandService commands,
         ChangeGate changes,
         TenantGateway tenant,
-        CreatedObjectLedger ledger)
+        CreatedObjectGuard guard)
     {
         _store = store;
         _commands = commands;
         _changes = changes;
         _tenant = tenant;
-        _ledger = ledger;
+        _guard = guard;
     }
-
-    /// <summary>True when the script reported that it used an object that was already in the tenant.</summary>
-    public static bool ReusedExistingObject(string? output)
-        => output?.Contains("already exist", StringComparison.OrdinalIgnoreCase) ?? false;
 
     [McpServerTool(Name = "create_m365_group", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
     [Description("Creates the Microsoft 365 group for call queue agents. An existing group with the same name is reused." + ChangeNote)]
@@ -306,6 +304,11 @@ internal sealed class ProvisioningTools
         => McpJson.RunAsync(async () =>
         {
             var fullPath = Path.GetFullPath(path);
+            if (!AudioExtensions.Contains(Path.GetExtension(fullPath), StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only .wav, .mp3 and .wma files can be uploaded.");
+            }
+
             if (!File.Exists(fullPath))
             {
                 throw new InvalidOperationException($"'{fullPath}' does not exist.");
@@ -326,13 +329,7 @@ internal sealed class ProvisioningTools
     private ChangeRequest Creating(TenantObjectType type, string key, string operation, string script, string summary)
         => new(operation, key, script, summary)
         {
-            OnSuccess = result =>
-            {
-                if (!ReusedExistingObject(result.RawOutput))
-                {
-                    _ledger.Record(_tenant.TenantId, type, key, operation);
-                }
-            }
+            OnSuccess = result => _guard.Claim(type, key, operation, result.RawOutput)
         };
 
     internal static bool IsCallQueue(string kind)

@@ -16,22 +16,16 @@ internal sealed class DeleteTools
 
     private readonly IPowerShellCommandService _commands;
     private readonly ChangeGate _changes;
-    private readonly TenantGateway _tenant;
-    private readonly CreatedObjectLedger _ledger;
-    private readonly McpEnvironment _environment;
+    private readonly CreatedObjectGuard _guard;
 
     public DeleteTools(
         IPowerShellCommandService commands,
         ChangeGate changes,
-        TenantGateway tenant,
-        CreatedObjectLedger ledger,
-        McpEnvironment environment)
+        CreatedObjectGuard guard)
     {
         _commands = commands;
         _changes = changes;
-        _tenant = tenant;
-        _ledger = ledger;
-        _environment = environment;
+        _guard = guard;
     }
 
     [McpServerTool(Name = "delete_call_queue", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
@@ -77,8 +71,9 @@ internal sealed class DeleteTools
         [Description("Display name of the group.")] string groupName,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
-        => DeleteAsync(TenantObjectType.M365Group, groupName, "RemoveM365Group",
-            key => _commands.GetRemoveM365GroupCommand(ProvisioningTools.Require(groupId, "group ID"), key),
+        // The group is deleted by its object ID, so the ID is what the guard checks.
+        => DeleteAsync(TenantObjectType.M365Group, groupId, "RemoveM365Group",
+            key => _commands.GetRemoveM365GroupCommand(key, ProvisioningTools.Require(groupName, "group name")),
             $"Delete Microsoft 365 group '{groupName}' ({groupId}).", planId, cancellationToken);
 
     private Task<string> DeleteAsync(
@@ -92,19 +87,12 @@ internal sealed class DeleteTools
         => McpJson.RunAsync(async () =>
         {
             var target = ProvisioningTools.Require(key, "name");
-            _tenant.RequireReady();
-            if (!_environment.AllowDeleteExisting && !_ledger.Contains(_tenant.TenantId, type, target))
-            {
-                throw new InvalidOperationException(
-                    $"'{target}' was not created by this server, so it is not deleted. Objects this server created are listed by " +
-                    $"created_objects. To allow deleting other objects, the operator must start the server with " +
-                    $"{McpEnvironment.AllowDeleteExistingVariable}=1, or delete the object in the desktop app or the Teams admin center.");
-            }
+            await _guard.RequireDeletableAsync(type, target, cancellationToken);
 
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest(operation, target, buildScript(target), summary)
                 {
-                    OnSuccess = _ => _ledger.Remove(_tenant.TenantId, type, target)
+                    OnSuccess = _ => _guard.Forget(type, target)
                 },
                 planId,
                 cancellationToken);

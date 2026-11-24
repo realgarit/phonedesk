@@ -10,6 +10,8 @@ namespace PhoneDesk.IntegrationTests.Mcp;
 
 public sealed class McpToolTests
 {
+    private const string GroupId = "11111111-2222-3333-4444-555555555555";
+
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -118,7 +120,8 @@ public sealed class McpToolTests
     [Fact]
     public async Task Change_FirstCallOnlyPlans_SecondCallRunsTheSameScript()
     {
-        using var host = new McpTestHost().Connected().Configured();
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        host.PowerShell.DefaultResult = new() { Output = $"SUCCESS: ttgrp-contoso-reception created successfully with ID: {GroupId}" };
         var tools = host.Tool<ProvisioningTools>();
 
         var plan = McpTestHost.Parse(await tools.CreateM365Group(cancellationToken: Cancellation));
@@ -128,8 +131,10 @@ public sealed class McpToolTests
         var applied = McpTestHost.Parse(await tools.CreateM365Group(
             planId: plan.GetProperty("planId").GetString(), cancellationToken: Cancellation));
         Assert.Equal("applied", applied.GetProperty("status").GetString());
-        Assert.Equal(plan.GetProperty("script").GetString(), Assert.Single(host.PowerShell.Executed));
-        Assert.True(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.M365Group, "ttgrp-contoso-reception"));
+        Assert.Equal(plan.GetProperty("script").GetString(), host.PowerShell.Executed[^1]);
+        // The group is recorded by its object ID, because that is what a delete uses.
+        Assert.True(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.M365Group, GroupId));
+        Assert.False(host.Get<CreatedObjectLedger>().Contains(McpTestHost.TenantId, TenantObjectType.M365Group, "ttgrp-contoso-reception"));
     }
 
     [Fact]
@@ -198,8 +203,11 @@ public sealed class McpToolTests
     [Fact]
     public async Task Delete_IsAllowedForAnObjectTheServerCreated_AndForgetsItAfterwards()
     {
-        using var host = new McpTestHost().Connected().Configured();
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
         await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            "TOPCQ: cq-contoso-reception|cq-id-2|Attendant|30||grp-1|ra-obj-1\n" + McpTestHost.TopologyOutput);
         var delete = host.Tool<DeleteTools>();
 
         var deleted = await PlanAndApplyAsync(planId => delete.DeleteCallQueue("cq-contoso-reception", planId, Cancellation));
@@ -211,12 +219,87 @@ public sealed class McpToolTests
     [Fact]
     public async Task Create_DoesNotClaimAnObjectThatAlreadyExisted()
     {
-        using var host = new McpTestHost().Connected().Configured();
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
         host.PowerShell.DefaultResult = new() { Output = "SUCCESS: ttgrp-contoso-reception already exists. The existing group is used (ID: 1)" };
 
         await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateM365Group(planId: planId, cancellationToken: Cancellation));
 
         Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Create_DoesNotClaimAnObjectThatWasInTheBackupBeforeTheChange()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        // A minimal create does not report an existing object with the same name.
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
+
+        var created = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateAutoAttendant(
+            simple: true, planId: planId, cancellationToken: Cancellation));
+
+        Assert.Equal("applied", created.GetProperty("status").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Create_WithoutABackupClaimsNothing()
+    {
+        using var host = new McpTestHost(skipBackup: true).Connected().Configured();
+
+        await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateCallQueue(planId: planId, cancellationToken: Cancellation));
+
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task Delete_IsRefusedWhenTheNameIsNotUnique()
+    {
+        using var host = new McpTestHost(allowDeleteExisting: true).Connected();
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            "TOPCQ: Support CQ|cq-id-2|Attendant|30|||\n" + McpTestHost.TopologyOutput);
+
+        var result = McpTestHost.Parse(await host.Tool<DeleteTools>().DeleteCallQueue("Support CQ", cancellationToken: Cancellation));
+
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Contains("2 objects named", result.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Delete_OfAGroupChecksTheObjectIdNotTheName()
+    {
+        using var host = new McpTestHost().Connected();
+        host.Get<CreatedObjectLedger>().Record(McpTestHost.TenantId, TenantObjectType.M365Group, GroupId, "CreateM365Group", "ttgrp-contoso-reception");
+        var delete = host.Tool<DeleteTools>();
+
+        var otherGroup = McpTestHost.Parse(await delete.DeleteM365Group(
+            "99999999-2222-3333-4444-555555555555", "ttgrp-contoso-reception", cancellationToken: Cancellation));
+        var ownGroup = McpTestHost.Parse(await delete.DeleteM365Group(GroupId, "ttgrp-contoso-reception", cancellationToken: Cancellation));
+
+        Assert.False(otherGroup.GetProperty("success").GetBoolean());
+        Assert.Equal("planned", ownGroup.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public void Files_ExportStaysInTheExportFolderAndImportReadsOnlyJson()
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+
+        var outside = McpTestHost.Parse(tools.Export(Path.Combine(Path.GetTempPath(), "outside.json")));
+        var exported = McpTestHost.Parse(tools.Export("contoso.json"));
+        var again = McpTestHost.Parse(tools.Export("contoso.json"));
+        var notJson = McpTestHost.Parse(tools.Import(Path.Combine(Environment.SystemDirectory, "drivers", "etc", "hosts")));
+
+        Assert.False(outside.GetProperty("success").GetBoolean());
+        Assert.StartsWith(host.DataDirectory, exported.GetProperty("file").GetString());
+        Assert.False(again.GetProperty("success").GetBoolean());
+        Assert.False(notJson.GetProperty("success").GetBoolean());
+
+        var preview = McpTestHost.Parse(tools.Import(exported.GetProperty("file").GetString()!));
+        Assert.Equal(0, preview.GetProperty("changes").GetArrayLength());
     }
 
     [Fact]

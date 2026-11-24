@@ -98,7 +98,7 @@ internal sealed class HealthAndBackupTools
             }
 
             // The file is validated before the tenant is queried.
-            var snapshot = _tenantAsCode.DeserializeTopology(await File.ReadAllTextAsync(path, cancellationToken));
+            var snapshot = _tenantAsCode.DeserializeTopology(McpFiles.ReadJsonFile(path, maxBytes: 64 * 1024 * 1024));
             var live = await _tenant.CollectSnapshotAsync(cancellationToken);
             var drift = _tenantAsCode.CompareTopology(snapshot, live);
             var take = Math.Clamp(limit <= 0 ? 100 : limit, 1, 1000);

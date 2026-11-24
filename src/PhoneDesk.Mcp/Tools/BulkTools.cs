@@ -12,21 +12,18 @@ internal sealed class BulkTools
     private readonly BulkSetupScriptBuilder _bulk;
     private readonly IValidationService _validation;
     private readonly ChangeGate _changes;
-    private readonly TenantGateway _tenant;
-    private readonly CreatedObjectLedger _ledger;
+    private readonly CreatedObjectGuard _guard;
 
     public BulkTools(
         BulkSetupScriptBuilder bulk,
         IValidationService validation,
         ChangeGate changes,
-        TenantGateway tenant,
-        CreatedObjectLedger ledger)
+        CreatedObjectGuard guard)
     {
         _bulk = bulk;
         _validation = validation;
         _changes = changes;
-        _tenant = tenant;
-        _ledger = ledger;
+        _guard = guard;
     }
 
     [McpServerTool(Name = "bulk_setup_template", ReadOnly = true, Idempotent = true, OpenWorld = false)]
@@ -70,18 +67,14 @@ internal sealed class BulkTools
                     IsSuccess = result => result.IsSuccess && !result.HasErrorMarker,
                     OnSuccess = result =>
                     {
-                        if (ProvisioningTools.ReusedExistingObject(result.RawOutput))
-                        {
-                            return;
-                        }
-
+                        // One combined output: when any row reused an object, no row can be proven new.
+                        // The group is not claimed: the combined output does not tie a group ID to a row.
                         foreach (var entry in entries)
                         {
-                            _ledger.Record(_tenant.TenantId, TenantObjectType.M365Group, entry.M365Group, "BulkOperations");
-                            _ledger.Record(_tenant.TenantId, TenantObjectType.ResourceAccount, entry.RacqUPN, "BulkOperations");
-                            _ledger.Record(_tenant.TenantId, TenantObjectType.CallQueue, entry.CqDisplayName, "BulkOperations");
-                            _ledger.Record(_tenant.TenantId, TenantObjectType.ResourceAccount, entry.RaaaUPN, "BulkOperations");
-                            _ledger.Record(_tenant.TenantId, TenantObjectType.AutoAttendant, entry.AaDisplayName, "BulkOperations");
+                            _guard.Claim(TenantObjectType.ResourceAccount, entry.RacqUPN, "BulkOperations", result.RawOutput);
+                            _guard.Claim(TenantObjectType.CallQueue, entry.CqDisplayName, "BulkOperations", result.RawOutput);
+                            _guard.Claim(TenantObjectType.ResourceAccount, entry.RaaaUPN, "BulkOperations", result.RawOutput);
+                            _guard.Claim(TenantObjectType.AutoAttendant, entry.AaDisplayName, "BulkOperations", result.RawOutput);
                         }
                     }
                 },

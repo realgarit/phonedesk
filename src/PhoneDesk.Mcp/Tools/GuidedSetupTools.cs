@@ -13,8 +13,7 @@ internal sealed class GuidedSetupTools
     private readonly GuidedSetupProgress _progress;
     private readonly GuidedSetupScriptFactory _scripts;
     private readonly ChangeGate _changes;
-    private readonly TenantGateway _tenant;
-    private readonly CreatedObjectLedger _ledger;
+    private readonly CreatedObjectGuard _guard;
     private readonly IValidationService _validation;
     private readonly IDryRunPlanBuilder _planBuilder;
     private readonly IDryRunPlanExporter _planExporter;
@@ -25,8 +24,7 @@ internal sealed class GuidedSetupTools
         GuidedSetupProgress progress,
         GuidedSetupScriptFactory scripts,
         ChangeGate changes,
-        TenantGateway tenant,
-        CreatedObjectLedger ledger,
+        CreatedObjectGuard guard,
         IValidationService validation,
         IDryRunPlanBuilder planBuilder,
         IDryRunPlanExporter planExporter,
@@ -36,8 +34,7 @@ internal sealed class GuidedSetupTools
         _progress = progress;
         _scripts = scripts;
         _changes = changes;
-        _tenant = tenant;
-        _ledger = ledger;
+        _guard = guard;
         _validation = validation;
         _planBuilder = planBuilder;
         _planExporter = planExporter;
@@ -117,9 +114,9 @@ internal sealed class GuidedSetupTools
                         state.Status = GuidedStepStatus.Completed;
                         state.Error = null;
                         state.Fingerprint = GuidedSetupScriptFactory.ComputeFingerprint(script);
-                        if (created is not null && !ProvisioningTools.ReusedExistingObject(result.RawOutput))
+                        if (created is not null)
                         {
-                            _ledger.Record(_tenant.TenantId, created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}");
+                            _guard.Claim(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput);
                         }
                     },
                     OnFailure = result =>

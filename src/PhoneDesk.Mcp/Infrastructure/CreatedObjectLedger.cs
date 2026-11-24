@@ -11,7 +11,7 @@ internal enum TenantObjectType
     HolidaySchedule
 }
 
-internal sealed record CreatedObject(TenantObjectType Type, string Key, DateTimeOffset CreatedUtc, string Operation);
+internal sealed record CreatedObject(TenantObjectType Type, string Key, DateTimeOffset CreatedUtc, string Operation, string? DisplayName = null);
 
 /// <summary>
 /// Remembers, for each tenant, the objects this server created. The delete tools accept only
@@ -38,7 +38,7 @@ internal sealed class CreatedObjectLedger
     public bool Contains(string tenantId, TenantObjectType type, string key)
         => List(tenantId).Any(item => item.Type == type && Matches(item.Key, key));
 
-    public void Record(string tenantId, TenantObjectType type, string key, string operation)
+    public void Record(string tenantId, TenantObjectType type, string key, string operation, string? displayName = null)
     {
         if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(key))
         {
@@ -56,7 +56,7 @@ internal sealed class CreatedObjectLedger
 
             if (!objects.Any(item => item.Type == type && Matches(item.Key, key)))
             {
-                objects.Add(new CreatedObject(type, key.Trim(), DateTimeOffset.UtcNow, operation));
+                objects.Add(new CreatedObject(type, key.Trim(), DateTimeOffset.UtcNow, operation, displayName));
                 Write(all);
             }
         }

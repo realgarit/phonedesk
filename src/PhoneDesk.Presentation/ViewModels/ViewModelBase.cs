@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using PhoneDesk.Localization;
-using PhoneDesk.Audit;
+using PhoneDesk.Operations;
 using PhoneDesk.Services;
 using PhoneDesk.Services.Interfaces;
 
@@ -194,6 +194,10 @@ namespace PhoneDesk.ViewModels
         private IThrottleRetryPolicy? _throttleRetryPolicy;
         protected IThrottleRetryPolicy ThrottleRetryPolicy => _throttleRetryPolicy ??= new ThrottleRetryPolicy(_loggingService);
 
+        private ITenantCommandRunner? _commandRunner;
+        private ITenantCommandRunner CommandRunner => _commandRunner ??= new TenantCommandRunner(
+            _powerShellContextService, _sessionManager, ThrottleRetryPolicy, _loggingService, _auditLog);
+
         protected Task<OperationResult<string>> ExecutePowerShellCommandAsync(string command, string context = "")
             => ExecutePowerShellCommandAsync(command, null, context, allowThrottleRetry: false);
 
@@ -210,21 +214,6 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         protected async Task<OperationResult<string>> ExecutePowerShellCommandAsync(string command, Dictionary<string, string>? environmentVariables, string context, bool allowThrottleRetry)
         {
-            // Check session expiry before executing commands that require a connection
-            if (_sessionManager.IsSessionExpired && _sessionManager.IsSessionValid)
-            {
-                _sessionManager.ResetSession();
-                await _errorHandlingService.HandleConnectionError(
-                    "Session",
-                    GetText(
-                        UiTextKey.RuntimeSessionExpiredMessage,
-                        "Your session has expired (24h timeout). Please reconnect to Teams and Microsoft Graph."));
-                return PowerShellOperationResultMapper.Failure(
-                    OperationErrorCategory.AuthSession,
-                    GetText(UiTextKey.RuntimeSessionExpiredShort, "Session expired. Please reconnect."),
-                    "ERROR: Session expired. Please reconnect.");
-            }
-
             using var cts = new CancellationTokenSource();
             _operationCts = cts;
             IsCancellable = true;
@@ -236,120 +225,64 @@ namespace PhoneDesk.ViewModels
 
             try
             {
-                OperationResult<string> result;
-                if (allowThrottleRetry)
+                // The shared runner owns the session-expiry check, throttle retry, result mapping and the
+                // audit record. This method adds only what needs the UI: dialogs, status and cancellation.
+                var outcome = await CommandRunner.RunAsync(
+                    new TenantCommandRequest(command, context)
+                    {
+                        EnvironmentVariables = environmentVariables,
+                        IsIdempotentRead = allowThrottleRetry,
+                        Target = BuildAuditTarget(_sharedStateService?.Variables),
+                        Progress = progress
+                    },
+                    cts.Token,
+                    new TenantCommandRunnerMessages(
+                        GetText(UiTextKey.RuntimeSessionExpiredShort, "Session expired. Please reconnect."),
+                        GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user."),
+                        error => GetText(
+                            UiTextKey.RuntimeAuditLogWriteFailedLog,
+                            "Audit log write failed: {error}",
+                            new Dictionary<string, object?> { ["error"] = error })));
+
+                switch (outcome.Status)
                 {
-                    // Idempotent read/query: auto-retry on throttling with backoff (logged by the policy).
-                    result = await ThrottleRetryPolicy.ExecuteAsync(
-                        async ct => PowerShellOperationResultMapper.Map(
-                            await _powerShellContextService.ExecuteCommandWithDetailsAsync(command, environmentVariables, progress, ct)),
-                        new ThrottleRetryContext(string.IsNullOrEmpty(context) ? "PowerShell operation" : context, isIdempotent: true),
-                        cts.Token);
-                }
-                else
-                {
-                    var execution = await _powerShellContextService.ExecuteCommandWithDetailsAsync(command, environmentVariables, progress, cts.Token);
-                    result = PowerShellOperationResultMapper.Map(execution);
+                    case TenantCommandStatus.SessionExpired:
+                        await _errorHandlingService.HandleConnectionError(
+                            "Session",
+                            GetText(
+                                UiTextKey.RuntimeSessionExpiredMessage,
+                                "Your session has expired (24h timeout). Please reconnect to Teams and Microsoft Graph."));
+                        break;
+                    case TenantCommandStatus.Cancelled:
+                        // User cancelled: this is not an error, so we deliberately do NOT raise the error dialog.
+                        // The runspace remains reusable, so the next operation runs normally.
+                        LogLocalized(
+                            UiTextKey.RuntimeOperationCancelledLog,
+                            "Operation cancelled: {context}",
+                            LogLevel.Warning,
+                            new Dictionary<string, object?> { ["context"] = context });
+                        StatusMessage = GetText(UiTextKey.RuntimeOperationCancelled, "Operation cancelled.");
+                        break;
+                    case TenantCommandStatus.Faulted:
+                        await _errorHandlingService.HandlePowerShellError(
+                            command, outcome.Exception?.Message ?? outcome.Result.ErrorMessage ?? string.Empty, context);
+                        break;
+                    default:
+                        // Surface a user-facing error only for a reportable failure (error marker without success marker).
+                        if (outcome.Result.ShouldReportError)
+                        {
+                            await _errorHandlingService.HandlePowerShellError(command, outcome.Result.RawOutput, context);
+                        }
+                        break;
                 }
 
-                // Persist an audit record for the attempt (out-of-band; never alters the operation).
-                RecordAudit(
-                    context,
-                    environmentVariables,
-                    allowThrottleRetry,
-                    result.IsSuccess ? AuditOutcome.Success : AuditOutcome.Failure,
-                    result.IsSuccess ? null : (result.ErrorMessage ?? result.RawOutput),
-                    result.CorrelationId);
-
-                // Surface a user-facing error only for a reportable failure (error marker without success marker).
-                if (result.ShouldReportError)
-                {
-                    await _errorHandlingService.HandlePowerShellError(command, result.RawOutput, context);
-                }
-
-                return result;
-            }
-            catch (OperationCanceledException)
-            {
-                // User cancelled: this is not an error, so we deliberately do NOT raise the error dialog.
-                // The runspace remains reusable, so the next operation runs normally.
-                LogLocalized(
-                    UiTextKey.RuntimeOperationCancelledLog,
-                    "Operation cancelled: {context}",
-                    LogLevel.Warning,
-                    new Dictionary<string, object?> { ["context"] = context });
-                StatusMessage = GetText(UiTextKey.RuntimeOperationCancelled, "Operation cancelled.");
-                RecordAudit(context, environmentVariables, allowThrottleRetry, AuditOutcome.Cancelled, null, correlationId: null);
-                return PowerShellOperationResultMapper.Failure(
-                    OperationErrorCategory.Cancelled,
-                    GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user."),
-                    "ERROR: Operation cancelled by user.");
-            }
-            catch (Exception ex)
-            {
-                RecordAudit(context, environmentVariables, allowThrottleRetry, AuditOutcome.Failure, ex.Message, correlationId: null);
-                await _errorHandlingService.HandlePowerShellError(command, ex.Message, context);
-                return PowerShellOperationResultMapper.Failure(
-                    OperationErrorCategory.Unknown,
-                    ex.Message,
-                    $"ERROR: {ex.Message}");
+                return outcome.Result;
             }
             finally
             {
                 _operationCts = null;
                 IsCancellable = false;
                 ResetProgress();
-            }
-        }
-
-        /// <summary>
-        /// Appends an audit record for an operation attempt. No-op when no audit sink is wired (unit tests).
-        /// Never throws: an audit failure is logged and swallowed so it cannot affect the operation. Secrets
-        /// in <paramref name="environmentVariables"/> / <paramref name="errorDetail"/> are redacted by the sink.
-        /// </summary>
-        private void RecordAudit(
-            string context,
-            IReadOnlyDictionary<string, string>? environmentVariables,
-            bool isReadOnly,
-            AuditOutcome outcome,
-            string? errorDetail,
-            string? correlationId)
-        {
-            if (_auditLog is null)
-            {
-                return;
-            }
-
-            try
-            {
-                var variables = _sharedStateService?.Variables;
-                var record = new AuditRecord
-                {
-                    TimestampUtc = DateTimeOffset.UtcNow,
-                    Operator = _sessionManager.GraphAccount ?? _sessionManager.TeamsAccount,
-                    TenantId = _sessionManager.TenantId,
-                    TenantName = _sessionManager.TenantName,
-                    Operation = string.IsNullOrWhiteSpace(context) ? "PowerShell operation" : context,
-                    Target = BuildAuditTarget(variables),
-                    Parameters = environmentVariables is { Count: > 0 }
-                        ? new Dictionary<string, string>(environmentVariables)
-                        : null,
-                    Outcome = outcome,
-                    ErrorDetail = Truncate(errorDetail, 2000),
-                    CorrelationId = correlationId ?? Guid.NewGuid().ToString("N"),
-                    AppVersion = ConstantsService.Application.Version,
-                    Kind = isReadOnly ? AuditKind.Read : AuditKind.Operation
-                };
-
-                _auditLog.Append(record);
-            }
-            catch (Exception ex)
-            {
-                LogLocalized(
-                    UiTextKey.RuntimeAuditLogWriteFailedLog,
-                    "Audit log write failed: {error}",
-                    LogLevel.Warning,
-                    new Dictionary<string, object?> { ["error"] = ex.Message });
             }
         }
 
@@ -364,16 +297,6 @@ namespace PhoneDesk.ViewModels
             return string.IsNullOrWhiteSpace(variables.CustomerGroupName)
                 ? variables.Customer
                 : $"{variables.Customer}-{variables.CustomerGroupName}";
-        }
-
-        private static string? Truncate(string? value, int maxLength)
-        {
-            if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
-            {
-                return value;
-            }
-
-            return value[..maxLength] + "…";
         }
 
         protected string GetValidationErrorMessage(ValidationResult result)

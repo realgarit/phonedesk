@@ -225,13 +225,13 @@ namespace PhoneDesk.Models
         [ObservableProperty]
         private bool _cqNoAgentApplyToNewCallsOnly;
 
-        public string M365Group => $"ttgrp-{Customer}-{CustomerGroupName}";
-        public string RacqUPN => ResourceAccountUpn.Build($"racq-{Customer}-{CustomerGroupName}", MsFallbackDomain);
-        public string RacqDisplayName => $"racq-{Customer}-{CustomerGroupName}";
-        public string CqDisplayName => $"cq-{Customer}-{CustomerGroupName}";
-        public string RaaaUPN => ResourceAccountUpn.Build($"raaa-{Customer}-{RaaAnrName}-{CustomerGroupName}", MsFallbackDomain);
-        public string RaaaDisplayName => $"raaa-{Customer}-{RaaAnrName}-{CustomerGroupName}";
-        public string AaDisplayName => $"aa-{Customer}-{RaaAnrName}-{CustomerGroupName}";
+        public string M365Group => ResourceNames.M365Group(Customer, CustomerGroupName);
+        public string RacqUPN => ResourceAccountUpn.Build(RacqDisplayName, MsFallbackDomain);
+        public string RacqDisplayName => ResourceNames.CallQueueResourceAccount(Customer, CustomerGroupName);
+        public string CqDisplayName => ResourceNames.CallQueue(Customer, CustomerGroupName);
+        public string RaaaUPN => ResourceAccountUpn.Build(RaaaDisplayName, MsFallbackDomain);
+        public string RaaaDisplayName => ResourceNames.AutoAttendantResourceAccount(Customer, RaaAnrName, CustomerGroupName);
+        public string AaDisplayName => ResourceNames.AutoAttendant(Customer, RaaAnrName, CustomerGroupName);
 
         // Explicit IPhoneManagerVariables member: expose the bindable ObservableCollection as the
         // read-only Domain contract (covariant ObservableCollection<DaySchedule> -> IReadOnlyList<IDaySchedule>).
@@ -239,7 +239,7 @@ namespace PhoneDesk.Models
 
         public string HolidayName
         {
-            get => $"hd-{Customer}-{HolidayNameSuffix}";
+            get => ResourceNames.Holiday(Customer, HolidayNameSuffix);
             set
             {
                 string prefix = $"hd-{Customer}-";

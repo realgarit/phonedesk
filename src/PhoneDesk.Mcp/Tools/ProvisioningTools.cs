@@ -204,7 +204,11 @@ internal sealed class ProvisioningTools
                 : _commands.GetCreateAutoAttendantCommand(variables);
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.AutoAttendant, name, "CreateAutoAttendant", script,
-                    $"Create {(simple ? "a minimal " : string.Empty)}auto attendant '{name}'."),
+                    $"Create {(simple ? "a minimal " : string.Empty)}auto attendant '{name}'.") with
+                {
+                    ChangeWasMadeDespiteError = await _guard.CreatedDespiteLateModuleErrorAsync(
+                        TenantObjectType.AutoAttendant, name, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)
+                },
                 planId,
                 cancellationToken);
         });
@@ -331,10 +335,7 @@ internal sealed class ProvisioningTools
         {
             // A failed script can still have created the object; the guard then confirms it in the tenant.
             OnSuccessAsync = (result, token) => _guard.ClaimAsync(type, key, operation, result.RawOutput, token),
-            OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token),
-            ChangeWasMadeDespiteError = type == TenantObjectType.AutoAttendant
-                ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(type, key, result, token)
-                : null
+            OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token)
         };
 
     internal static bool IsCallQueue(string kind)

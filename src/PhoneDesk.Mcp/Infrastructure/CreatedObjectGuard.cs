@@ -98,15 +98,31 @@ internal sealed class CreatedObjectGuard
     }
 
     /// <summary>
-    /// True when a script failed only at the very end: the Teams module can throw a null reference
-    /// after the script finished its work, and the host then returns that error instead of the
-    /// script's output. The object is read from the tenant again to confirm it is there.
+    /// Builds the check a create tool runs after its script reported an error. The Teams module can
+    /// throw a null reference after a script finished its work, and the host then returns that
+    /// error instead of the script's output. When the object did not exist before the call and
+    /// exists afterwards, the create was made. For an object that existed before, existence proves
+    /// nothing about an update, so the failure stands. Returns null when the change is only planned.
     /// </summary>
-    public async Task<bool> ExistsAfterLateModuleErrorAsync(
-        TenantObjectType type, string key, Services.OperationResult<string> result, CancellationToken cancellationToken)
-        => (result.ErrorMessage ?? result.RawOutput).Contains(
-               "Object reference not set to an instance of an object", StringComparison.OrdinalIgnoreCase) &&
-           await ExistsAsync(type, key, cancellationToken);
+    public async Task<Func<Services.OperationResult<string>, CancellationToken, Task<bool>>?> CreatedDespiteLateModuleErrorAsync(
+        TenantObjectType type, string key, bool applying, CancellationToken cancellationToken)
+    {
+        if (!applying)
+        {
+            return null;
+        }
+
+        _tenant.RequireReady();
+        if (await ExistsAsync(type, key, cancellationToken))
+        {
+            return null;
+        }
+
+        return async (result, token) =>
+            (result.ErrorMessage ?? result.RawOutput).Contains(
+                "Object reference not set to an instance of an object", StringComparison.OrdinalIgnoreCase) &&
+            await ExistsAsync(type, key, token);
+    }
 
     /// <summary>
     /// Records an object after a create script that reported an error. A failed script proves

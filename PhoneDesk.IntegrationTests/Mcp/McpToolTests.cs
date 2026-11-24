@@ -392,6 +392,29 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task Update_OfAnExistingAutoAttendantThatFailsStaysFailed()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        // The auto attendant exists before the call: its existence afterwards proves nothing about the update.
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            "TOPAA: aa-contoso-main-reception|aa-id-9|de-DE|W. Europe Standard Time|||\n" + McpTestHost.TopologyOutput);
+        host.PowerShell.DefaultResult = new()
+        {
+            Output = "ERROR: Object reference not set to an instance of an object.",
+            HadErrors = true,
+            Errors = new[] { new PhoneDesk.Services.PowerShellErrorInfo { Message = "Object reference not set to an instance of an object." } }
+        };
+
+        var update = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().CreateAutoAttendant(planId: planId, cancellationToken: Cancellation));
+        var step = await PlanAndApplyAsync(planId => host.Tool<GuidedSetupTools>().RunStep(1, planId, Cancellation));
+
+        Assert.Equal("failed", update.GetProperty("status").GetString());
+        Assert.False(update.TryGetProperty("note", out _));
+        Assert.Equal("failed", step.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Create_DoesNotClaimAnObjectThatAlreadyExisted()
     {
         using var host = new McpTestHost(skipBackup: false).Connected().Configured();

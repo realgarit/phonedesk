@@ -104,6 +104,10 @@ internal sealed class GuidedSetupTools
             var script = _scripts.GetProvisioningScript(step, variables);
             var definition = GuidedSetupProgress.Steps.First(item => item.Step == step);
             var created = CreatedObjectFor((GuidedSetupStep)step, variables);
+            var lateErrorCheck = created is { Type: TenantObjectType.AutoAttendant }
+                ? await _guard.CreatedDespiteLateModuleErrorAsync(
+                    created.Value.Type, created.Value.Key, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)
+                : null;
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest($"GuidedSetupStep{step}", created?.Key ?? variables.AaDisplayName, script, $"Step {step}: {definition.Title}. {definition.Description}")
                 {
@@ -130,9 +134,7 @@ internal sealed class GuidedSetupTools
                         ? null
                         : (result, token) => _guard.ClaimAfterFailureAsync(
                             created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result, token),
-                    ChangeWasMadeDespiteError = created is { Type: TenantObjectType.AutoAttendant }
-                        ? (result, token) => _guard.ExistsAfterLateModuleErrorAsync(created.Value.Type, created.Value.Key, result, token)
-                        : null
+                    ChangeWasMadeDespiteError = lateErrorCheck
                 },
                 planId,
                 cancellationToken);

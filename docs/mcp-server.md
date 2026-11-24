@@ -21,7 +21,12 @@ with the app; there is nothing extra to download.
 | Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset` |
 | Single operations | `create_m365_group`, `lookup_m365_group_id`, `create_resource_account`, `set_resource_account_usage_location`, `assign_resource_account_license`, `assign_phone_number`, `create_call_queue`, `create_auto_attendant`, `associate_resource_account`, `create_holiday_schedule`, `verify_auto_attendant`, `attach_holiday_schedule`, `import_audio_file` |
 | Bulk | `bulk_setup_template`, `bulk_setup` |
-| Delete | `delete_call_queue`, `delete_auto_attendant`, `delete_holiday_schedule`, `delete_resource_account`, `delete_m365_group` |
+| Delete | `delete_call_queue`, `delete_auto_attendant`, `delete_holiday_schedule`, `delete_resource_account`, `delete_m365_group`, `release_phone_number` |
+
+`release_phone_number` removes an unassigned number from the tenant's number inventory. Teams
+keeps a Direct Routing number there after the resource account it was assigned to is deleted.
+The server records a number that `assign_phone_number`, Guided Setup step 6 or `bulk_setup` added
+to the inventory, and releases only such a number. An assigned number is never released.
 
 The desktop Tenant Report is not a separate tool. `tenant_details` returns the same data in
 structured form, and the AI client writes the report in the language and layout you ask for.

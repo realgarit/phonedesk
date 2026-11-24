@@ -168,7 +168,11 @@ internal sealed class ProvisioningTools
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest("AssignPhoneNumber", accountUpn,
                     _commands.GetAssignPhoneNumberToAutoAttendantCommand(accountUpn, number, type),
-                    $"Assign {number} ({type}) to '{accountUpn}'."),
+                    $"Assign {number} ({type}) to '{accountUpn}'.")
+                {
+                    // A number the tenant did not have before is recorded, so release_phone_number can remove it later.
+                    OnSuccess = result => _guard.Claim(TenantObjectType.PhoneNumber, number.Trim(), "AssignPhoneNumber", result.RawOutput)
+                },
                 planId,
                 cancellationToken);
         });

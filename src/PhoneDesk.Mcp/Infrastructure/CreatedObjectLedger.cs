@@ -8,7 +8,13 @@ internal enum TenantObjectType
     ResourceAccount,
     CallQueue,
     AutoAttendant,
-    HolidaySchedule
+    HolidaySchedule,
+
+    /// <summary>
+    /// A phone number an assignment added to the tenant's number inventory. A Direct Routing
+    /// number stays there as unassigned after its account is deleted.
+    /// </summary>
+    PhoneNumber
 }
 
 /// <param name="Key">What a delete script identifies the object by: a name, a UPN, or a group object ID.</param>

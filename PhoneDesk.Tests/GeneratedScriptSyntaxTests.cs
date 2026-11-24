@@ -106,6 +106,19 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public void ReleasePhoneNumberScript_ParsesAndRejectsAMalformedNumber()
+        {
+            var script = PhoneDesk.Operations.PhoneNumberScripts.GetReleaseUnassignedPhoneNumberCommand("+41441234567");
+
+            Parser.ParseInput(script, out _, out var errors);
+
+            Assert.Empty(errors);
+            Assert.Contains("Remove-CsOnlineTelephoneNumber -TelephoneNumber \"+41441234567\" -Force -ErrorAction Stop", script);
+            Assert.Throws<ArgumentException>(() => PhoneDesk.Operations.PhoneNumberScripts.GetReleaseUnassignedPhoneNumberCommand("+4144\"; Remove-Item"));
+            Assert.Throws<ArgumentException>(() => PhoneDesk.Operations.PhoneNumberScripts.GetReleaseUnassignedPhoneNumberCommand("0441234567"));
+        }
+
+        [Fact]
         public void BulkScript_ParsesWithoutErrors()
         {
             var san = new PowerShellSanitizationService();

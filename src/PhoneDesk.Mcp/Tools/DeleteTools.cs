@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
+using PhoneDesk.Operations;
 using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Mcp.Tools;
@@ -76,6 +77,24 @@ internal sealed class DeleteTools
             key => _commands.GetRemoveM365GroupCommand(key, ProvisioningTools.Require(groupName, "group name")),
             $"Delete Microsoft 365 group '{groupName}' ({groupId}).", planId, cancellationToken);
 
+    [McpServerTool(Name = "release_phone_number", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
+    [Description("Removes an unassigned phone number from the tenant's number inventory. A Direct Routing number that assign_phone_number added stays in the inventory after its resource account is deleted; this removes it. An assigned number is never released." + DeleteNote)]
+    public Task<string> ReleasePhoneNumber(
+        [Description("Phone number in E.164 format, for example +41441234567.")] string phoneNumber,
+        [Description(PlanIdDescription)] string? planId = null,
+        CancellationToken cancellationToken = default)
+        => DeleteAsync(TenantObjectType.PhoneNumber, (phoneNumber ?? string.Empty).Trim(), "ReleasePhoneNumber",
+            PhoneNumberScripts.GetReleaseUnassignedPhoneNumberCommand, $"Release unassigned phone number {phoneNumber?.Trim()}.", planId, cancellationToken,
+            async (number, token) =>
+            {
+                if (!PhoneNumberScripts.IsE164(number))
+                {
+                    throw new InvalidOperationException("The phone number must be in E.164 format, for example +41441234567.");
+                }
+
+                await _guard.RequireUnassignedPhoneNumberAsync(number, token);
+            });
+
     private Task<string> DeleteAsync(
         TenantObjectType type,
         string key,
@@ -83,10 +102,16 @@ internal sealed class DeleteTools
         Func<string, string> buildScript,
         string summary,
         string? planId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<string, CancellationToken, Task>? checkFirst = null)
         => McpJson.RunAsync(async () =>
         {
             var target = ProvisioningTools.Require(key, "name");
+            if (checkFirst is not null)
+            {
+                await checkFirst(target, cancellationToken);
+            }
+
             await _guard.RequireDeletableAsync(type, target, cancellationToken);
 
             return await _changes.PlanOrApplyAsync(

@@ -241,6 +241,15 @@ internal sealed class CreatedObjectGuard
             return await FindScheduleIdsAsync(key, cancellationToken);
         }
 
+        if (type == TenantObjectType.PhoneNumber)
+        {
+            // A number is its own immutable ID.
+            return (await ReadPhoneNumbersAsync(cancellationToken))
+                .Where(item => SameName(item.Number, key))
+                .Select(item => item.Number)
+                .ToList();
+        }
+
         var topology = await _tenant.GetTopologyAsync(refresh: true, cancellationToken);
         return type switch
         {
@@ -272,6 +281,49 @@ internal sealed class CreatedObjectGuard
             .ToList();
     }
 
+    /// <summary>
+    /// Throws when the number cannot be released: it is not in the tenant's number inventory, or
+    /// it is assigned to a user or a resource account. Reads the tenant again.
+    /// </summary>
+    public async Task RequireUnassignedPhoneNumberAsync(string number, CancellationToken cancellationToken)
+    {
+        _tenant.RequireReady();
+        var rows = (await ReadPhoneNumbersAsync(cancellationToken)).Where(item => SameName(item.Number, number)).ToList();
+        if (rows.Count == 0)
+        {
+            _ledger.Remove(_tenant.TenantId, TenantObjectType.PhoneNumber, number);
+            throw new InvalidOperationException($"'{number}' is not in the tenant's phone number inventory. There is nothing to release.");
+        }
+
+        if (rows.Any(item => !string.IsNullOrWhiteSpace(item.AssignedTo) ||
+                             !string.Equals(item.Status, "Unassigned", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"'{number}' is assigned (status {rows[0].Status}), so it is not released. Only an unassigned number can be released.");
+        }
+    }
+
+    private async Task<IReadOnlyList<(string Number, string AssignedTo, string Status)>> ReadPhoneNumbersAsync(CancellationToken cancellationToken)
+    {
+        var result = await _tenant.ReadAsync(_documentationScripts.GetExportPhoneNumbersCommand(), "ReadPhoneNumbers", cancellationToken);
+        var text = result.Value ?? string.Empty;
+        if (!result.IsSuccess || !text.Contains("DOCDATA_PHONE_END", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "The phone numbers could not be read, so nothing is changed: " + (result.ErrorMessage ?? "incomplete output"));
+        }
+
+        // Each line is "DOCDATA_PHONE: number|type|assigned to|status|activation|city|capabilities".
+        const string marker = "DOCDATA_PHONE:";
+        return text
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith(marker, StringComparison.Ordinal))
+            .Select(line => line[marker.Length..].Split('|'))
+            .Where(fields => fields.Length >= 4)
+            .Select(fields => (fields[0].Trim(), fields[2].Trim(), fields[3].Trim()))
+            .ToList();
+    }
+
     private static bool ExistedIn(TopologySnapshotDocument snapshot, TenantObjectType type, string name)
         => type switch
         {
@@ -281,6 +333,8 @@ internal sealed class CreatedObjectGuard
             TenantObjectType.AutoAttendant => snapshot.AutoAttendants.Any(item => SameName(item.Name, name)),
             // Without the schedule inventory there is no proof the schedule is new.
             TenantObjectType.HolidaySchedule => snapshot.Documentation?.Schedules.Any(item => SameName(item.Name, name)) ?? true,
+            // A number the tenant already had (for example from an operator) is never the server's.
+            TenantObjectType.PhoneNumber => snapshot.Documentation?.PhoneNumbers.Any(item => SameName(item.Number, name)) ?? true,
             _ => true
         };
 

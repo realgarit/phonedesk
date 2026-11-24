@@ -97,6 +97,7 @@ internal sealed class BulkTools
         yield return (TenantObjectType.CallQueue, entry.CqDisplayName);
         yield return (TenantObjectType.ResourceAccount, entry.RaaaUPN);
         yield return (TenantObjectType.AutoAttendant, entry.AaDisplayName);
+        yield return (TenantObjectType.PhoneNumber, entry.RaaAnr.Trim());
     }
 
     /// <summary>A CSV row over an otherwise empty configuration, as the desktop bulk page builds it.</summary>

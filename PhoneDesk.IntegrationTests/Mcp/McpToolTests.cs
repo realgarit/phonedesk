@@ -39,7 +39,7 @@ public sealed class McpToolTests
             }
 
             // A delete tool must be marked destructive, and no other changing tool may be.
-            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal))
+            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal) || tool.Name == "release_phone_number")
             {
                 Assert.False(tool.ReadOnly);
                 Assert.True(tool.Destructive);
@@ -275,6 +275,58 @@ public sealed class McpToolTests
         var result = await PlanAndApplyAsync(planId => delete.DeleteAutoAttendant("Main AA", planId, Cancellation));
 
         Assert.Equal("failed", result.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task ReleasePhoneNumber_RemovesOnlyAnUnassignedNumberThisServerAdded()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var ledger = host.Get<CreatedObjectLedger>();
+        var delete = host.Tool<DeleteTools>();
+
+        // The assignment adds a Direct Routing number the tenant did not have before.
+        var assign = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().AssignPhoneNumber(planId: planId, cancellationToken: Cancellation));
+        Assert.Equal("applied", assign.GetProperty("status").GetString());
+        Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234567"));
+
+        host.PowerShell.Respond(
+            host.Get<IDocumentationScriptBuilder>().GetExportPhoneNumbersCommand(),
+            "DOCDATA_PHONE_START\n" +
+            "DOCDATA_PHONE: +41441234567|DirectRouting||Unassigned|Activated||VoiceApplicationAssignment\n" +
+            "DOCDATA_PHONE: +41442222222|OperatorConnect||Unassigned|Activated||UserAssignment\n" +
+            "DOCDATA_PHONE: +41443333333|OperatorConnect|user-1|UserAssigned|Activated||UserAssignment\n" +
+            "DOCDATA_PHONE_END");
+
+        var assigned = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41443333333", cancellationToken: Cancellation));
+        Assert.Contains("is assigned", assigned.GetProperty("error").GetString());
+
+        var foreign = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41442222222", cancellationToken: Cancellation));
+        Assert.Contains("was not created by this server", foreign.GetProperty("error").GetString());
+
+        var missing = McpTestHost.Parse(await delete.ReleasePhoneNumber("+41449999999", cancellationToken: Cancellation));
+        Assert.Contains("not in the tenant's phone number inventory", missing.GetProperty("error").GetString());
+
+        var malformed = McpTestHost.Parse(await delete.ReleasePhoneNumber("0441234567\"; Remove-Item", cancellationToken: Cancellation));
+        Assert.Contains("E.164", malformed.GetProperty("error").GetString());
+
+        var released = await PlanAndApplyAsync(planId => delete.ReleasePhoneNumber("+41441234567", planId, Cancellation));
+        Assert.Equal("applied", released.GetProperty("status").GetString());
+        Assert.Contains(host.PowerShell.Executed, script => script.Contains("Remove-CsOnlineTelephoneNumber -TelephoneNumber \"+41441234567\" -Force", StringComparison.Ordinal));
+        Assert.Empty(ledger.List(McpTestHost.TenantId));
+    }
+
+    [Fact]
+    public async Task AssignPhoneNumber_DoesNotClaimANumberTheTenantAlreadyHad()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        host.PowerShell.Respond(
+            host.Get<IDocumentationScriptBuilder>().GetExportPhoneNumbersCommand(),
+            "DOCDATA_PHONE_START\nDOCDATA_PHONE: +41441234567|OperatorConnect||Unassigned|Activated||VoiceApplicationAssignment\nDOCDATA_PHONE_END");
+
+        var assign = await PlanAndApplyAsync(planId => host.Tool<ProvisioningTools>().AssignPhoneNumber(planId: planId, cancellationToken: Cancellation));
+
+        Assert.Equal("applied", assign.GetProperty("status").GetString());
+        Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));
     }
 
     [Fact]

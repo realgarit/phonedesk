@@ -175,6 +175,7 @@ internal sealed class GuidedSetupTools
             GuidedSetupStep.CreateCallQueueResourceAccount => (TenantObjectType.ResourceAccount, variables.RacqUPN),
             GuidedSetupStep.CreateCallQueue => (TenantObjectType.CallQueue, variables.CqDisplayName),
             GuidedSetupStep.CreateAutoAttendantResourceAccount => (TenantObjectType.ResourceAccount, variables.RaaaUPN),
+            GuidedSetupStep.LicenseAutoAttendantResourceAccount => (TenantObjectType.PhoneNumber, variables.RaaAnr.Trim()),
             GuidedSetupStep.CreateAutoAttendant => (TenantObjectType.AutoAttendant, variables.AaDisplayName),
             _ => null
         };

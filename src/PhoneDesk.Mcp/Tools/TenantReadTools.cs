@@ -199,7 +199,7 @@ internal sealed class TenantReadTools
         [Description("Maximum number of records (default 50).")] int limit = DefaultLimit,
         [Description("Only operations whose name or target contains this text.")] string? search = null,
         [Description("Only this outcome: success, failure or cancelled.")] string? outcome = null,
-        [Description("True to show changes only and leave out reads.")] bool changesOnly = false,
+        [Description("True to show changes to the tenant only and leave out reads, module checks, sign-ins and sign-outs.")] bool changesOnly = false,
         [Description("True to show only the connected tenant.")] bool connectedTenantOnly = false)
         => McpJson.Run(() =>
         {
@@ -207,7 +207,7 @@ internal sealed class TenantReadTools
                 (string.IsNullOrWhiteSpace(search) || Contains(record.Operation, search) || Contains(record.Target, search)) &&
                 (string.IsNullOrWhiteSpace(outcome) ||
                  string.Equals(record.Outcome.ToString(), outcome.Trim(), StringComparison.OrdinalIgnoreCase)) &&
-                (!changesOnly || record.Kind != Audit.AuditKind.Read) &&
+                (!changesOnly || (record.Kind != Audit.AuditKind.Read && !IsSessionOperation(record.Operation))) &&
                 (!connectedTenantOnly ||
                  string.Equals(record.TenantId, _session.TenantId, StringComparison.OrdinalIgnoreCase)));
             return Page(records, limit, record => (object)new
@@ -266,6 +266,13 @@ internal sealed class TenantReadTools
             phoneNumber = account?.PhoneNumber
         };
     }
+
+    /// <summary>Module checks, sign-ins and sign-outs: logged as operations, but they change nothing in the tenant.</summary>
+    private static bool IsSessionOperation(string? operation)
+        => operation is not null &&
+           (operation.Equals("CheckModules", StringComparison.OrdinalIgnoreCase) ||
+            operation.StartsWith("Connect", StringComparison.OrdinalIgnoreCase) ||
+            operation.StartsWith("Disconnect", StringComparison.OrdinalIgnoreCase));
 
     private static bool Contains(string? value, string? search)
         => string.IsNullOrWhiteSpace(search) ||

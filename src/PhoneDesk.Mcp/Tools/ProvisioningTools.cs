@@ -200,21 +200,18 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "create_auto_attendant", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Creates the auto attendant from the configuration. By default it builds the default and after-hours call flows and the opening-hours schedule in one script; an existing auto attendant with the same name is updated to the configuration. With simple=true it creates a minimal auto attendant with only name, language and time zone." + ChangeNote)]
+    [Description("Creates the auto attendant from the configuration: it builds the default and after-hours call flows and the opening-hours schedule in one script. An existing auto attendant with the same name is updated to the configuration." + ChangeNote)]
     public Task<string> CreateAutoAttendant(
-        [Description("True for a minimal auto attendant without call flows.")] bool simple = false,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             var variables = _store.Variables;
             var name = Pick(null, variables.AaDisplayName, "auto attendant name");
-            var script = simple
-                ? _commands.GetCreateSimpleAutoAttendantCommand(variables)
-                : _commands.GetCreateAutoAttendantCommand(variables);
+            var script = _commands.GetCreateAutoAttendantCommand(variables);
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.AutoAttendant, name, "CreateAutoAttendant", script,
-                    $"Create {(simple ? "a minimal " : string.Empty)}auto attendant '{name}'.") with
+                    $"Create auto attendant '{name}'.") with
                 {
                     ChangeWasMadeDespiteError = await _guard.CreatedDespiteLateModuleErrorAsync(
                         TenantObjectType.AutoAttendant, name, applying: !string.IsNullOrWhiteSpace(planId), cancellationToken)

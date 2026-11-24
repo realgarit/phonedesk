@@ -130,10 +130,30 @@ internal sealed class ChangeGate
             note,
             error = success ? null : result.ErrorMessage,
             errorCategory = success ? (OperationErrorCategory?)null : result.Category,
+            retryHint = success ? null : RetryHint(result.ErrorMessage + "\n" + result.RawOutput),
             output = McpJson.Truncate(result.RawOutput),
             backupFile = backup?.File,
             backupNote = backup is null ? "The automatic backup is switched off." : null
         };
+    }
+
+    /// <summary>
+    /// A new resource account is not visible to all Microsoft services at once, and its license
+    /// takes time to become active. The errors that follow from that do not say so.
+    /// </summary>
+    internal static string? RetryHint(string? text)
+    {
+        string[] delayErrors =
+        [
+            "does not exist or one of its queried reference-property objects are not present",
+            "userId was not found",
+            "is not found",
+            "lacks appropriate licenses"
+        ];
+        return text is not null && delayErrors.Any(error => text.Contains(error, StringComparison.OrdinalIgnoreCase))
+            ? "When the resource account was created or licensed in the last minutes, this error is a delay in Microsoft's services. " +
+              "Wait 30 to 60 seconds, get a new plan and apply it again. It can take several tries."
+            : null;
     }
 
     private object Plan(ChangeRequest request, string fingerprint)

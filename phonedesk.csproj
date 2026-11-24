@@ -47,14 +47,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Exclude archived test files from build -->
-    <Compile Remove="Archive\**\*.cs" />
-    <Compile Remove="Archive\**\*.axaml.cs" />
-    <None Include="Archive\**\*.axaml">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-    <AvaloniaXaml Remove="Archive\**\*.axaml" />
-
     <!-- Exclude repository test projects from the root application glob. -->
     <Compile Remove="PhoneDesk.*Tests\**\*.cs" />
     <None Remove="PhoneDesk.*Tests\**" />

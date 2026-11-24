@@ -13,6 +13,16 @@ public sealed class TenantSnapshotCollector
 {
     private const string TopologyCompletionMarker = "SUCCESS: Tenant topology retrieved";
 
+    /// <summary>
+    /// Warnings a Teams cmdlet prints about an object's settings. They say nothing about missing
+    /// data, so they do not make a snapshot incomplete. Every other warning still stops the read:
+    /// an unknown warning can mean truncated results.
+    /// </summary>
+    private static readonly string[] InformationalWarnings =
+    {
+        "ConferenceMode is turned on for this callqueue"
+    };
+
     private readonly IDocumentationScriptBuilder _documentationScripts;
     private readonly IPowerShellCommandService _commands;
     private readonly ITenantDocumentationSnapshotParser _snapshotParser;
@@ -84,8 +94,9 @@ public sealed class TenantSnapshotCollector
             .Select(line => line.Trim())
             .FirstOrDefault(line =>
                 line.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("TOPERR:", StringComparison.OrdinalIgnoreCase));
+                line.StartsWith("TOPERR:", StringComparison.OrdinalIgnoreCase) ||
+                (line.StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase) &&
+                 !InformationalWarnings.Any(known => line.Contains(known, StringComparison.OrdinalIgnoreCase))));
         if (diagnostic is not null)
         {
             throw new InvalidDataException($"The live tenant snapshot is incomplete: {diagnostic}");

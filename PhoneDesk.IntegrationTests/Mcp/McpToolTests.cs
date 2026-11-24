@@ -189,6 +189,24 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public async Task Backup_AcceptsAnInformationalCmdletWarningButNotAnUnknownOne()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected();
+        var callQueues = host.Get<IDocumentationScriptBuilder>().GetExportCallQueuesCommand();
+        var tools = host.Tool<HealthAndBackupTools>();
+
+        host.PowerShell.Respond(callQueues,
+            "WARNING: ConferenceMode is turned on for this callqueue. The call will be established using the traditional transfer mode or the new conference mode.\n" +
+            "DOCDATA_CQ_START\nDOCDATA_CQ_END");
+        var informational = McpTestHost.Parse(await tools.BackupTenant(Cancellation));
+        Assert.True(informational.GetProperty("success").GetBoolean(), informational.GetRawText());
+
+        host.PowerShell.Respond(callQueues, "WARNING: More results are available.\nDOCDATA_CQ_START\nDOCDATA_CQ_END");
+        var unknown = McpTestHost.Parse(await tools.BackupTenant(Cancellation));
+        Assert.False(unknown.GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
     public async Task Delete_IsRefusedForAnObjectTheServerDidNotCreate()
     {
         using var host = new McpTestHost().Connected().Configured();

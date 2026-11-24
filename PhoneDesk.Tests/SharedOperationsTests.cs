@@ -36,11 +36,11 @@ namespace PhoneDesk.Tests
         {
             var variables = new PhoneManagerVariables
             {
-                Customer = "ewp",
+                Customer = "contoso",
                 CustomerGroupName = "hauptnummer",
-                MsFallbackDomain = "elektroweberpartner.onmicrosoft.com",
+                MsFallbackDomain = "contoso.onmicrosoft.com",
                 RaaAnrName = "haupt",
-                CustomerLegalName = "Elektro Weber Partner AG",
+                CustomerLegalName = "Contoso AG",
                 LanguageId = "de-DE",
                 TimeZoneId = "W. Europe Standard Time",
                 UsageLocation = "CH",
@@ -136,14 +136,14 @@ namespace PhoneDesk.Tests
                 .ReturnsAsync(new PowerShellExecutionResult { Output = "ERROR: failed", HadErrors = true });
 
             var outcome = await runner.RunAsync(
-                new TenantCommandRequest("script", "CreateCallQueue") { Target = "cq-ewp" },
+                new TenantCommandRequest("script", "CreateCallQueue") { Target = "cq-contoso" },
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(TenantCommandStatus.Completed, outcome.Status);
             Assert.False(outcome.Result.IsSuccess);
             auditLog.Verify(log => log.Append(It.Is<AuditRecord>(record =>
                 record.Operation == "CreateCallQueue" &&
-                record.Target == "cq-ewp" &&
+                record.Target == "cq-contoso" &&
                 record.Outcome == AuditOutcome.Failure &&
                 record.Kind == AuditKind.Operation &&
                 record.TenantId == "tenant-1")), Times.Once);

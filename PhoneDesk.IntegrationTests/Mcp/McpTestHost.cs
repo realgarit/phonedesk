@@ -128,14 +128,24 @@ internal sealed class McpTestHost : IDisposable
 
     internal sealed class FakeGraphAuthentication : IMsalGraphAuthenticationService
     {
-        /// <summary>True to behave like a browser sign-in nobody completes.</summary>
-        public bool NeverCompletes { get; set; }
+        private TaskCompletionSource<(bool, string?, string?, string?)>? _held;
+
+        public int Calls { get; private set; }
+
+        /// <summary>Makes the next sign-in wait until the returned source is completed.</summary>
+        public TaskCompletionSource<(bool, string?, string?, string?)> Hold()
+            => _held = new TaskCompletionSource<(bool, string?, string?, string?)>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<(bool Success, string? AccessToken, string? Account, string? ErrorMessage)> AuthenticateAsync(
             IntPtr? parentWindowHandle = null)
-            => NeverCompletes
-                ? new TaskCompletionSource<(bool, string?, string?, string?)>().Task
+        {
+            Calls++;
+            var held = _held;
+            _held = null;
+            return held is not null
+                ? held.Task
                 : Task.FromResult<(bool, string?, string?, string?)>((true, "test-token", "admin@contoso.com", null));
+        }
 
         public Task SignOutAsync() => Task.CompletedTask;
 
@@ -169,8 +179,15 @@ internal sealed class FakePowerShell : IPowerShellContextService
         string command, Dictionary<string, string>? environmentVariables, CancellationToken cancellationToken = default)
         => Task.FromResult(Run(command).Output);
 
-    /// <summary>Scripts that never finish by themselves, like a sign-in nobody completes.</summary>
-    public HashSet<string> Hanging { get; } = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TaskCompletionSource> _held = new(StringComparer.Ordinal);
+
+    /// <summary>Makes a script wait, like a sign-in the user has not finished. Complete the returned source to let it finish.</summary>
+    public TaskCompletionSource Hold(string script)
+    {
+        var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _held[script] = source;
+        return source;
+    }
 
     public async Task<PowerShellExecutionResult> ExecuteCommandWithDetailsAsync(
         string command,
@@ -178,10 +195,9 @@ internal sealed class FakePowerShell : IPowerShellContextService
         IProgress<PowerShellProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (Hanging.Contains(command))
+        if (_held.Remove(command, out var held))
         {
-            Executed.Add(command);
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+            await held.Task.WaitAsync(cancellationToken);
         }
 
         return Run(command);

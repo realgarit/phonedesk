@@ -397,12 +397,14 @@ public sealed class McpToolTests
     }
 
     [Fact]
-    public async Task Connection_EndsASignInNobodyCompletes()
+    public async Task Connection_ReportsAnOpenSignInAndContinuesWithItOnTheNextCall()
     {
         using var host = new McpTestHost();
         var commands = host.Get<IPowerShellCommandService>();
-        host.PowerShell.Hanging.Add(commands.GetConnectTeamsCommand());
-        host.GraphAuthentication.NeverCompletes = true;
+        host.PowerShell.Respond(commands.GetConnectTeamsCommand(),
+            "SUCCESS: Connected to Microsoft Teams\nConnected to tenant: Contoso (tenant-1)\n");
+        var teamsSignIn = host.PowerShell.Hold(commands.GetConnectTeamsCommand());
+        var graphSignIn = host.GraphAuthentication.Hold();
         host.Get<ISessionManager>().UpdateModulesChecked(true);
         var connection = new PhoneDesk.Operations.TenantConnectionService(
             host.Get<PhoneDesk.Operations.ITenantCommandRunner>(),
@@ -412,17 +414,30 @@ public sealed class McpToolTests
             host.Get<ITenantTopologyCache>(),
             host.Get<ITenantHealthCheckCache>())
         {
-            SignInTimeout = TimeSpan.FromMilliseconds(200)
+            SignInWait = TimeSpan.FromMilliseconds(150)
         };
 
-        var teams = await connection.ConnectTeamsAsync(Cancellation);
-        var graph = await connection.ConnectGraphAsync(Cancellation);
+        // The user has not signed in yet: the call returns instead of blocking.
+        var waiting = await connection.ConnectTeamsAsync(Cancellation);
+        Assert.False(waiting.Success);
+        Assert.True(waiting.WaitingForSignIn);
 
-        Assert.False(teams.Success);
-        Assert.Contains("was not completed", teams.Message);
-        Assert.False(graph.Success);
-        Assert.Contains("was not completed", graph.Message);
-        Assert.False(connection.IsReady);
+        // While the Teams window is open nothing else may queue behind it.
+        Assert.True((await connection.CheckModulesAsync(Cancellation)).WaitingForSignIn);
+        Assert.True((await connection.ConnectGraphAsync(Cancellation)).WaitingForSignIn);
+
+        // The user signs in; the next call continues with the same sign-in, not a second window.
+        teamsSignIn.SetResult();
+        var teams = await connection.ConnectTeamsAsync(Cancellation);
+        Assert.True(teams.Success);
+        Assert.Equal(1, host.PowerShell.Executed.Count(script => script == commands.GetConnectTeamsCommand()));
+
+        Assert.True((await connection.ConnectGraphAsync(Cancellation)).WaitingForSignIn);
+        graphSignIn.SetResult((true, "test-token", "admin@contoso.com", null));
+        var graph = await connection.ConnectGraphAsync(Cancellation);
+        Assert.True(graph.Success);
+        Assert.Equal(1, host.GraphAuthentication.Calls);
+        Assert.True(connection.IsReady);
     }
 
     private static async Task<JsonElement> PlanAndApplyAsync(Func<string?, Task<string>> call)

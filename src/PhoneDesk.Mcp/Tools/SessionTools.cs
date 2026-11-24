@@ -24,12 +24,12 @@ internal sealed class SessionTools
         => McpJson.RunAsync(async () => await _connection.CheckModulesAsync(cancellationToken));
 
     [McpServerTool(Name = "connect_teams", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Signs in to Microsoft Teams. A browser window opens on this computer and the user must complete the sign-in there. Tell the user to watch for the browser window before you call this.")]
+    [Description("Signs in to Microsoft Teams. A browser window opens on this computer and the user must complete the sign-in there. Tell the user to watch for the browser window before you call this. The call returns after about 45 seconds: when the result has waitingForSignIn=true, nothing failed. Ask the user to finish the sign-in and call connect_teams again; it continues with the same window.")]
     public Task<string> ConnectTeams(CancellationToken cancellationToken)
         => McpJson.RunAsync(async () => await _connection.ConnectTeamsAsync(cancellationToken));
 
     [McpServerTool(Name = "connect_graph", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Signs in to Microsoft Graph. A browser window opens on this computer and the user must complete the sign-in there, with an account from the same organization as the Teams sign-in.")]
+    [Description("Signs in to Microsoft Graph. A browser window opens on this computer and the user must complete the sign-in there, with an account from the same organization as the Teams sign-in. Run it after connect_teams succeeded. The call returns after about 45 seconds: when the result has waitingForSignIn=true, nothing failed. Ask the user to finish the sign-in and call connect_graph again; it continues with the same window.")]
     public Task<string> ConnectGraph(CancellationToken cancellationToken)
         => McpJson.RunAsync(async () => await _connection.ConnectGraphAsync(cancellationToken));
 

@@ -10,12 +10,27 @@ public sealed record ConnectionStatus(
     string? TenantId,
     string? GraphAccount);
 
-public sealed record ConnectionOutcome(bool Success, string Message, string? Details, ConnectionStatus Status);
+/// <param name="WaitingForSignIn">
+/// True when the browser sign-in is still open. Nothing failed: the caller asks the user to finish
+/// the sign-in and then calls the same operation again, which continues with the same sign-in.
+/// </param>
+public sealed record ConnectionOutcome(
+    bool Success,
+    string Message,
+    string? Details,
+    ConnectionStatus Status,
+    bool WaitingForSignIn = false);
 
 /// <summary>
 /// Module check, sign-in and sign-out for a head without a UI. Each operation runs the same
 /// script and applies the same success test as the desktop Readiness page.
 /// </summary>
+/// <remarks>
+/// A browser sign-in cannot be cancelled once the window is open, and it has no time limit of its
+/// own. A head without a UI must still answer its caller in time, so a sign-in runs in the
+/// background: a connect call waits a short time and reports "waiting for sign-in" when the user
+/// has not finished. The next connect call continues with the same sign-in.
+/// </remarks>
 public sealed class TenantConnectionService
 {
     private readonly ITenantCommandRunner _runner;
@@ -24,12 +39,10 @@ public sealed class TenantConnectionService
     private readonly ISessionManager _session;
     private readonly ITenantTopologyCache _topologyCache;
     private readonly ITenantHealthCheckCache _healthCheckCache;
+    private readonly Lock _gate = new();
 
-    /// <summary>
-    /// How long a browser sign-in may stay open. A head without a UI has no Cancel button, so an
-    /// abandoned sign-in must end by itself; otherwise the tool call never returns.
-    /// </summary>
-    public TimeSpan SignInTimeout { get; init; } = TimeSpan.FromMinutes(5);
+    private Task<TenantCommandOutcome>? _pendingTeamsSignIn;
+    private Task<(bool Success, string? AccessToken, string? Account, string? ErrorMessage)>? _pendingGraphSignIn;
 
     public TenantConnectionService(
         ITenantCommandRunner runner,
@@ -47,6 +60,9 @@ public sealed class TenantConnectionService
         _healthCheckCache = healthCheckCache;
     }
 
+    /// <summary>How long one connect call waits for the user before it reports "waiting for sign-in".</summary>
+    public TimeSpan SignInWait { get; init; } = TimeSpan.FromSeconds(45);
+
     public ConnectionStatus GetStatus() => new(
         _session.ModulesChecked,
         _session.TeamsConnected,
@@ -59,8 +75,28 @@ public sealed class TenantConnectionService
     public bool IsReady
         => _session.TeamsConnected && _session.GraphConnected && !string.IsNullOrWhiteSpace(_session.TenantId);
 
+    /// <summary>
+    /// True while the Teams sign-in window is open. The sign-in holds the PowerShell session, so
+    /// no other command can run until the user finishes it.
+    /// </summary>
+    public bool TeamsSignInOpen
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _pendingTeamsSignIn is { IsCompleted: false };
+            }
+        }
+    }
+
     public async Task<ConnectionOutcome> CheckModulesAsync(CancellationToken cancellationToken)
     {
+        if (TeamsSignInOpen)
+        {
+            return Waiting(TeamsSignInOpenMessage);
+        }
+
         var outcome = await _runner.RunAsync(
             new TenantCommandRequest(_commands.GetCheckModulesCommand(), "CheckModules"), cancellationToken);
         var output = outcome.Result.Value ?? outcome.Result.RawOutput;
@@ -79,17 +115,28 @@ public sealed class TenantConnectionService
             return Fail("Check the required modules before connecting to Microsoft Teams.", null);
         }
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(SignInTimeout);
-        var outcome = await _runner.RunAsync(
-            new TenantCommandRequest(_commands.GetConnectTeamsCommand(), "ConnectTeams"), timeout.Token);
-        var connected = outcome.Result.HasSuccessMarker;
-        _session.UpdateTeamsConnection(connected);
-        if (!connected && outcome.Status == TenantCommandStatus.Cancelled && !cancellationToken.IsCancellationRequested)
+        Task<TenantCommandOutcome> signIn;
+        lock (_gate)
         {
-            return Fail(SignInTimedOut("Microsoft Teams", "connect_teams"), null);
+            // The sign-in is not tied to this call's cancellation: it cannot be cancelled anyway,
+            // and the next call must be able to pick it up.
+            signIn = _pendingTeamsSignIn ??= _runner.RunAsync(
+                new TenantCommandRequest(_commands.GetConnectTeamsCommand(), "ConnectTeams"), CancellationToken.None);
         }
 
+        if (!await FinishedInTimeAsync(signIn, cancellationToken))
+        {
+            return Waiting(TeamsSignInOpenMessage);
+        }
+
+        lock (_gate)
+        {
+            _pendingTeamsSignIn = null;
+        }
+
+        var outcome = await signIn;
+        var connected = outcome.Result.HasSuccessMarker;
+        _session.UpdateTeamsConnection(connected);
         if (!connected)
         {
             return Fail("Microsoft Teams could not be connected.", outcome.Result.ErrorMessage ?? outcome.Result.RawOutput);
@@ -111,17 +158,30 @@ public sealed class TenantConnectionService
             return Fail("Check the required modules before connecting to Microsoft Graph.", null);
         }
 
-        (bool Success, string? AccessToken, string? Account, string? ErrorMessage) authentication;
-        try
+        if (TeamsSignInOpen)
         {
-            authentication = await _graphAuthentication.AuthenticateAsync().WaitAsync(SignInTimeout, cancellationToken);
-        }
-        catch (TimeoutException)
-        {
-            _session.UpdateGraphConnection(false);
-            return Fail(SignInTimedOut("Microsoft Graph", "connect_graph"), null);
+            return Waiting(TeamsSignInOpenMessage);
         }
 
+        Task<(bool Success, string? AccessToken, string? Account, string? ErrorMessage)> signIn;
+        lock (_gate)
+        {
+            signIn = _pendingGraphSignIn ??= _graphAuthentication.AuthenticateAsync();
+        }
+
+        if (!await FinishedInTimeAsync(signIn, cancellationToken))
+        {
+            return Waiting(
+                "The Microsoft Graph sign-in window is open in the browser. Ask the user to complete the sign-in, " +
+                "then call connect_graph again.");
+        }
+
+        lock (_gate)
+        {
+            _pendingGraphSignIn = null;
+        }
+
+        var authentication = await signIn;
         if (!authentication.Success || string.IsNullOrEmpty(authentication.AccessToken))
         {
             _session.UpdateGraphConnection(false);
@@ -147,6 +207,11 @@ public sealed class TenantConnectionService
     /// <summary>Signs out of both services and forgets everything cached for the tenant.</summary>
     public async Task<ConnectionOutcome> DisconnectAsync(CancellationToken cancellationToken)
     {
+        if (TeamsSignInOpen)
+        {
+            return Waiting(TeamsSignInOpenMessage);
+        }
+
         await _runner.RunAsync(
             new TenantCommandRequest(_commands.GetDisconnectTeamsCommand(), "DisconnectTeams"), cancellationToken);
         await _runner.RunAsync(
@@ -161,11 +226,36 @@ public sealed class TenantConnectionService
         return Ok("Disconnected from Microsoft Teams and Microsoft Graph.");
     }
 
-    private string SignInTimedOut(string service, string tool)
-        => $"The {service} sign-in was not completed within {SignInTimeout.TotalMinutes:0} minutes. " +
-           $"Run {tool} again and complete the sign-in in the browser window that opens.";
+    private const string TeamsSignInOpenMessage =
+        "The Microsoft Teams sign-in window is open in the browser. Ask the user to complete the sign-in, " +
+        "then call connect_teams again. No other tenant command can run until the sign-in is finished.";
+
+    private async Task<bool> FinishedInTimeAsync(Task signIn, CancellationToken cancellationToken)
+    {
+        if (signIn.IsCompleted)
+        {
+            return true;
+        }
+
+        try
+        {
+            await signIn.WaitAsync(SignInWait, cancellationToken);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The caller gave up on this call; the sign-in itself stays open for the next call.
+            return false;
+        }
+    }
 
     private ConnectionOutcome Ok(string message) => new(true, message, null, GetStatus());
 
     private ConnectionOutcome Fail(string message, string? details) => new(false, message, details, GetStatus());
+
+    private ConnectionOutcome Waiting(string message) => new(false, message, null, GetStatus(), WaitingForSignIn: true);
 }

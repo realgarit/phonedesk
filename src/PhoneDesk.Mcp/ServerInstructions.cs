@@ -7,7 +7,7 @@ internal static class ServerInstructions
         PhoneDesk manages Microsoft Teams Phone for one tenant: auto attendants, call queues, resource accounts, agent groups, holiday schedules and their licenses and phone numbers.
 
         Order of work:
-        1. session_status. If not connected: check_modules, then connect_teams, then connect_graph. Each sign-in opens a browser window on the user's computer; tell the user before you call it. Both sign-ins must use the same organization.
+        1. session_status. If not connected: check_modules, then connect_teams, then connect_graph. Each sign-in opens a browser window on the user's computer; tell the user before you call it. A connect call returns after about 45 seconds; when it reports waitingForSignIn, ask the user to finish in the browser and call it again. Both sign-ins must use the same organization.
         2. To look at a tenant: tenant_overview, the list_* tools, tenant_details, run_health_check. These only read.
         3. To build a phone system: fill the configuration (configuration_get, configuration_update), then run the Guided Setup steps 1 to 8 in order (guided_setup_status, guided_setup_run_step). Single operations are available as separate tools.
 

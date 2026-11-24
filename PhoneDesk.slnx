@@ -3,6 +3,7 @@
     <Project Path="src/PhoneDesk.Application/PhoneDesk.Application.csproj" />
     <Project Path="src/PhoneDesk.Domain/PhoneDesk.Domain.csproj" />
     <Project Path="src/PhoneDesk.Infrastructure/PhoneDesk.Infrastructure.csproj" />
+    <Project Path="src/PhoneDesk.Mcp/PhoneDesk.Mcp.csproj" />
     <Project Path="src/PhoneDesk.Presentation/PhoneDesk.Presentation.csproj" />
   </Folder>
   <Folder Name="/tools/">

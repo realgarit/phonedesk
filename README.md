@@ -22,6 +22,7 @@ Teams Phone without writing PowerShell.
 - Auto attendants, call queues, holidays, resource accounts, and Microsoft 365 Groups
 - Guided setup, bulk operations, and tenant documentation
 - Native Windows, macOS, and Linux builds with dark and light themes
+- An MCP server for AI clients, so you can do the same work in plain language
 
 Start with **Welcome → Readiness Check → Configuration → Guided Setup**. Manual provisioning and tools are grouped separately. The skippable quick tour can be reopened in Settings; hover, focus, or click an info button for background explanations.
 
@@ -93,6 +94,18 @@ Download `phonedesk-linux-x64.zip`, extract, then:
 chmod +x phonedesk
 ./phonedesk
 ```
+
+## Use PhoneDesk from an AI client
+
+PhoneDesk installs a local [Model Context Protocol](https://modelcontextprotocol.io/) server,
+`phonedesk-mcp`, next to the desktop app. An AI client such as GitHub Copilot in Visual Studio
+Code, Claude or Codex can then read a tenant's phone system, run the health check, and build
+call queues and auto attendants with the same scripts as the desktop app.
+
+The server keeps you in control: every change is shown as a plan before it runs, a tenant
+backup is written before the first change of a session, and the server deletes only objects it
+created itself. See [docs/mcp-server.md](docs/mcp-server.md) for the tools and for how to
+connect a client.
 
 ## Updates
 

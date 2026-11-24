@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PhoneDesk.Mcp — headless composition root that exposes PhoneDesk operations to AI clients
+    over the Model Context Protocol (stdio transport).
+
+    It is a second head beside the Avalonia app: it references Domain, Application and
+    Infrastructure only, never Presentation or any UI framework.
+
+    stdout carries the protocol, so nothing in this project may write to it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PhoneDesk.Mcp</RootNamespace>
+    <AssemblyName>phonedesk-mcp</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhoneDesk.Domain\PhoneDesk.Domain.csproj" />
+    <ProjectReference Include="..\PhoneDesk.Application\PhoneDesk.Application.csproj" />
+    <ProjectReference Include="..\PhoneDesk.Infrastructure\PhoneDesk.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The server is published into the desktop app's folder and shares its files. Keep these
+      versions such that no shared file differs: Hosting stays on 10.0.x (its System.* dependencies
+      then come from the .NET 10 runtime, as in the app) and DependencyInjection matches the app.
+      ReleaseConfigurationTests and the packaging step check this.
+    -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
+    <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PhoneDesk.IntegrationTests" />
+  </ItemGroup>
+
+  <!--
+    The frozen setup script looks for the bundled modules in "Modules" beside the executable, or
+    one folder up. An installed server sits in the application folder and shares the application's
+    modules. A local build gets its own copy here. A target copies them (not Content items) so the
+    several hundred megabytes do not flow into projects that reference this one.
+  -->
+  <Target Name="CopyBundledModulesForLocalRun" AfterTargets="Build" Condition="Exists('$(MSBuildThisFileDirectory)..\..\Modules')">
+    <ItemGroup>
+      <BundledModuleFile Include="$(MSBuildThisFileDirectory)..\..\Modules\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundledModuleFile)"
+          DestinationFiles="@(BundledModuleFile->'$(OutDir)Modules\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

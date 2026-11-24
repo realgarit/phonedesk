@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhoneDesk.Operations;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Localization;
 using PhoneDesk.Services;
@@ -273,78 +274,18 @@ namespace PhoneDesk.ViewModels
             return false;
         }
 
-        private async Task<TopologySnapshotDocument> CollectLiveTopologySnapshotAsync()
-        {
-            var tenant = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportTenantInfoCommand(),
-                "SnapshotTenantInfo");
-            var resourceAccounts = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportResourceAccountsCommand(),
-                "SnapshotResourceAccounts");
-            var autoAttendants = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportAutoAttendantsCommand(),
-                "SnapshotAutoAttendants");
-            var callQueues = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportCallQueuesCommand(),
-                "SnapshotCallQueues");
-            var schedules = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportSchedulesCommand(),
-                "SnapshotSchedules");
-            var phoneNumbers = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportPhoneNumbersCommand(),
-                "SnapshotPhoneNumbers");
-            var voiceUsers = await ExecuteCompleteSnapshotReadAsync(
-                _docBuilder.GetExportVoiceUsersCommand(),
-                "SnapshotVoiceUsers");
-            var topologyRaw = await ExecuteCompleteSnapshotReadAsync(
-                _powerShellCommandService.GetRetrieveTenantTopologyCommand(),
-                "SnapshotTopology");
-            if (!topologyRaw.Contains("SUCCESS: Tenant topology retrieved", StringComparison.Ordinal))
-            {
-                throw new InvalidDataException("The live tenant topology query did not emit its completion marker.");
-            }
-
-            var retrievedAtUtc = DateTimeOffset.UtcNow;
-            var documentation = _snapshotParser!.Parse(new TenantDocumentationRawData(
-                tenant,
-                resourceAccounts,
-                autoAttendants,
-                callQueues,
-                schedules,
-                phoneNumbers,
-                voiceUsers));
-            var topology = _topologyAssembler!.Assemble(topologyRaw, retrievedAtUtc);
-            return _tenantAsCodeService!.CreateTopologySnapshot(topology, documentation);
-        }
-
-        private async Task<string> ExecuteCompleteSnapshotReadAsync(string command, string context)
-        {
-            var result = await ExecutePowerShellCommandAsync(
-                command,
-                environmentVariables: null,
-                context,
-                allowThrottleRetry: true);
-            if (!result.IsSuccess)
-            {
-                throw new InvalidDataException(
-                    result.ErrorMessage ?? $"The {context} query did not complete successfully.");
-            }
-
-            var output = result.Value ?? string.Empty;
-            var diagnostic = output
-                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim())
-                .FirstOrDefault(line =>
-                    line.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase) ||
-                    line.StartsWith("WARNING:", StringComparison.OrdinalIgnoreCase) ||
-                    line.StartsWith("TOPERR:", StringComparison.OrdinalIgnoreCase));
-            if (diagnostic is not null)
-            {
-                throw new InvalidDataException(
-                    $"The live tenant snapshot is incomplete: {diagnostic}");
-            }
-            return output;
-        }
+        private Task<TopologySnapshotDocument> CollectLiveTopologySnapshotAsync()
+            => new TenantSnapshotCollector(
+                    _docBuilder,
+                    _powerShellCommandService,
+                    _snapshotParser!,
+                    _topologyAssembler!,
+                    _tenantAsCodeService!)
+                .CollectAsync((command, operation) => ExecutePowerShellCommandAsync(
+                    command,
+                    environmentVariables: null,
+                    operation,
+                    allowThrottleRetry: true));
 
         [RelayCommand]
         private async Task ExportDocumentationAsync()

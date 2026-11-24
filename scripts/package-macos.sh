@@ -50,6 +50,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp -R "$PUBLISH_DIR"/. "$APP/Contents/MacOS/"
 chmod +x "$APP/Contents/MacOS/phonedesk"
+# The MCP server is a second executable in the bundle; AI clients start it by its full path.
+if [ -f "$APP/Contents/MacOS/phonedesk-mcp" ]; then
+  chmod +x "$APP/Contents/MacOS/phonedesk-mcp"
+fi
 cp "$REPO_ROOT/assets/icon.icns" "$APP/Contents/Resources/icon.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST

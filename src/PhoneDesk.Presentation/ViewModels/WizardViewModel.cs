@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhoneDesk.Operations;
 using PhoneDesk.Localization;
 using PhoneDesk.Services.Interfaces;
 using PhoneDesk.Services;
@@ -375,14 +376,7 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         public string ComputeStepFingerprint(int step)
         {
-            var script = GetScriptForStep(step);
-            var lines = script
-                .Replace("\r\n", "\n")
-                .Split('\n')
-                .Select(line => line.Trim())
-                .Where(line => line.Length > 0 && !line.StartsWith('#'));
-            var bytes = System.Text.Encoding.UTF8.GetBytes(string.Join("\n", lines));
-            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+            return GuidedSetupScriptFactory.ComputeFingerprint(GetScriptForStep(step));
         }
 
         private void RefreshStepNavigation()
@@ -595,18 +589,11 @@ namespace PhoneDesk.ViewModels
                 return step switch
                 {
                     0 => FormatVariablesSummary(vars),
-                    1 => _powerShellCommandService.GetCreateM365GroupCommand(vars.M365Group),
-                    2 => _powerShellCommandService.GetCreateResourceAccountCommand(vars),
-                    3 => BuildLicenseCqScript(vars),
-                    4 => _powerShellCommandService.GetCreateCallQueueCommand(vars),
-                    5 => _powerShellCommandService.GetCreateAutoAttendantResourceAccountCommand(vars),
-                    6 => BuildLicenseAaScript(vars),
-                    7 => _powerShellCommandService.GetCreateAutoAttendantCommand(vars),
-                    8 => _powerShellCommandService.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName),
                     9 => GetText(
                         UiTextKey.WizardSetupCompleteScript,
                         "🎉 Setup complete! All Teams Phone components have been created."),
-                    _ => string.Empty
+                    _ => new GuidedSetupScriptFactory(_powerShellCommandService)
+                        .GetProvisioningScript(step, vars, BuildScriptComments())
                 };
             }
             catch (Exception ex)
@@ -655,36 +642,18 @@ namespace PhoneDesk.ViewModels
                 ? GetText(UiTextKey.WizardValueNotAvailable, "(not available yet)")
                 : value;
 
-        private string BuildLicenseCqScript(PhoneManagerVariables vars)
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"# {GetText(
-                UiTextKey.WizardScriptSetUsageLocationComment,
-                "Step 1: Set usage location for {resource}",
-                new Dictionary<string, object?> { ["resource"] = "call queue resource account" })}");
-            sb.AppendLine(_powerShellCommandService.GetUpdateResourceAccountUsageLocationCommand(vars.RacqUPN, vars.UsageLocation));
-            sb.AppendLine();
-            sb.AppendLine($"# {GetText(UiTextKey.WizardScriptAssignLicenseComment, "Step 2: Assign Teams Phone license")}");
-            sb.AppendLine(_powerShellCommandService.GetAssignLicenseCommand(vars.RacqUPN, vars.SkuId));
-            return sb.ToString();
-        }
-
-        private string BuildLicenseAaScript(PhoneManagerVariables vars)
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"# {GetText(
-                UiTextKey.WizardScriptSetUsageLocationComment,
-                "Step 1: Set usage location for {resource}",
-                new Dictionary<string, object?> { ["resource"] = "automatic attendant resource account" })}");
-            sb.AppendLine(_powerShellCommandService.GetUpdateAutoAttendantResourceAccountUsageLocationCommand(vars.RaaaUPN, vars.UsageLocation));
-            sb.AppendLine();
-            sb.AppendLine($"# {GetText(UiTextKey.WizardScriptAssignLicenseComment, "Step 2: Assign Teams Phone license")}");
-            sb.AppendLine(_powerShellCommandService.GetAssignAutoAttendantLicenseCommand(vars.RaaaUPN, vars.SkuId));
-            sb.AppendLine();
-            sb.AppendLine($"# {GetText(UiTextKey.WizardScriptAssignPhoneNumberComment, "Step 3: Assign phone number")}");
-            sb.AppendLine(_powerShellCommandService.GetAssignPhoneNumberToAutoAttendantCommand(vars.RaaaUPN, vars.RaaAnr, vars.PhoneNumberType));
-            return sb.ToString();
-        }
+        private GuidedSetupScriptComments BuildScriptComments()
+            => new(
+                GetText(
+                    UiTextKey.WizardScriptSetUsageLocationComment,
+                    "Step 1: Set usage location for {resource}",
+                    new Dictionary<string, object?> { ["resource"] = "call queue resource account" }),
+                GetText(
+                    UiTextKey.WizardScriptSetUsageLocationComment,
+                    "Step 1: Set usage location for {resource}",
+                    new Dictionary<string, object?> { ["resource"] = "automatic attendant resource account" }),
+                GetText(UiTextKey.WizardScriptAssignLicenseComment, "Step 2: Assign Teams Phone license"),
+                GetText(UiTextKey.WizardScriptAssignPhoneNumberComment, "Step 3: Assign phone number"));
 
         [RelayCommand]
         private async Task ExecuteCurrentStepAsync()

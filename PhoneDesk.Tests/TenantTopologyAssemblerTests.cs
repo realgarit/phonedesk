@@ -22,6 +22,24 @@ namespace PhoneDesk.Tests
         private readonly TenantTopologyAssembler _sut = new();
 
         [Fact]
+        public void Assemble_KeepsTheObjectIdOfAGroupWhoseNameContainsTheSeparator()
+        {
+            // A display name with "|" must not shift the fields: the ID would otherwise be part of the
+            // name, and two such groups could get the same wrong ID.
+            var t = _sut.Assemble(
+                "TOPGRP: Sales | North|0f3c5a1e-7b2d-4c8f-9a61-2d4e6f8a0b1c|sales-north|Team | North region\n" +
+                "TOPGRP: Sales | South|7d9e1f20-3a4b-4c5d-8e6f-0a1b2c3d4e5f|sales-south|\n",
+                DateTimeOffset.UtcNow);
+
+            Assert.Equal(2, t.Groups.Count);
+            Assert.Equal("Sales | North", t.Groups[0].DisplayName);
+            Assert.Equal("0f3c5a1e-7b2d-4c8f-9a61-2d4e6f8a0b1c", t.Groups[0].Id);
+            Assert.Equal("sales-north", t.Groups[0].MailNickname);
+            Assert.Equal("Team | North region", t.Groups[0].Description);
+            Assert.Equal("7d9e1f20-3a4b-4c5d-8e6f-0a1b2c3d4e5f", t.Groups[1].Id);
+        }
+
+        [Fact]
         public void Assemble_ParsesEveryObjectType()
         {
             var t = _sut.Assemble(Sample, DateTimeOffset.UtcNow);

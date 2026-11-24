@@ -138,11 +138,20 @@ namespace PhoneDesk.Services
                 return null;
             }
 
+            // The line is "DisplayName|Id|MailNickname|Description" and a display name can itself
+            // contain the separator. The object ID is the first field after the name that is a GUID,
+            // so everything before it is the name and everything after the nickname is the description.
+            var idIndex = Array.FindIndex(f, 1, field => Guid.TryParse(field.Trim(), out _));
+            if (idIndex < 0)
+            {
+                idIndex = 1;
+            }
+
             return new TopologyGroup(
-                f[0].Trim(),
-                f[1].Trim(),
-                f.Length > 2 ? f[2].Trim() : string.Empty,
-                f.Length > 3 ? f[3].Trim() : string.Empty);
+                string.Join("|", f[..idIndex]).Trim(),
+                f[idIndex].Trim(),
+                f.Length > idIndex + 1 ? f[idIndex + 1].Trim() : string.Empty,
+                f.Length > idIndex + 2 ? string.Join("|", f[(idIndex + 2)..]).Trim() : string.Empty);
         }
 
         private static IReadOnlyList<string> Csv(string[] fields, int index)

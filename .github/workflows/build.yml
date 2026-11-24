@@ -249,6 +249,14 @@ jobs:
       shell: bash
       run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
 
+    - name: Add MCP server to the publish output
+      # The server shares the app folder (runtime, PowerShell SDK, bundled modules). The script
+      # fails when a file both publishes contain differs.
+      env:
+        RUNTIME: ${{ matrix.runtime }}
+      shell: bash
+      run: bash scripts/publish-mcp-server.sh "$RUNTIME" "./publish/$RUNTIME"
+
     - name: Import signing certificate (macOS)
       if: startsWith(matrix.runtime, 'osx-')
       env:
@@ -304,7 +312,7 @@ jobs:
       if: matrix.runtime == 'linux-x64'
       run: |
         mkdir -p ./dist
-        chmod +x ./publish/linux-x64/phonedesk
+        chmod +x ./publish/linux-x64/phonedesk ./publish/linux-x64/phonedesk-mcp
         cd ./publish/linux-x64
         zip -r ../../dist/phonedesk-linux-x64.zip .
 
@@ -501,6 +509,18 @@ jobs:
         RUNTIME: ${{ matrix.runtime }}
       shell: bash
       run: dotnet publish phonedesk.csproj --configuration Release --runtime "$RUNTIME" --self-contained true --output "./publish/$RUNTIME"
+
+    - name: Add MCP server to the publish output (packaging smoke)
+      env:
+        RUNTIME: ${{ matrix.runtime }}
+      shell: bash
+      run: bash scripts/publish-mcp-server.sh "$RUNTIME" "./publish/$RUNTIME"
+
+    - name: MCP server smoke (starts and lists its tools)
+      env:
+        RUNTIME: ${{ matrix.runtime }}
+      shell: bash
+      run: python3 scripts/smoke-test-mcp-server.py "./publish/$RUNTIME" || python scripts/smoke-test-mcp-server.py "./publish/$RUNTIME"
 
     - name: Package smoke (macOS .app bundle)
       if: startsWith(matrix.runtime, 'osx-')

@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\src\PhoneDesk.Application\PhoneDesk.Application.csproj" />
     <ProjectReference Include="..\src\PhoneDesk.Infrastructure\PhoneDesk.Infrastructure.csproj" />
+    <ProjectReference Include="..\src\PhoneDesk.Mcp\PhoneDesk.Mcp.csproj" />
   </ItemGroup>
 
 </Project>

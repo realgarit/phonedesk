@@ -25,6 +25,12 @@ public sealed class TenantConnectionService
     private readonly ITenantTopologyCache _topologyCache;
     private readonly ITenantHealthCheckCache _healthCheckCache;
 
+    /// <summary>
+    /// How long a browser sign-in may stay open. A head without a UI has no Cancel button, so an
+    /// abandoned sign-in must end by itself; otherwise the tool call never returns.
+    /// </summary>
+    public TimeSpan SignInTimeout { get; init; } = TimeSpan.FromMinutes(5);
+
     public TenantConnectionService(
         ITenantCommandRunner runner,
         IPowerShellCommandService commands,
@@ -73,10 +79,17 @@ public sealed class TenantConnectionService
             return Fail("Check the required modules before connecting to Microsoft Teams.", null);
         }
 
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(SignInTimeout);
         var outcome = await _runner.RunAsync(
-            new TenantCommandRequest(_commands.GetConnectTeamsCommand(), "ConnectTeams"), cancellationToken);
+            new TenantCommandRequest(_commands.GetConnectTeamsCommand(), "ConnectTeams"), timeout.Token);
         var connected = outcome.Result.HasSuccessMarker;
         _session.UpdateTeamsConnection(connected);
+        if (!connected && outcome.Status == TenantCommandStatus.Cancelled && !cancellationToken.IsCancellationRequested)
+        {
+            return Fail(SignInTimedOut("Microsoft Teams", "connect_teams"), null);
+        }
+
         if (!connected)
         {
             return Fail("Microsoft Teams could not be connected.", outcome.Result.ErrorMessage ?? outcome.Result.RawOutput);
@@ -98,7 +111,17 @@ public sealed class TenantConnectionService
             return Fail("Check the required modules before connecting to Microsoft Graph.", null);
         }
 
-        var authentication = await _graphAuthentication.AuthenticateAsync();
+        (bool Success, string? AccessToken, string? Account, string? ErrorMessage) authentication;
+        try
+        {
+            authentication = await _graphAuthentication.AuthenticateAsync().WaitAsync(SignInTimeout, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            _session.UpdateGraphConnection(false);
+            return Fail(SignInTimedOut("Microsoft Graph", "connect_graph"), null);
+        }
+
         if (!authentication.Success || string.IsNullOrEmpty(authentication.AccessToken))
         {
             _session.UpdateGraphConnection(false);
@@ -137,6 +160,10 @@ public sealed class TenantConnectionService
         _healthCheckCache.Clear();
         return Ok("Disconnected from Microsoft Teams and Microsoft Graph.");
     }
+
+    private string SignInTimedOut(string service, string tool)
+        => $"The {service} sign-in was not completed within {SignInTimeout.TotalMinutes:0} minutes. " +
+           $"Run {tool} again and complete the sign-in in the browser window that opens.";
 
     private ConnectionOutcome Ok(string message) => new(true, message, null, GetStatus());
 

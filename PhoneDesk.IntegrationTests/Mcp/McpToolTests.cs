@@ -396,6 +396,35 @@ public sealed class McpToolTests
         Assert.DoesNotContain(host.PowerShell.Executed, script => script.Contains("test-token", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Connection_EndsASignInNobodyCompletes()
+    {
+        using var host = new McpTestHost();
+        var commands = host.Get<IPowerShellCommandService>();
+        host.PowerShell.Hanging.Add(commands.GetConnectTeamsCommand());
+        host.GraphAuthentication.NeverCompletes = true;
+        host.Get<ISessionManager>().UpdateModulesChecked(true);
+        var connection = new PhoneDesk.Operations.TenantConnectionService(
+            host.Get<PhoneDesk.Operations.ITenantCommandRunner>(),
+            commands,
+            host.GraphAuthentication,
+            host.Get<ISessionManager>(),
+            host.Get<ITenantTopologyCache>(),
+            host.Get<ITenantHealthCheckCache>())
+        {
+            SignInTimeout = TimeSpan.FromMilliseconds(200)
+        };
+
+        var teams = await connection.ConnectTeamsAsync(Cancellation);
+        var graph = await connection.ConnectGraphAsync(Cancellation);
+
+        Assert.False(teams.Success);
+        Assert.Contains("was not completed", teams.Message);
+        Assert.False(graph.Success);
+        Assert.Contains("was not completed", graph.Message);
+        Assert.False(connection.IsReady);
+    }
+
     private static async Task<JsonElement> PlanAndApplyAsync(Func<string?, Task<string>> call)
     {
         var plan = McpTestHost.Parse(await call(null));

@@ -34,7 +34,7 @@ internal sealed class McpTestHost : IDisposable
         services.AddPhoneDeskMcp();
         Replace<McpEnvironment>(services, new McpEnvironment(DataDirectory, skipBackup, allowDeleteExisting));
         Replace<IPowerShellContextService>(services, PowerShell);
-        Replace<IMsalGraphAuthenticationService>(services, new FakeGraphAuthentication());
+        Replace<IMsalGraphAuthenticationService>(services, GraphAuthentication);
         Replace<IAuditLog>(services, new FileAuditLog(Path.Combine(DataDirectory, "audit")));
         Replace<ITenantHealthPreferencesStore>(services, new TenantHealthPreferencesStore(DataDirectory));
         Replace<ILoggingService>(services, new TestLoggingService());
@@ -60,6 +60,8 @@ internal sealed class McpTestHost : IDisposable
     public string DataDirectory { get; }
 
     public FakePowerShell PowerShell { get; } = new();
+
+    public FakeGraphAuthentication GraphAuthentication { get; } = new();
 
     public T Get<T>() where T : notnull => _services.GetRequiredService<T>();
 
@@ -124,11 +126,16 @@ internal sealed class McpTestHost : IDisposable
         services.AddSingleton(instance);
     }
 
-    private sealed class FakeGraphAuthentication : IMsalGraphAuthenticationService
+    internal sealed class FakeGraphAuthentication : IMsalGraphAuthenticationService
     {
+        /// <summary>True to behave like a browser sign-in nobody completes.</summary>
+        public bool NeverCompletes { get; set; }
+
         public Task<(bool Success, string? AccessToken, string? Account, string? ErrorMessage)> AuthenticateAsync(
             IntPtr? parentWindowHandle = null)
-            => Task.FromResult<(bool, string?, string?, string?)>((true, "test-token", "admin@contoso.com", null));
+            => NeverCompletes
+                ? new TaskCompletionSource<(bool, string?, string?, string?)>().Task
+                : Task.FromResult<(bool, string?, string?, string?)>((true, "test-token", "admin@contoso.com", null));
 
         public Task SignOutAsync() => Task.CompletedTask;
 
@@ -162,12 +169,23 @@ internal sealed class FakePowerShell : IPowerShellContextService
         string command, Dictionary<string, string>? environmentVariables, CancellationToken cancellationToken = default)
         => Task.FromResult(Run(command).Output);
 
-    public Task<PowerShellExecutionResult> ExecuteCommandWithDetailsAsync(
+    /// <summary>Scripts that never finish by themselves, like a sign-in nobody completes.</summary>
+    public HashSet<string> Hanging { get; } = new(StringComparer.Ordinal);
+
+    public async Task<PowerShellExecutionResult> ExecuteCommandWithDetailsAsync(
         string command,
         Dictionary<string, string>? environmentVariables,
         IProgress<PowerShellProgress>? progress = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(Run(command));
+    {
+        if (Hanging.Contains(command))
+        {
+            Executed.Add(command);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
+        return Run(command);
+    }
 
     public Task<bool> IsConnectedAsync(string service, CancellationToken cancellationToken = default)
         => Task.FromResult(true);

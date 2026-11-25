@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.37.0](https://github.com/realgarit/phonedesk/compare/v3.36.0...v3.37.0) (2026-11-25)
+
+
+### Features
+
+* **mcp:** copy the call handling of a holiday schedule to a new schedule ([9f5d36f](https://github.com/realgarit/phonedesk/commit/9f5d36fadff1098bde796b2ea7ae91e6e96cfb74))
+* **mcp:** copy the call handling of a holiday schedule to a new schedule ([5642e91](https://github.com/realgarit/phonedesk/commit/5642e91ed5503d4ff858a761159507a6d9a9b5b8))
+
+
+### Bug Fixes
+
+* **mcp:** judge the expiry of a holiday schedule on the clock of the auto attendant ([0015c8e](https://github.com/realgarit/phonedesk/commit/0015c8e7a3ed514c9445bd83214e2fd40ab43113))
+* **mcp:** write the new holiday code without collection expressions ([a50b58b](https://github.com/realgarit/phonedesk/commit/a50b58be23d067cc0c9b7b8c00853802166af4d5))
+
 ## [3.36.0](https://github.com/realgarit/phonedesk/compare/v3.35.3...v3.36.0) (2026-11-25)
 
 

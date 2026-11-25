@@ -256,9 +256,16 @@ public sealed class McpHolidayCallHandlingTests
         Assert.Equal(time.GetLocalNow().DateTime, HolidayCallHandlingTools.NowFor(time, topology, "aa-3"));
     }
 
-    private sealed class FixedTime(DateTimeOffset now) : TimeProvider
+    private sealed class FixedTime : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => now;
+        private readonly DateTimeOffset _now;
+
+        public FixedTime(DateTimeOffset now)
+        {
+            _now = now;
+        }
+
+        public override DateTimeOffset GetUtcNow() => _now;
     }
 
     [Fact]

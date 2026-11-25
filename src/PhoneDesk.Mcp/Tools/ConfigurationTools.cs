@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ModelContextProtocol.Server;
 using PhoneDesk.Holidays;
+using PhoneDesk.Models;
+using PhoneDesk.Portability;
 using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Mcp.Tools;
@@ -79,34 +81,171 @@ internal sealed class ConfigurationTools
         });
 
     [McpServerTool(Name = "swiss_holidays", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). To use them for the holiday schedule, write the wanted entries to holidayTemplate.series with configuration_update. Some cantons need a district for a complete result; 'completeness' says so.")]
+    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
     public string SwissHolidays(
-        [Description("Two-letter canton code, for example ZH, BE, AG.")] string canton,
-        [Description("Calendar year.")] int year,
-        [Description("District or locality, where the canton's holidays depend on it.")] string? district = null)
+        [Description(CantonDescription)] string canton,
+        [Description(YearDescription)] int year,
+        [Description(RegionDescription)] string? region = null,
+        [Description(RestDaysDescription)] bool includeAdditionalRestDays = true)
         => McpJson.Run(() =>
         {
-            if (!Enum.TryParse<SwissCanton>(canton?.Trim(), ignoreCase: true, out var code) || !Enum.IsDefined(code))
+            var selection = Select(canton, year, region, includeAdditionalRestDays);
+            if (selection.Holidays is null)
             {
-                throw new ArgumentException(
-                    $"'{canton}' is not a Swiss canton code. Valid codes: {string.Join(", ", Enum.GetNames<SwissCanton>())}.");
+                return selection.RegionQuestion();
             }
 
-            var result = SwissHolidayCatalog.Compute(code, district, year);
             return new
             {
-                canton = code.ToString(),
+                canton = selection.Canton.ToString(),
                 year,
-                completeness = result.Completeness,
-                holidays = result.Holidays.Select(holiday => new
-                {
-                    date = DateOnly.FromDateTime(holiday.Date),
-                    time = TimeOnly.FromTimeSpan(holiday.Time),
-                    name = holiday.Name,
-                    category = holiday.Category
-                })
+                region = selection.Region?.Code,
+                regionRequired = false,
+                completeness = HolidayResultCompleteness.Complete,
+                note = selection.Note,
+                holidays = selection.Holidays.Select(Describe)
             };
         });
+
+    [McpServerTool(Name = "swiss_holidays_apply", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
+    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. Entries that are already there stay, and a date that is already there with the same time and name is not added twice. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first.")]
+    public string ApplySwissHolidays(
+        [Description(CantonDescription)] string canton,
+        [Description(YearDescription)] int year,
+        [Description(RegionDescription)] string? region = null,
+        [Description(RestDaysDescription)] bool includeAdditionalRestDays = true,
+        [Description("True to remove the holiday entries that are in the configuration now and keep only the ones of this call. False (default) adds to them.")] bool replaceExisting = false)
+        => McpJson.Run(() =>
+        {
+            var selection = Select(canton, year, region, includeAdditionalRestDays);
+            if (selection.Holidays is null)
+            {
+                return selection.RegionQuestion();
+            }
+
+            var series = replaceExisting
+                ? new List<PortableHolidayEntry>()
+                : _store.Document.Configuration.HolidayTemplate.Series.ToList();
+            var added = new List<HolidayDate>();
+            foreach (var holiday in selection.Holidays)
+            {
+                var entry = new PortableHolidayEntry(
+                    DateOnly.FromDateTime(holiday.Date), TimeOnly.FromTimeSpan(holiday.Time), holiday.Name, null, null, holiday.Category);
+                if (series.Any(item => item.Date == entry.Date && item.Time == entry.Time && item.Name == entry.Name &&
+                                       item.EndDate is null && item.EndTime is null))
+                {
+                    continue;
+                }
+
+                series.Add(entry);
+                added.Add(holiday);
+            }
+
+            if (added.Count > 0 || replaceExisting)
+            {
+                _store.SetHolidaySeries(series);
+            }
+
+            var description = Describe();
+            return new
+            {
+                applied = true,
+                canton = selection.Canton.ToString(),
+                year,
+                region = selection.Region?.Code,
+                note = selection.Note,
+                added = added.Select(Describe),
+                alreadyPresent = selection.Holidays.Count - added.Count,
+                holidayEntriesNow = series.Count,
+                holidaySchedule = _store.Variables.HolidayName,
+                validation = description.Validation
+            };
+        });
+
+    private const string CantonDescription = "Two-letter canton code, for example ZH, BE, AG.";
+    private const string YearDescription = "Calendar year, 2025 to 2030.";
+    private const string RegionDescription = "Region code, only for AG, FR and SO. Call without it to get the valid codes and the localities each one covers. Never guess it; ask the user where the workplace is.";
+    private const string RestDaysDescription = "False to leave out the additional cantonal rest days (category additionalCantonalRestDay), which are not statutory holidays. Default true.";
+
+    private const int FirstYear = 2025;
+    private const int LastYear = 2030;
+
+    private static HolidaySelection Select(string canton, int year, string? region, bool includeAdditionalRestDays)
+    {
+        if (!Enum.TryParse<SwissCanton>(canton?.Trim(), ignoreCase: true, out var code) || !Enum.IsDefined(code) ||
+            int.TryParse(canton?.Trim(), out _))
+        {
+            throw new ArgumentException(
+                $"'{canton}' is not a Swiss canton code. Valid codes: {string.Join(", ", Enum.GetNames<SwissCanton>())}.");
+        }
+
+        if (year is < FirstYear or > LastYear)
+        {
+            throw new ArgumentException($"The holiday rules are verified for {FirstYear} to {LastYear}. {year} is outside that range.");
+        }
+
+        var regions = SwissHolidayRegions.For(code);
+        var wanted = string.IsNullOrWhiteSpace(region) ? null : region.Trim();
+        SwissHolidayRegion? selected = null;
+        string? note = null;
+        if (regions.Count == 0)
+        {
+            if (wanted is not null)
+            {
+                note = $"Canton {code} has one holiday list for the whole canton; region '{wanted}' was ignored.";
+            }
+        }
+        else if (wanted is null)
+        {
+            return new HolidaySelection(code, year, null, regions, null, null);
+        }
+        else
+        {
+            selected = SwissHolidayRegions.Find(code, wanted)
+                ?? throw new ArgumentException(
+                    $"'{wanted}' is not a region of canton {code}. Valid codes: " +
+                    string.Join("; ", regions.Select(item => $"{item.Code} ({item.Covers})")));
+        }
+
+        var result = SwissHolidayCatalog.Compute(code, selected?.Code, year);
+        if (result.Completeness != HolidayResultCompleteness.Complete)
+        {
+            throw new InvalidOperationException($"The holiday list for canton {code} is not complete.");
+        }
+
+        var holidays = result.Holidays
+            .Where(holiday => includeAdditionalRestDays || holiday.Category != HolidayCategory.AdditionalCantonalRestDay)
+            .ToList();
+        return new HolidaySelection(code, year, selected, regions, holidays, note);
+    }
+
+    private static object Describe(HolidayDate holiday) => new
+    {
+        date = DateOnly.FromDateTime(holiday.Date),
+        time = TimeOnly.FromTimeSpan(holiday.Time),
+        name = holiday.Name,
+        category = holiday.Category
+    };
+
+    /// <summary>A canton, year and region with its holidays; <see cref="Holidays"/> is null while a region is still needed.</summary>
+    private sealed record HolidaySelection(
+        SwissCanton Canton,
+        int Year,
+        SwissHolidayRegion? Region,
+        IReadOnlyList<SwissHolidayRegion> Regions,
+        IReadOnlyList<HolidayDate>? Holidays,
+        string? Note)
+    {
+        public object RegionQuestion() => new
+        {
+            canton = Canton.ToString(),
+            year = Year,
+            regionRequired = true,
+            applied = false,
+            message = $"The holidays of canton {Canton} depend on the region. Ask the user which region the workplace is in and call again with its code as 'region'. Nothing was changed.",
+            regions = Regions.Select(item => new { code = item.Code, name = item.Name, covers = item.Covers })
+        };
+    }
 
     private object WithChanges(object changes)
     {

@@ -245,7 +245,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "create_holiday_schedule", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Creates the holiday schedule from the holiday entries of the configuration (holidayTemplate.series). Fill the series first, for example from swiss_holidays." + ChangeNote)]
+    [Description("Creates the holiday schedule from the holiday entries of the configuration (holidayTemplate.series). Fill the series first: swiss_holidays_apply for the public holidays of a Swiss canton, configuration_update for other dates." + ChangeNote)]
     public Task<string> CreateHolidaySchedule(
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
@@ -255,7 +255,7 @@ internal sealed class ProvisioningTools
             if (variables.HolidaySeries.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "The configuration has no holiday entries. Set holidayTemplate.series with configuration_update first.");
+                    "The configuration has no holiday entries. Fill them with swiss_holidays_apply, or set holidayTemplate.series with configuration_update first.");
             }
 
             var name = Pick(null, variables.HolidayName, "holiday schedule name");

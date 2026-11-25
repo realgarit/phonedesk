@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 using ModelContextProtocol.Server;
+using PhoneDesk.Holidays;
 using PhoneDesk.Mcp;
 using PhoneDesk.Mcp.Tools;
 using PhoneDesk.Services.Interfaces;
@@ -86,6 +87,128 @@ public sealed class McpToolTests
         Assert.False(result.GetProperty("success").GetBoolean());
         Assert.Contains("general.customerName", result.GetProperty("error").GetString());
         Assert.Equal("contoso", host.Get<ConfigurationStore>().Variables.Customer);
+    }
+
+    [Theory]
+    [InlineData("AG", 6)]
+    [InlineData("FR", 2)]
+    [InlineData("SO", 2)]
+    public void SwissHolidays_WithoutRegionListsTheRegionsAndNoHolidays(string canton, int regions)
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+
+        foreach (var result in new[] { McpTestHost.Parse(tools.SwissHolidays(canton, 2026)), McpTestHost.Parse(tools.ApplySwissHolidays(canton, 2026)) })
+        {
+            Assert.True(result.GetProperty("regionRequired").GetBoolean());
+            Assert.False(result.GetProperty("applied").GetBoolean());
+            Assert.Equal(regions, result.GetProperty("regions").GetArrayLength());
+            Assert.False(result.TryGetProperty("holidays", out _));
+            foreach (var region in result.GetProperty("regions").EnumerateArray())
+            {
+                Assert.False(string.IsNullOrWhiteSpace(region.GetProperty("code").GetString()));
+                Assert.False(string.IsNullOrWhiteSpace(region.GetProperty("covers").GetString()));
+            }
+        }
+
+        Assert.Empty(host.Get<ConfigurationStore>().Variables.HolidaySeries);
+    }
+
+    [Fact]
+    public void SwissHolidays_EveryListedRegionGivesACompleteList()
+    {
+        using var host = new McpTestHost();
+        var tools = host.Tool<ConfigurationTools>();
+        foreach (var canton in Enum.GetValues<SwissCanton>())
+        {
+            foreach (var region in SwissHolidayRegions.For(canton))
+            {
+                Assert.Equal(HolidayResultCompleteness.Complete,
+                    SwissHolidayCatalog.Compute(canton, region.Code, 2026).Completeness);
+                var result = McpTestHost.Parse(tools.SwissHolidays(canton.ToString(), 2026, region.Code.ToUpperInvariant()));
+                Assert.Equal(region.Code, result.GetProperty("region").GetString());
+                Assert.True(result.GetProperty("holidays").GetArrayLength() > 5);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("AG", 2026, "Brugg", "aarau")]
+    [InlineData("FR", 2026, "Murten", "fr-reformed")]
+    [InlineData("SO", 2026, "Bucheggberg", "so-bucheggberg")]
+    [InlineData("ZH", 2031, null, "2025 to 2030")]
+    [InlineData("ZH", 2024, null, "2025 to 2030")]
+    [InlineData("XX", 2026, null, "ZH")]
+    [InlineData("3", 2026, null, "ZH")]
+    public void SwissHolidays_UnknownRegionYearOrCantonIsAnErrorAndWritesNothing(string canton, int year, string? region, string expected)
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+
+        foreach (var result in new[] { McpTestHost.Parse(tools.SwissHolidays(canton, year, region)), McpTestHost.Parse(tools.ApplySwissHolidays(canton, year, region)) })
+        {
+            Assert.False(result.GetProperty("success").GetBoolean());
+            Assert.Contains(expected, result.GetProperty("error").GetString());
+        }
+
+        Assert.Empty(host.Get<ConfigurationStore>().Variables.HolidaySeries);
+    }
+
+    [Fact]
+    public void SwissHolidays_CantonWithoutRegionsIgnoresARegionAndSaysSo()
+    {
+        using var host = new McpTestHost();
+        var result = McpTestHost.Parse(host.Tool<ConfigurationTools>().SwissHolidays("zh", 2026, "Winterthur"));
+
+        Assert.False(result.GetProperty("regionRequired").GetBoolean());
+        Assert.Contains("Winterthur", result.GetProperty("note").GetString());
+        Assert.Equal(9, result.GetProperty("holidays").GetArrayLength());
+    }
+
+    [Fact]
+    public void SwissHolidaysApply_WritesTheRegionListOnceAndKeepsCategoriesAndOtherEntries()
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+        var own = McpTestHost.Parse(tools.Update(new Dictionary<string, JsonElement>
+        {
+            ["holidayTemplate.series"] = McpTestHost.Json(new[] { new { date = "2026-12-24", time = "12:00:00", name = "Betriebsferien" } })
+        }));
+        Assert.True(own.GetProperty("applied").GetBoolean());
+
+        var first = McpTestHost.Parse(tools.ApplySwissHolidays("SO", 2026, "so-other"));
+        Assert.True(first.GetProperty("applied").GetBoolean());
+        Assert.Equal(12, first.GetProperty("added").GetArrayLength());
+        Assert.Equal(13, first.GetProperty("holidayEntriesNow").GetInt32());
+
+        var second = McpTestHost.Parse(tools.ApplySwissHolidays("SO", 2026, "so-other"));
+        Assert.Equal(0, second.GetProperty("added").GetArrayLength());
+        Assert.Equal(12, second.GetProperty("alreadyPresent").GetInt32());
+
+        using var next = new McpTestHost(dataDirectory: host.DataDirectory);
+        var series = next.Get<ConfigurationStore>().Document.Configuration.HolidayTemplate.Series;
+        Assert.Equal(13, series.Count);
+        Assert.Contains(series, entry => entry.Name == "Betriebsferien");
+        var labourDay = Assert.Single(series, entry => entry.Date == new DateOnly(2026, 5, 1));
+        Assert.Equal(new TimeOnly(12, 0), labourDay.Time);
+        Assert.Equal(HolidayCategory.Statutory, labourDay.Category);
+        Assert.Contains(series, entry => entry.Category == HolidayCategory.SundayObservance);
+    }
+
+    [Fact]
+    public void SwissHolidaysApply_CanLeaveOutAdditionalRestDaysAndReplaceTheEntries()
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+        tools.ApplySwissHolidays("ZH", 2026);
+
+        var result = McpTestHost.Parse(tools.ApplySwissHolidays("TI", 2026, includeAdditionalRestDays: false, replaceExisting: true));
+
+        var series = host.Get<ConfigurationStore>().Document.Configuration.HolidayTemplate.Series;
+        Assert.Equal(series.Count, result.GetProperty("holidayEntriesNow").GetInt32());
+        Assert.Equal(9, series.Count);
+        Assert.DoesNotContain(series, entry => entry.Category == HolidayCategory.AdditionalCantonalRestDay);
+        Assert.DoesNotContain(series, entry => entry.Name == "Karfreitag");
     }
 
     [Fact]

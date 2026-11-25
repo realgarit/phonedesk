@@ -5,15 +5,15 @@ namespace PhoneDesk.Operations;
 /// <summary>What the tenant holds about holiday call handling: auto attendants with their call flows, and the schedules.</summary>
 public sealed class HolidayCallHandlingState
 {
-    public IReadOnlyList<AutoAttendantCallHandling> AutoAttendants { get; init; } = [];
+    public IReadOnlyList<AutoAttendantCallHandling> AutoAttendants { get; init; } = Array.Empty<AutoAttendantCallHandling>();
 
-    public IReadOnlyList<ScheduleInfo> Schedules { get; init; } = [];
+    public IReadOnlyList<ScheduleInfo> Schedules { get; init; } = Array.Empty<ScheduleInfo>();
 
     /// <summary>Authorized users of an auto attendant that no longer exist in the directory.</summary>
-    public IReadOnlyList<AuthorizedUserProblem> MissingAuthorizedUsers { get; init; } = [];
+    public IReadOnlyList<AuthorizedUserProblem> MissingAuthorizedUsers { get; init; } = Array.Empty<AuthorizedUserProblem>();
 
     /// <summary>Authorized users that could not be checked, with the error text.</summary>
-    public IReadOnlyList<AuthorizedUserProblem> UncheckedAuthorizedUsers { get; init; } = [];
+    public IReadOnlyList<AuthorizedUserProblem> UncheckedAuthorizedUsers { get; init; } = Array.Empty<AuthorizedUserProblem>();
 
     public ScheduleInfo? FindSchedule(string? id)
         => Schedules.FirstOrDefault(schedule => HolidayCallHandling.SameId(schedule.Id, id));
@@ -28,12 +28,12 @@ public sealed class AutoAttendantCallHandling
 
     public string Name { get; init; } = string.Empty;
 
-    public IReadOnlyList<string> AuthorizedUsers { get; init; } = [];
+    public IReadOnlyList<string> AuthorizedUsers { get; init; } = Array.Empty<string>();
 
     /// <summary>The call flows beside the default one. Teams limits their number per auto attendant.</summary>
-    public IReadOnlyList<CallFlowInfo> CallFlows { get; init; } = [];
+    public IReadOnlyList<CallFlowInfo> CallFlows { get; init; } = Array.Empty<CallFlowInfo>();
 
-    public IReadOnlyList<CallHandlingLink> Associations { get; init; } = [];
+    public IReadOnlyList<CallHandlingLink> Associations { get; init; } = Array.Empty<CallHandlingLink>();
 
     public IEnumerable<CallHandlingLink> HolidayLinks
         => Associations.Where(link => string.Equals(link.Type, "Holiday", StringComparison.OrdinalIgnoreCase));
@@ -65,13 +65,13 @@ public sealed class CallFlowInfo
 
     public string Name { get; init; } = string.Empty;
 
-    public IReadOnlyList<PromptInfo> Greetings { get; init; } = [];
+    public IReadOnlyList<PromptInfo> Greetings { get; init; } = Array.Empty<PromptInfo>();
 
     public string? MenuName { get; init; }
 
-    public IReadOnlyList<PromptInfo> MenuPrompts { get; init; } = [];
+    public IReadOnlyList<PromptInfo> MenuPrompts { get; init; } = Array.Empty<PromptInfo>();
 
-    public IReadOnlyList<MenuOptionInfo> Options { get; init; } = [];
+    public IReadOnlyList<MenuOptionInfo> Options { get; init; } = Array.Empty<MenuOptionInfo>();
 
     public bool ForceListenMenu { get; init; }
 
@@ -101,7 +101,7 @@ public sealed class MenuOptionInfo
 
     public string Key { get; init; } = string.Empty;
 
-    public IReadOnlyList<string> VoiceResponses { get; init; } = [];
+    public IReadOnlyList<string> VoiceResponses { get; init; } = Array.Empty<string>();
 
     public CallTargetInfo? Target { get; init; }
 
@@ -130,10 +130,10 @@ public sealed class ScheduleInfo
     /// <summary>Fixed for a holiday schedule, WeeklyRecurrence for opening hours.</summary>
     public string Type { get; init; } = string.Empty;
 
-    public IReadOnlyList<ScheduleWindow> Windows { get; init; } = [];
+    public IReadOnlyList<ScheduleWindow> Windows { get; init; } = Array.Empty<ScheduleWindow>();
 
     /// <summary>The IDs of the auto attendants that use the schedule.</summary>
-    public IReadOnlyList<string> UsedBy { get; init; } = [];
+    public IReadOnlyList<string> UsedBy { get; init; } = Array.Empty<string>();
 
     public bool IsFixed => string.Equals(Type, "Fixed", StringComparison.OrdinalIgnoreCase);
 
@@ -192,15 +192,15 @@ public sealed class CopyAssessment
     /// <summary>The target schedule is attached to the auto attendant already: nothing is left to save.</summary>
     public bool AlreadyAttached { get; init; }
 
-    public IReadOnlyList<HolidayOverlap> Overlaps { get; init; } = [];
+    public IReadOnlyList<HolidayOverlap> Overlaps { get; init; } = Array.Empty<HolidayOverlap>();
 
-    public IReadOnlyList<CopyBlocker> Blockers { get; init; } = [];
+    public IReadOnlyList<CopyBlocker> Blockers { get; init; } = Array.Empty<CopyBlocker>();
 
     /// <summary>Holiday schedules of the auto attendant whose dates have all passed, oldest first.</summary>
-    public IReadOnlyList<ScheduleInfo> ExpiredSchedules { get; init; } = [];
+    public IReadOnlyList<ScheduleInfo> ExpiredSchedules { get; init; } = Array.Empty<ScheduleInfo>();
 
     /// <summary>The missing authorized users the save removes from the auto attendant.</summary>
-    public IReadOnlyList<string> AuthorizedUsersToRemove { get; init; } = [];
+    public IReadOnlyList<string> AuthorizedUsersToRemove { get; init; } = Array.Empty<string>();
 
     public bool CanSave => Blockers.Count == 0 && !AlreadyAttached;
 }
@@ -241,7 +241,7 @@ public static class HolidayCallHandling
         bool includeAutoAttendants = true,
         bool checkAuthorizedUsers = false)
     {
-        var ids = (autoAttendantIds ?? []).Select(id => "'" + RequireId(id, "an auto attendant") + "'").ToList();
+        var ids = (autoAttendantIds ?? Array.Empty<string>()).Select(id => "'" + RequireId(id, "an auto attendant") + "'").ToList();
         return ReadTemplate
             .Replace("__IDS__", string.Join(", ", ids), StringComparison.Ordinal)
             .Replace("__INCLUDE_ATTENDANTS__", includeAutoAttendants ? "$true" : "$false", StringComparison.Ordinal)
@@ -349,7 +349,7 @@ public static class HolidayCallHandling
         }
 
         var overlaps = target is null || alreadyAttached
-            ? []
+            ? new List<HolidayOverlap>()
             : SaveChecks(state, attendant, target, request.ReplaceScheduleId, replacedFlow is not null, request.AcceptOverlaps, expired, blockers);
         var missing = MissingAuthorizedUsers(state, attendant);
         if (missing.Count > 0 && !request.RemoveMissingAuthorizedUsers && !alreadyAttached)
@@ -371,7 +371,7 @@ public static class HolidayCallHandling
             Overlaps = overlaps,
             Blockers = blockers,
             ExpiredSchedules = expired,
-            AuthorizedUsersToRemove = request.RemoveMissingAuthorizedUsers ? missing : []
+            AuthorizedUsersToRemove = request.RemoveMissingAuthorizedUsers ? missing : new List<string>()
         };
     }
 
@@ -393,7 +393,7 @@ public static class HolidayCallHandling
         var alreadyAttached = attendant.HolidayLinkFor(scheduleId) is not null;
         var expired = ExpiredSchedules(state, attendant, now, scheduleId);
         var overlaps = alreadyAttached
-            ? []
+            ? new List<HolidayOverlap>()
             : SaveChecks(state, attendant, target, null, false, acceptOverlaps, expired, blockers);
         var missing = MissingAuthorizedUsers(state, attendant);
         if (missing.Count > 0 && !alreadyAttached)
@@ -571,7 +571,7 @@ public static class HolidayCallHandling
             ? $"audio file '{prompt.AudioFile.FileName}' ({prompt.AudioFile.Id})"
             : $"text \"{prompt.Text}\"";
 
-    private static IReadOnlyList<PromptInfo> Listed(PromptInfo? prompt) => prompt is null ? [] : [prompt];
+    private static IReadOnlyList<PromptInfo> Listed(PromptInfo? prompt) => prompt is null ? Array.Empty<PromptInfo>() : new[] { prompt };
 
     private static void ComparePrompts(string what, IReadOnlyList<PromptInfo> expected, IReadOnlyList<PromptInfo> actual, List<string> differences)
     {

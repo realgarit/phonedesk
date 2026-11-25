@@ -72,7 +72,7 @@ internal sealed class HolidayCallHandlingTools
             var topology = await _tenant.GetTopologyAsync(false, cancellationToken);
             string[]? ids = string.IsNullOrWhiteSpace(autoAttendant)
                 ? null
-                : [(await _reader.ResolveAutoAttendantAsync(autoAttendant, cancellationToken)).Id];
+                : new[] { (await _reader.ResolveAutoAttendantAsync(autoAttendant, cancellationToken)).Id };
             var state = await _reader.ReadAsync(ids, includeAutoAttendants: true, checkAuthorizedUsers: false, cancellationToken);
             var names = AttendantNames(topology);
             var now = Now;
@@ -109,7 +109,7 @@ internal sealed class HolidayCallHandlingTools
 
             var topology = await _tenant.GetTopologyAsync(false, cancellationToken);
             var names = AttendantNames(topology);
-            var state = await _reader.ReadAsync([request.AutoAttendantId], includeAutoAttendants: true, checkAuthorizedUsers: true, cancellationToken);
+            var state = await _reader.ReadAsync(new[] { request.AutoAttendantId }, includeAutoAttendants: true, checkAuthorizedUsers: true, cancellationToken);
             var now = Now;
             var assessment = HolidayCallHandling.Assess(state, request, now);
             var preview = Preview(state, assessment, topology, names, now);
@@ -157,7 +157,7 @@ internal sealed class HolidayCallHandlingTools
                     // Teams can report an error after it saved. The tenant decides what happened.
                     ChangeWasMadeDespiteError = async (_, token) =>
                     {
-                        var after = await _reader.ReadAsync([request.AutoAttendantId], true, false, token);
+                        var after = await _reader.ReadAsync(new[] { request.AutoAttendantId }, true, false, token);
                         return after.FindAutoAttendant(request.AutoAttendantId)?.HolidayLinkFor(request.TargetScheduleId) is not null;
                     }
                 },
@@ -174,7 +174,7 @@ internal sealed class HolidayCallHandlingTools
                 return outcome;
             }
 
-            var saved = await _reader.ReadAsync([request.AutoAttendantId], true, false, cancellationToken);
+            var saved = await _reader.ReadAsync(new[] { request.AutoAttendantId }, true, false, cancellationToken);
             return McpJson.With(outcome, "verification", Verify(saved, request, assessment.SourceCallFlow));
         });
 
@@ -188,7 +188,7 @@ internal sealed class HolidayCallHandlingTools
         var link = attendant?.HolidayLinkFor(request.TargetScheduleId);
         var flow = link is null ? null : attendant!.FindCallFlow(link.CallFlowId);
         var differences = expected is null || flow is null
-            ? []
+            ? Array.Empty<string>()
             : HolidayCallHandling.Differences(expected, flow);
         var replacedGone = request.ReplaceScheduleId is null
             ? (bool?)null
@@ -249,7 +249,7 @@ internal sealed class HolidayCallHandlingTools
                 },
             expiredSchedules = assessment.ExpiredSchedules.Select(schedule => ScheduleView(schedule, now, names)).ToList(),
             missingAuthorizedUsers = attendant is null
-                ? []
+                ? new List<string>()
                 : state.MissingAuthorizedUsers.Where(user => HolidayCallHandling.SameId(user.AutoAttendantId, attendant.Id)).Select(user => user.UserId).ToList(),
             authorizedUsersToRemove = assessment.AuthorizedUsersToRemove,
             uncheckedAuthorizedUsers = state.UncheckedAuthorizedUsers
@@ -327,7 +327,7 @@ internal sealed class HolidayCallHandlingTools
     {
         var attendant = topology.AutoAttendants.FirstOrDefault(item => HolidayCallHandling.SameId(item.Identity, autoAttendantId));
         return attendant is null
-            ? []
+            ? new List<string>()
             : topology.ResourceAccounts
                 .Where(account => account.HasPhoneNumber &&
                                   attendant.ResourceAccountObjectIds.Contains(account.ObjectId, StringComparer.OrdinalIgnoreCase))

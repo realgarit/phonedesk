@@ -330,7 +330,7 @@ internal sealed class ProvisioningTools
 
             // The script finds both objects by name and takes what it finds. The checks need the IDs.
             var (attendantId, _) = await _holidays.ResolveAutoAttendantAsync(attendant, cancellationToken);
-            var before = await _holidays.ReadAsync([attendantId], true, true, cancellationToken);
+            var before = await _holidays.ReadAsync(new[] { attendantId }, true, true, cancellationToken);
             var named = before.Schedules
                 .Where(item => string.Equals(item.Name.Trim(), schedule, StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -384,7 +384,7 @@ internal sealed class ProvisioningTools
                     // The schedule was not attached before this call, so finding it attached proves the save.
                     ChangeWasMadeDespiteError = async (_, token) =>
                     {
-                        var after = await _holidays.ReadAsync([attendantId], true, false, token);
+                        var after = await _holidays.ReadAsync(new[] { attendantId }, true, false, token);
                         return after.FindAutoAttendant(attendantId)?.HolidayLinkFor(scheduleId) is not null;
                     }
                 },
@@ -400,7 +400,7 @@ internal sealed class ProvisioningTools
                 return outcome;
             }
 
-            var saved = await _holidays.ReadAsync([attendantId], true, false, cancellationToken);
+            var saved = await _holidays.ReadAsync(new[] { attendantId }, true, false, cancellationToken);
             return McpJson.With(outcome, "verification", VerifyAttachedGreeting(saved, attendantId, scheduleId, prompt));
         });
 

@@ -75,13 +75,12 @@ internal sealed class HolidayCallHandlingTools
                 : new[] { (await _reader.ResolveAutoAttendantAsync(autoAttendant, cancellationToken)).Id };
             var state = await _reader.ReadAsync(ids, includeAutoAttendants: true, checkAuthorizedUsers: false, cancellationToken);
             var names = AttendantNames(topology);
-            var now = Now;
             return new
             {
                 callFlowLimit = HolidayCallHandling.AdditionalCallFlowLimit,
                 autoAttendants = state.AutoAttendants
                     .OrderBy(attendant => attendant.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(attendant => AttendantView(state, attendant, topology, names, now))
+                    .Select(attendant => AttendantView(state, attendant, topology, names, NowFor(_time, topology, attendant.Id)))
                     .ToList()
             };
         });
@@ -110,7 +109,7 @@ internal sealed class HolidayCallHandlingTools
             var topology = await _tenant.GetTopologyAsync(false, cancellationToken);
             var names = AttendantNames(topology);
             var state = await _reader.ReadAsync(new[] { request.AutoAttendantId }, includeAutoAttendants: true, checkAuthorizedUsers: true, cancellationToken);
-            var now = Now;
+            var now = NowFor(_time, topology, request.AutoAttendantId);
             var assessment = HolidayCallHandling.Assess(state, request, now);
             var preview = Preview(state, assessment, topology, names, now);
 
@@ -208,6 +207,23 @@ internal sealed class HolidayCallHandlingTools
     }
 
     private DateTime Now => _time.GetLocalNow().DateTime;
+
+    /// <summary>
+    /// The current time on the clock of the auto attendant. The dates of a schedule are in the
+    /// time zone of the auto attendant that uses it, so "has this date passed" is asked there and
+    /// not on the clock of this computer. An unknown time zone falls back to this computer's clock.
+    /// </summary>
+    internal static DateTime NowFor(TimeProvider time, TenantTopology topology, string autoAttendantId)
+    {
+        var zoneId = topology.AutoAttendants
+            .FirstOrDefault(item => HolidayCallHandling.SameId(item.Identity, autoAttendantId))?.TimeZoneId;
+        if (!string.IsNullOrWhiteSpace(zoneId) && TimeZoneInfo.TryFindSystemTimeZoneById(zoneId.Trim(), out var zone))
+        {
+            return TimeZoneInfo.ConvertTime(time.GetUtcNow(), zone).DateTime;
+        }
+
+        return time.GetLocalNow().DateTime;
+    }
 
     private static object Preview(
         HolidayCallHandlingState state,

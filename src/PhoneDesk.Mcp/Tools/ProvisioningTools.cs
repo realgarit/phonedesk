@@ -348,7 +348,12 @@ internal sealed class ProvisioningTools
             }
 
             var scheduleId = named[0].Id;
-            var assessment = HolidayCallHandling.AssessAttach(before, attendantId, scheduleId, acceptOverlaps, _time.GetLocalNow().DateTime);
+            var assessment = HolidayCallHandling.AssessAttach(
+                before,
+                attendantId,
+                scheduleId,
+                acceptOverlaps,
+                HolidayCallHandlingTools.NowFor(_time, await _tenant.GetTopologyAsync(false, cancellationToken), attendantId));
             var overlaps = assessment.Overlaps.Select(HolidayCallHandlingTools.OverlapView).ToList();
             if (assessment.AlreadyAttached)
             {

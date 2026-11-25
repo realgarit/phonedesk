@@ -237,6 +237,31 @@ public sealed class McpHolidayCallHandlingTests
     }
 
     [Fact]
+    public async Task Expiry_IsJudgedOnTheClockOfTheAutoAttendant()
+    {
+        // 00:30 UTC on 26 December: the holiday that ends at midnight is over in Zurich, not in New York.
+        var time = new FixedTime(new DateTimeOffset(2026, 12, 26, 0, 30, 0, TimeSpan.Zero));
+        using var host = new McpTestHost().Connected();
+        host.PowerShell.Respond(
+            host.Get<IPowerShellCommandService>().GetRetrieveTenantTopologyCommand(),
+            $"TOPAA: Zurich AA|{AaId}|de-DE|W. Europe Standard Time|||\n" +
+            $"TOPAA: New York AA|{Other}|en-US|Eastern Standard Time|||\n" +
+            "TOPAA: Unknown AA|aa-3|en-US|No Such Zone|||\n" +
+            "SUCCESS: Tenant topology retrieved\n");
+        var topology = await host.Get<PhoneDesk.Mcp.TenantGateway>().GetTopologyAsync(false, Cancellation);
+        var schedule = Parse(State([], [], [Schedule(Source, "2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00")])).FindSchedule(Source)!;
+
+        Assert.True(schedule.IsExpired(HolidayCallHandlingTools.NowFor(time, topology, AaId)));
+        Assert.False(schedule.IsExpired(HolidayCallHandlingTools.NowFor(time, topology, Other)));
+        Assert.Equal(time.GetLocalNow().DateTime, HolidayCallHandlingTools.NowFor(time, topology, "aa-3"));
+    }
+
+    private sealed class FixedTime(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    [Fact]
     public async Task Copy_ShowsThePlanThenSavesAndVerifiesAgainstTheTenant()
     {
         using var host = HostWith(BeforeCopy());

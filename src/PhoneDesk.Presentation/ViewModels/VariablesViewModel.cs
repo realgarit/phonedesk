@@ -777,12 +777,10 @@ namespace PhoneDesk.ViewModels
                 // Check again in the command: a disabled button is not a validation boundary.
                 if (!CanApplyPredefinedSelection) return;
                 RefreshHolidayPreview();
-                foreach (var holiday in PredefinedHolidayPreview)
+                // Reopening the picker must not add an identical date/name/range twice. The MCP
+                // server uses the same merge.
+                foreach (var holiday in PhoneDesk.Operations.HolidaySeriesMerge.MissingFrom(variables.HolidaySeries, PredefinedHolidayPreview))
                 {
-                    // Reopening the picker must not add an identical date/name/range twice.
-                    if (variables.HolidaySeries.Any(h => h.Date == holiday.Date && h.Time == holiday.Time
-                        && h.Name == holiday.Name && h.EndDate == holiday.EndDate && h.EndTime == holiday.EndTime))
-                        continue;
                     variables.HolidaySeries.Add(holiday);
                     LogLocalized(UiTextKey.VariablesPredefinedHolidayAddedLog,
                         "Added predefined holiday: {holiday}", LogLevel.Info,

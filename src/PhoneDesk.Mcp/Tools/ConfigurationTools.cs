@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using ModelContextProtocol.Server;
 using PhoneDesk.Holidays;
 using PhoneDesk.Models;
+using PhoneDesk.Operations;
 using PhoneDesk.Portability;
 using PhoneDesk.Services.Interfaces;
 
@@ -126,20 +127,10 @@ internal sealed class ConfigurationTools
             var series = replaceExisting
                 ? new List<PortableHolidayEntry>()
                 : _store.Document.Configuration.HolidayTemplate.Series.ToList();
-            var added = new List<HolidayDate>();
-            foreach (var holiday in selection.Holidays)
-            {
-                var entry = new PortableHolidayEntry(
-                    DateOnly.FromDateTime(holiday.Date), TimeOnly.FromTimeSpan(holiday.Time), holiday.Name, null, null, holiday.Category);
-                if (series.Any(item => item.Date == entry.Date && item.Time == entry.Time && item.Name == entry.Name &&
-                                       item.EndDate is null && item.EndTime is null))
-                {
-                    continue;
-                }
-
-                series.Add(entry);
-                added.Add(holiday);
-            }
+            var added = HolidaySeriesMerge.MissingFrom(
+                replaceExisting ? Array.Empty<IHolidayEntry>() : _store.Variables.HolidaySeries, selection.Holidays);
+            series.AddRange(added.Select(holiday => new PortableHolidayEntry(
+                DateOnly.FromDateTime(holiday.Date), TimeOnly.FromTimeSpan(holiday.Time), holiday.Name, null, null, holiday.Category)));
 
             if (added.Count > 0 || replaceExisting)
             {

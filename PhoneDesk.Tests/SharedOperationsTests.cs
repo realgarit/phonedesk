@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -209,6 +210,29 @@ namespace PhoneDesk.Tests
                 new ConnectedTenant("tenant-1", "Contoso AG"),
                 TenantOutputParser.ParseConnectedTenant("SUCCESS: Connected to Microsoft Teams\nConnected to tenant: Contoso AG (tenant-1)\n"));
             Assert.Contains("MicrosoftTeams", TenantOutputParser.FindMissingModules("Microsoft.Graph.Users module is available"));
+        }
+
+        [Fact]
+        public void HolidaySeriesMerge_AddsOnlyEntriesThatAreNotThereYet()
+        {
+            var existing = new IHolidayEntry[]
+            {
+                new HolidayDate(new DateTime(2026, 1, 1), TimeSpan.Zero, "Neujahr"),
+                new HolidayDate(new DateTime(2026, 12, 24), TimeSpan.Zero, "Betriebsferien", new DateTime(2026, 12, 31), TimeSpan.Zero),
+            };
+            var candidates = new[]
+            {
+                new HolidayDate(new DateTime(2026, 1, 1), TimeSpan.Zero, "Neujahr"),
+                new HolidayDate(new DateTime(2026, 5, 1), TimeSpan.FromHours(12), "Tag der Arbeit"),
+                new HolidayDate(new DateTime(2026, 5, 1), TimeSpan.FromHours(12), "Tag der Arbeit"),
+                // Same date as an existing range, but a single day: a different entry.
+                new HolidayDate(new DateTime(2026, 12, 24), TimeSpan.Zero, "Betriebsferien"),
+            };
+
+            var missing = HolidaySeriesMerge.MissingFrom(existing, candidates);
+
+            Assert.Equal(new[] { candidates[1], candidates[3] }, missing);
+            Assert.Empty(HolidaySeriesMerge.MissingFrom(existing.Concat(missing), candidates));
         }
 
         private static (TenantCommandRunner Runner, Mock<IPowerShellContextService> PowerShell, Mock<IAuditLog> AuditLog, Mock<ISessionManager> Session) CreateRunner()

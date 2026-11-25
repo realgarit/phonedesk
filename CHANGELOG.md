@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.36.0](https://github.com/realgarit/phonedesk/compare/v3.35.3...v3.36.0) (2026-11-25)
+
+
+### Features
+
+* **mcp:** label additional cantonal rest days like the desktop picker ([cb08282](https://github.com/realgarit/phonedesk/commit/cb082821508779bebf34f5dac741b1f739a2cbec))
+
+
+### Bug Fixes
+
+* **mcp:** check values the desktop app keeps right through its controls ([1600245](https://github.com/realgarit/phonedesk/commit/16002450cef2b39c667ac941902db6b5935e434e))
+* **mcp:** check values the desktop app keeps right through its controls ([02a7103](https://github.com/realgarit/phonedesk/commit/02a7103c4183dbb14095cacd649456060494971f))
+* **mcp:** keep the pre-change backup marked after a later backup ([854795b](https://github.com/realgarit/phonedesk/commit/854795ba2ae5bb56c11633b1757a69e16e7afcf8))
+* **mcp:** make holiday regions selectable and add swiss_holidays_apply ([ffd773d](https://github.com/realgarit/phonedesk/commit/ffd773d487a0663629cae90bd33124cca31d9c57))
+* **mcp:** make holiday regions selectable and add swiss_holidays_apply ([da51cfb](https://github.com/realgarit/phonedesk/commit/da51cfbc4e82f76e16cf807bb2928e2ae8f769dc))
+* **mcp:** make swiss_holidays_apply add-only ([693af70](https://github.com/realgarit/phonedesk/commit/693af709b93d5fc68b95ec3953b52773f9d4d756))
+
 ## [3.35.3](https://github.com/realgarit/phonedesk/compare/v3.35.2...v3.35.3) (2026-11-24)
 
 

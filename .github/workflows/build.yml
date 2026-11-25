@@ -451,8 +451,15 @@ jobs:
 
   pr-validate:
     name: PR Validate ${{ matrix.runtime }}
-    # Pre-merge gate: build + test + publish on every runtime without releasing.
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.validate_ref != '')
+    # Build + test + publish on every runtime without releasing. It runs for the release PR
+    # (dispatched with validate_ref) and for pull requests nobody tests locally: Dependabot and
+    # the bundled-module update. Other pull requests are tested locally before they are opened;
+    # their checks are the Semgrep scan and the Codex review.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.validate_ref != '') ||
+      (github.event_name == 'pull_request' &&
+        (github.event.pull_request.user.login == 'dependabot[bot]' ||
+         startsWith(github.head_ref, 'module-compatibility/')))
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

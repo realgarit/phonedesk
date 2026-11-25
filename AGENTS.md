@@ -58,13 +58,14 @@ Release-please repeatedly created v4.0.0 PRs because old squashed commit `0406e3
 ## CI
 
 - Build runs on Windows, macOS (x64 + arm64), Linux
+- **Pull requests**: the four-platform `PR Validate` job runs only for Dependabot PRs, the bundled-module update PR (`module-compatibility/*`) and the release PR (dispatched with `validate_ref`). Every other PR is tested locally before it is opened (`dotnet test PhoneDesk.slnx -c Release`, both test projects); its checks on GitHub are the Semgrep scan (`review`) and the Codex review. Local tests run on Windows only, so a Linux- or macOS-only break shows first in the release PR validation.
 - Windows: Inno Setup installer; macOS: ad-hoc signed .app bundle; Linux: zip
 - **PR checkout**: `github.event.pull_request.head.sha` (not merge ref) to avoid race where merge ref is deleted before runner picks up the job
 - `dotnet test` skips screenshot gen unless `GENERATE_SCREENSHOTS=1`
 
 ## Workflow Convention (PR workflow)
 
-Always: **branch → commit → push + open PR → CI green → merge (merge commit, not squash) → clean up ALL branches** (remote delete, local branches, stale worktrees). Always end a working session with a version bump (the bump IS the release trigger). Do NOT create tags manually — build.yml auto-creates them.
+Always: **branch → run the full test suite locally → commit → push + open PR → CI green → merge (merge commit, not squash) → clean up ALL branches** (remote delete, local branches, stale worktrees). Always end a working session with a version bump (the bump IS the release trigger). Do NOT create tags manually — build.yml auto-creates them.
 
 ## Project memory (distilled)
 

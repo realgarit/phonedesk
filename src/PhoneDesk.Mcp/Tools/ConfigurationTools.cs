@@ -106,7 +106,7 @@ internal sealed class ConfigurationTools
         });
 
     [McpServerTool(Name = "swiss_holidays", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
+    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Each holiday has a 'label' like the desktop app shows: an additional cantonal rest day is not a statutory holiday, although most businesses of the canton are closed, so name these days to the user and ask whether the customer is closed on them ('review' lists them). Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich, are not in the list; add them with configuration_update when the customer is closed. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
     public string SwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
@@ -128,12 +128,13 @@ internal sealed class ConfigurationTools
                 regionRequired = false,
                 completeness = HolidayResultCompleteness.Complete,
                 note = selection.Note,
+                review = Review(selection.Holidays),
                 holidays = selection.Holidays.Select(Describe)
             };
         });
 
     [McpServerTool(Name = "swiss_holidays_apply", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. It only adds: entries that are already there stay, and a date that is already there with the same time and name is not added twice. To remove entries, set holidayTemplate.series with configuration_update. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first.")]
+    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. It only adds: entries that are already there stay, and a date that is already there with the same time and name is not added twice. To remove entries, set holidayTemplate.series with configuration_update. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first, and ask about the additional cantonal rest days before you include them.")]
     public string ApplySwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
@@ -166,6 +167,7 @@ internal sealed class ConfigurationTools
                 year,
                 region = selection.Region?.Code,
                 note = selection.Note,
+                review = Review(added),
                 added = added.Select(Describe),
                 alreadyPresent = selection.Holidays.Count - added.Count,
                 holidayEntriesNow = series.Count,
@@ -236,8 +238,36 @@ internal sealed class ConfigurationTools
         date = DateOnly.FromDateTime(holiday.Date),
         time = TimeOnly.FromTimeSpan(holiday.Time),
         name = holiday.Name,
-        category = holiday.Category
+        category = holiday.Category,
+        label = Label(holiday.Category)
     };
+
+    /// <summary>The label the desktop holiday picker shows for a category (its English catalog text).</summary>
+    internal static string Label(HolidayCategory category) => category switch
+    {
+        HolidayCategory.Statutory => "Statutory holiday (Art. 20a ArG)",
+        HolidayCategory.AdditionalCantonalRestDay => "Additional cantonal rest day · confirm with customer",
+        HolidayCategory.SundayObservance => "Sunday observance",
+        _ => "Customer-specific / unclassified"
+    };
+
+    /// <summary>
+    /// Names the days the operator must confirm with the customer, as the desktop picker does with
+    /// its label and its "include additional cantonal rest days" switch. Null when there are none.
+    /// </summary>
+    private static object? Review(IReadOnlyList<HolidayDate> holidays)
+    {
+        var additional = holidays.Where(holiday => holiday.Category == HolidayCategory.AdditionalCantonalRestDay).ToList();
+        return additional.Count == 0
+            ? null
+            : new
+            {
+                additionalCantonalRestDays = additional.Select(holiday => new { date = DateOnly.FromDateTime(holiday.Date), name = holiday.Name }),
+                message = $"{additional.Count} of these days are additional cantonal rest days. They are not statutory holidays under Art. 20a ArG, " +
+                          "but the canton treats them as rest days and most businesses are closed. Confirm with the customer whether they are closed on them. " +
+                          "Use includeAdditionalRestDays=false to leave them out."
+            };
+    }
 
     /// <summary>A canton, year and region with its holidays; <see cref="Holidays"/> is null while a region is still needed.</summary>
     private sealed record HolidaySelection(

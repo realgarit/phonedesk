@@ -40,6 +40,12 @@ return the regions of the canton and the localities each one covers, and write n
 region is an error; the server never falls back to a shorter list. The years are 2025 to 2030, and
 `includeAdditionalRestDays: false` leaves out the additional cantonal rest days.
 
+Each holiday carries the label the desktop picker shows. An additional cantonal rest day is not a
+statutory holiday under Art. 20a ArG, but the canton treats it as a rest day and most businesses
+are closed. The result names these days in `review` and tells the client to confirm them with the
+customer. Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich,
+are in neither head; add them as own entries when the customer is closed.
+
 ### Checks the desktop app does with its controls
 
 The desktop app keeps many values right through its controls: a dropdown offers only valid

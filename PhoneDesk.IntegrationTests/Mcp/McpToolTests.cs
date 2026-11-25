@@ -210,6 +210,46 @@ public sealed class McpToolTests
     }
 
     [Fact]
+    public void SwissHolidays_LabelsAdditionalRestDaysLikeTheDesktopPickerAndAsksToConfirmThem()
+    {
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+
+        // The labels are the texts of the desktop picker.
+        var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "src", "PhoneDesk.Presentation", "Resources", "Localization", "Strings.en.json"))).RootElement;
+        Assert.Equal(catalog.GetProperty("HolidayCategoryStatutory").GetString(), ConfigurationTools.Label(HolidayCategory.Statutory));
+        Assert.Equal(catalog.GetProperty("HolidayCategoryAdditional").GetString(), ConfigurationTools.Label(HolidayCategory.AdditionalCantonalRestDay));
+        Assert.Equal(catalog.GetProperty("HolidayCategorySunday").GetString(), ConfigurationTools.Label(HolidayCategory.SundayObservance));
+        Assert.Equal(catalog.GetProperty("HolidayCategoryCustom").GetString(), ConfigurationTools.Label(HolidayCategory.Custom));
+
+        var ticino = McpTestHost.Parse(tools.SwissHolidays("TI", 2026));
+        Assert.Equal(6, ticino.GetProperty("review").GetProperty("additionalCantonalRestDays").GetArrayLength());
+        Assert.Contains("Confirm with the customer", ticino.GetProperty("review").GetProperty("message").GetString());
+        Assert.Contains(ticino.GetProperty("holidays").EnumerateArray(),
+            holiday => holiday.GetProperty("name").GetString() == "San Giuseppe" &&
+                       holiday.GetProperty("label").GetString()!.Contains("confirm with customer"));
+
+        // Nothing to confirm: no review block.
+        Assert.False(McpTestHost.Parse(tools.SwissHolidays("ZH", 2026)).TryGetProperty("review", out _));
+        Assert.False(McpTestHost.Parse(tools.SwissHolidays("TI", 2026, includeAdditionalRestDays: false)).TryGetProperty("review", out _));
+
+        var applied = McpTestHost.Parse(tools.ApplySwissHolidays("TI", 2026));
+        Assert.Equal(6, applied.GetProperty("review").GetProperty("additionalCantonalRestDays").GetArrayLength());
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "PhoneDesk.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("PhoneDesk.slnx was not found above the test folder.");
+    }
+
+    [Fact]
     public void SwissHolidaysApply_NeverRemovesEntries()
     {
         var method = typeof(ConfigurationTools).GetMethod(nameof(ConfigurationTools.ApplySwissHolidays))!;

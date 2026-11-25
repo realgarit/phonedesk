@@ -28,6 +28,9 @@ internal sealed class TenantGateway
     private TopologySnapshotDocument? _latestSnapshot;
     private TopologySnapshotDocument? _baseline;
     private bool _latestSnapshotOutdated;
+    private string? _changedTenantId;
+    private string? _preChangeBackupTenantId;
+    private string? _preChangeBackupFile;
 
     public TenantGateway(
         ITenantCommandRunner runner,
@@ -117,6 +120,7 @@ internal sealed class TenantGateway
     {
         _topologyCache.Clear();
         _latestSnapshotOutdated = true;
+        _changedTenantId = TenantId;
     }
 
     /// <summary>Forgets what was read from the tenant, after a sign-out. The backup files and the baseline stay.</summary>
@@ -155,6 +159,16 @@ internal sealed class TenantGateway
         {
             _baselineTenantId = TenantId;
             _baseline = snapshot;
+        }
+
+        // The first backup written while this session had not changed the tenant yet. A later
+        // backup_tenant call writes a newer file, which already contains the session's changes.
+        var changed = string.Equals(_changedTenantId, TenantId, StringComparison.OrdinalIgnoreCase);
+        var known = string.Equals(_preChangeBackupTenantId, TenantId, StringComparison.OrdinalIgnoreCase);
+        if (!changed && !known)
+        {
+            _preChangeBackupTenantId = TenantId;
+            _preChangeBackupFile = file;
         }
 
         _sessionBackupTenantId = TenantId;
@@ -203,9 +217,10 @@ internal sealed class TenantGateway
             : Array.Empty<string>();
     }
 
-    /// <summary>The backup this session wrote before its first change, when there is one.</summary>
-    public string? SessionBackupFile
-        => _sessionBackup is not null && string.Equals(_sessionBackupTenantId, TenantId, StringComparison.OrdinalIgnoreCase)
-            ? _sessionBackup.File
-            : null;
+    /// <summary>
+    /// The backup this session wrote before it changed the connected tenant, when there is one.
+    /// It is never replaced by a later backup of the session.
+    /// </summary>
+    public string? PreChangeBackupFile
+        => string.Equals(_preChangeBackupTenantId, TenantId, StringComparison.OrdinalIgnoreCase) ? _preChangeBackupFile : null;
 }

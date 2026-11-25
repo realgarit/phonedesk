@@ -103,7 +103,7 @@ internal sealed class HealthAndBackupTools
     public string ListBackups() => McpJson.Run(() =>
     {
         _tenant.RequireReady();
-        var sessionBackup = _tenant.SessionBackupFile;
+        var preChangeBackup = _tenant.PreChangeBackupFile;
         return new
         {
             tenantId = _tenant.TenantId,
@@ -112,7 +112,7 @@ internal sealed class HealthAndBackupTools
                 file,
                 takenUtc = BackupTime(file),
                 sizeBytes = new FileInfo(file).Length,
-                writtenBeforeTheFirstChangeOfThisSession = string.Equals(file, sessionBackup, StringComparison.OrdinalIgnoreCase)
+                writtenBeforeTheFirstChangeOfThisSession = string.Equals(file, preChangeBackup, StringComparison.OrdinalIgnoreCase)
             })
         };
     });

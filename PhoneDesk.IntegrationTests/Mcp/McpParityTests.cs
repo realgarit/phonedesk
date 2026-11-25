@@ -415,6 +415,29 @@ public sealed class McpParityTests
     }
 
     [Fact]
+    public async Task ListBackups_KeepsMarkingTheBackupFromBeforeTheChangeAfterALaterBackup()
+    {
+        using var host = new McpTestHost(skipBackup: false).Connected().Configured();
+        var backups = host.Tool<HealthAndBackupTools>();
+        var tools = host.Tool<ProvisioningTools>();
+        const string marker = "writtenBeforeTheFirstChangeOfThisSession";
+
+        var plan = McpTestHost.Parse(await tools.CreateM365Group(cancellationToken: Cancellation));
+        var applied = McpTestHost.Parse(await tools.CreateM365Group(planId: plan.GetProperty("planId").GetString(), cancellationToken: Cancellation));
+        var before = applied.GetProperty("backupFile").GetString()!;
+
+        // The file name has the time to the second: wait so the later backup gets its own file.
+        await Task.Delay(TimeSpan.FromMilliseconds(1100), Cancellation);
+        var after = McpTestHost.Parse(await backups.BackupTenant(Cancellation)).GetProperty("backup").GetProperty("file").GetString()!;
+        Assert.NotEqual(before, after);
+
+        var listed = McpTestHost.Parse(backups.ListBackups()).GetProperty("backups").EnumerateArray()
+            .ToDictionary(item => item.GetProperty("file").GetString()!, item => item.GetProperty(marker).GetBoolean());
+        Assert.True(listed[before]);
+        Assert.False(listed[after]);
+    }
+
+    [Fact]
     public async Task DeleteGroup_RefusesANameThatBelongsToAnotherGroupThanTheId()
     {
         using var host = new McpTestHost(allowDeleteExisting: true).Connected();

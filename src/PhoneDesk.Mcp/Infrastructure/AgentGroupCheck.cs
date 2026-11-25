@@ -11,17 +11,19 @@ namespace PhoneDesk.Mcp;
 internal static class AgentGroupCheck
 {
     public static string InFrontOf(string callQueueScript, string groupName)
-        => $$"""
-            # PhoneDesk MCP: use the group ID of this session only when it is the configured agent group.
-            if ($global:m365groupId) {
-                $pdSessionGroup = $null
-                try { $pdSessionGroup = Get-MgGroup -GroupId $global:m365groupId -ErrorAction Stop } catch { $pdSessionGroup = $null }
-                if (-not $pdSessionGroup -or $pdSessionGroup.DisplayName -ne '{{SingleQuoted(groupName)}}') {
-                    $global:m365groupId = $null
-                }
-            }
-
-            """ + callQueueScript;
+        => string.Join("\n", new[]
+        {
+            "# PhoneDesk MCP: use the group ID of this session only when it is the configured agent group.",
+            "if ($global:m365groupId) {",
+            "    $pdSessionGroup = $null",
+            "    try { $pdSessionGroup = Get-MgGroup -GroupId $global:m365groupId -ErrorAction Stop } catch { $pdSessionGroup = $null }",
+            "    if (-not $pdSessionGroup -or $pdSessionGroup.DisplayName -ne '" + SingleQuoted(groupName) + "') {",
+            "        $global:m365groupId = $null",
+            "    }",
+            "}",
+            string.Empty,
+            string.Empty
+        }) + callQueueScript;
 
     /// <summary>
     /// Escapes a text for a single-quoted PowerShell string. PowerShell also ends such a string at

@@ -794,7 +794,7 @@ public sealed class McpToolTests
                      "SUCCESS: ttgrp-fabrikam-empfang created successfully with ID: 66666666-2222-3333-4444-555555555555\n"
         };
 
-        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, cancellationToken: Cancellation));
 
         Assert.Equal("applied", applied.GetProperty("status").GetString());
         var ledger = host.Get<CreatedObjectLedger>();
@@ -833,7 +833,7 @@ public sealed class McpToolTests
                      "ERROR: Failed to assign phone number: The user is not found\n" +
                      $"SUCCESS: Auto attendant {attendant} is ready\n"
         };
-        var first = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        var first = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, cancellationToken: Cancellation));
         Assert.Equal("failed", first.GetProperty("status").GetString());
         Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.M365Group, groupId));
         Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.ResourceAccount, racq));
@@ -855,7 +855,7 @@ public sealed class McpToolTests
                      $"SUCCESS: Call queue {queue} is ready and associated with {racq}\n" +
                      "ERROR: Failed to assign phone number: User lacks appropriate licenses\n"
         };
-        var second = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        var second = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, cancellationToken: Cancellation));
         Assert.Equal("failed", second.GetProperty("status").GetString());
         Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.CallQueue, queue));
         Assert.False(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234568"));
@@ -867,7 +867,7 @@ public sealed class McpToolTests
                      $"SUCCESS: Call queue {queue} is ready and associated with {racq}\n" +
                      "SUCCESS: Phone number assigned successfully\n"
         };
-        var third = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        var third = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, cancellationToken: Cancellation));
         Assert.Equal("applied", third.GetProperty("status").GetString());
         Assert.True(ledger.Contains(McpTestHost.TenantId, TenantObjectType.PhoneNumber, "+41441234568"));
         Assert.Equal(6, ledger.List(McpTestHost.TenantId).Count);
@@ -892,7 +892,7 @@ public sealed class McpToolTests
                      "SUCCESS: Auto attendant aa-fabrikam-haupt-empfang is ready\n"
         };
 
-        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, Cancellation));
+        var applied = await PlanAndApplyAsync(planId => tools.BulkSetup(csv, planId, cancellationToken: Cancellation));
 
         Assert.Equal("applied", applied.GetProperty("status").GetString());
         Assert.Empty(host.Get<CreatedObjectLedger>().List(McpTestHost.TenantId));

@@ -57,17 +57,21 @@ internal sealed class TenantReadTools
     [McpServerTool(Name = "list_auto_attendants", ReadOnly = true, Idempotent = true, OpenWorld = true)]
     [Description("Lists auto attendants with language, time zone, their resource accounts and the number of holiday schedules. Read-only.")]
     public Task<string> ListAutoAttendants(
-        [Description("Only names that contain this text.")] string? search = null,
-        [Description("Maximum number of rows (default 50).")] int limit = DefaultLimit,
+        [Description("Only auto attendants whose name, identity, language or time zone contains this text.")] string? search = null,
+        [Description("Maximum number of rows (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("True to query the tenant again.")] bool refresh = false,
+        [Description("Number of rows to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             var topology = await _tenant.GetTopologyAsync(refresh, cancellationToken);
             var accounts = topology.ResourceAccounts.ToLookup(account => account.ObjectId, StringComparer.OrdinalIgnoreCase);
             return Page(
-                topology.AutoAttendants.Where(item => Contains(item.Name, search)),
+                topology.AutoAttendants.Where(item =>
+                    Contains(item.Name, search) || Contains(item.Identity, search) ||
+                    Contains(item.LanguageId, search) || Contains(item.TimeZoneId, search)),
                 limit,
+                offset,
                 item => new
                 {
                     name = item.Name,
@@ -83,9 +87,10 @@ internal sealed class TenantReadTools
     [McpServerTool(Name = "list_call_queues", ReadOnly = true, Idempotent = true, OpenWorld = true)]
     [Description("Lists call queues with routing method, agent alert time, the number of direct agents, their agent groups and their resource accounts. Read-only.")]
     public Task<string> ListCallQueues(
-        [Description("Only names that contain this text.")] string? search = null,
-        [Description("Maximum number of rows (default 50).")] int limit = DefaultLimit,
+        [Description("Only call queues whose name, identity or routing method contains this text.")] string? search = null,
+        [Description("Maximum number of rows (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("True to query the tenant again.")] bool refresh = false,
+        [Description("Number of rows to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
@@ -93,8 +98,10 @@ internal sealed class TenantReadTools
             var accounts = topology.ResourceAccounts.ToLookup(account => account.ObjectId, StringComparer.OrdinalIgnoreCase);
             var groups = topology.Groups.ToLookup(group => group.Id, StringComparer.OrdinalIgnoreCase);
             return Page(
-                topology.CallQueues.Where(item => Contains(item.Name, search)),
+                topology.CallQueues.Where(item =>
+                    Contains(item.Name, search) || Contains(item.Identity, search) || Contains(item.RoutingMethod, search)),
                 limit,
+                offset,
                 item => new
                 {
                     name = item.Name,
@@ -115,19 +122,18 @@ internal sealed class TenantReadTools
     [McpServerTool(Name = "list_resource_accounts", ReadOnly = true, Idempotent = true, OpenWorld = true)]
     [Description("Lists Teams resource accounts with their user principal name, phone number, kind (auto attendant or call queue) and whether the account is enabled. Read-only.")]
     public Task<string> ListResourceAccounts(
-        [Description("Only display names, UPNs or phone numbers that contain this text.")] string? search = null,
+        [Description("Only accounts whose display name, UPN, phone number or object ID contains this text.")] string? search = null,
         [Description("Only this kind: autoAttendant, callQueue or unknown.")] string? kind = null,
-        [Description("Maximum number of rows (default 50).")] int limit = DefaultLimit,
+        [Description("Maximum number of rows (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("True to query the tenant again.")] bool refresh = false,
+        [Description("Number of rows to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             ResourceAccountKind? kindFilter = null;
             if (!string.IsNullOrWhiteSpace(kind))
             {
-                kindFilter = Enum.TryParse<ResourceAccountKind>(kind.Trim(), ignoreCase: true, out var parsed)
-                    ? parsed
-                    : throw new ArgumentException("kind must be autoAttendant, callQueue or unknown.");
+                kindFilter = ParseName<ResourceAccountKind>(kind, "kind");
             }
 
             var topology = await _tenant.GetTopologyAsync(refresh, cancellationToken);
@@ -135,41 +141,49 @@ internal sealed class TenantReadTools
                 topology.ResourceAccounts.Where(item =>
                     (kindFilter is null || item.Kind == kindFilter) &&
                     (Contains(item.DisplayName, search) || Contains(item.UserPrincipalName, search) ||
-                     Contains(item.PhoneNumber, search))),
+                     Contains(item.PhoneNumber, search) || Contains(item.ObjectId, search))),
                 limit,
+                offset,
                 item => (object)item);
         });
 
     [McpServerTool(Name = "list_m365_groups", ReadOnly = true, Idempotent = true, OpenWorld = true)]
     [Description("Lists Microsoft 365 groups of the tenant. A tenant can have hundreds, so give a search text. Read-only.")]
     public Task<string> ListGroups(
-        [Description("Only display names or mail nicknames that contain this text.")] string? search = null,
-        [Description("Maximum number of rows (default 50).")] int limit = DefaultLimit,
+        [Description("Only groups whose display name, mail nickname, description or object ID contains this text.")] string? search = null,
+        [Description("Maximum number of rows (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("True to query the tenant again.")] bool refresh = false,
+        [Description("Number of rows to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             var topology = await _tenant.GetTopologyAsync(refresh, cancellationToken);
             return Page(
-                topology.Groups.Where(item => Contains(item.DisplayName, search) || Contains(item.MailNickname, search)),
+                topology.Groups.Where(item =>
+                    Contains(item.DisplayName, search) || Contains(item.MailNickname, search) ||
+                    Contains(item.Description, search) || Contains(item.Id, search)),
                 limit,
+                offset,
                 item => (object)item);
         });
 
     [McpServerTool(Name = "tenant_details", ReadOnly = true, Idempotent = true, OpenWorld = true)]
-    [Description("Returns detailed rows from the full tenant snapshot: call flows, menu options, schedules and their date ranges, call queue agents and overflow or timeout actions, phone number assignments and voice users. Call it without a section to see the available sections. The full snapshot takes several queries; it is read once per session unless refresh=true. Read-only.")]
+    [Description("Returns detailed rows from the full tenant snapshot: call flows, menu options, schedules and their date ranges, call queue agents and overflow or timeout actions, phone number assignments and voice users. Call it without a section to see the available sections. The full snapshot takes several queries, so it is kept for the session; it is read again after a change this server made, or with refresh=true. 'retrievedAtUtc' says how old the rows are. Read-only.")]
     public Task<string> Details(
         [Description("Section name, for example 'documentation.autoAttendantCallFlows' or 'documentation.schedules'. Omit to list the sections.")] string? section = null,
-        [Description("Only rows where any text value contains this text.")] string? search = null,
-        [Description("Maximum number of rows (default 50).")] int limit = DefaultLimit,
+        [Description("Only rows where a value (name, number, ID, text) contains this text. Property names are not searched.")] string? search = null,
+        [Description("Maximum number of rows (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("True to read the snapshot from the tenant again.")] bool refresh = false,
+        [Description("Number of rows to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             _tenant.RequireReady();
-            var snapshot = refresh || _tenant.LatestSnapshot is null
+
+            // A snapshot from before a change of this session would not show the change.
+            var snapshot = refresh || _tenant.CurrentSnapshot is null
                 ? await _tenant.CollectSnapshotAsync(cancellationToken)
-                : _tenant.LatestSnapshot;
+                : _tenant.CurrentSnapshot;
             var sections = Sections(snapshot);
             if (string.IsNullOrWhiteSpace(section))
             {
@@ -190,27 +204,44 @@ internal sealed class TenantReadTools
             return Page(
                 match.Value.Where(row => string.IsNullOrWhiteSpace(search) || RowContains(row, search)),
                 limit,
-                row => (object)row!);
+                offset,
+                row => (object)row!,
+                snapshot.RetrievedAtUtc);
         });
 
     [McpServerTool(Name = "audit_history", ReadOnly = true, Idempotent = true, OpenWorld = false)]
     [Description("Returns the local PhoneDesk audit log, newest first: every operation the desktop app or this server ran, with time, operator, tenant, target, outcome and error. Reads local files only.")]
     public string AuditHistory(
-        [Description("Maximum number of records (default 50).")] int limit = DefaultLimit,
+        [Description("Maximum number of records (default 50, at most 500).")] int limit = DefaultLimit,
         [Description("Only operations whose name or target contains this text.")] string? search = null,
         [Description("Only this outcome: success, failure or cancelled.")] string? outcome = null,
         [Description("True to show changes to the tenant only and leave out reads, module checks, sign-ins and sign-outs.")] bool changesOnly = false,
-        [Description("True to show only the connected tenant.")] bool connectedTenantOnly = false)
+        [Description("True to show only the connected tenant.")] bool connectedTenantOnly = false,
+        [Description("Only records from this day on, as yyyy-MM-dd (UTC).")] string? from = null,
+        [Description("Only records up to and including this day, as yyyy-MM-dd (UTC).")] string? to = null,
+        [Description("Number of records to skip, to read the next part of a long list (see nextOffset in the result).")] int offset = 0)
         => McpJson.Run(() =>
         {
+            // A misspelled outcome must not read as "no such records".
+            var outcomeFilter = string.IsNullOrWhiteSpace(outcome)
+                ? (Audit.AuditOutcome?)null
+                : ParseName<Audit.AuditOutcome>(outcome, "outcome");
+            var fromDay = ParseDay(from, "from");
+            var toDay = ParseDay(to, "to");
+            if (fromDay > toDay)
+            {
+                throw new ArgumentException("'from' is after 'to'.");
+            }
+
             var records = _auditLog.Read().Where(record =>
                 (string.IsNullOrWhiteSpace(search) || Contains(record.Operation, search) || Contains(record.Target, search)) &&
-                (string.IsNullOrWhiteSpace(outcome) ||
-                 string.Equals(record.Outcome.ToString(), outcome.Trim(), StringComparison.OrdinalIgnoreCase)) &&
+                (outcomeFilter is null || record.Outcome == outcomeFilter) &&
+                (fromDay is null || DateOnly.FromDateTime(record.TimestampUtc.UtcDateTime) >= fromDay) &&
+                (toDay is null || DateOnly.FromDateTime(record.TimestampUtc.UtcDateTime) <= toDay) &&
                 (!changesOnly || (record.Kind != Audit.AuditKind.Read && !IsSessionOperation(record.Operation))) &&
                 (!connectedTenantOnly ||
                  string.Equals(record.TenantId, _session.TenantId, StringComparison.OrdinalIgnoreCase)));
-            return Page(records, limit, record => (object)new
+            return Page(records, limit, offset, record => (object)new
             {
                 record.TimestampUtc,
                 record.Operation,
@@ -253,8 +284,40 @@ internal sealed class TenantReadTools
         return sections;
     }
 
-    private static bool RowContains(JsonNode? row, string search)
-        => row is not null && row.ToJsonString().Contains(search.Trim(), StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// True when a value of the row contains the text. The values are compared as they are, not
+    /// as JSON text: JSON writes "+" and umlauts as escapes, so a phone number or "Zürich" would
+    /// never match there.
+    /// </summary>
+    internal static bool RowContains(JsonNode? row, string search)
+    {
+        var wanted = search.Trim();
+        return row switch
+        {
+            null => false,
+            JsonObject item => item.Any(property => RowContains(property.Value, wanted)),
+            JsonArray array => array.Any(element => RowContains(element, wanted)),
+            JsonValue value => (value.TryGetValue<string>(out var text) ? text : value.ToJsonString())
+                .Contains(wanted, StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
+    }
+
+    /// <summary>Reads an enum value by its name. A number or an unknown name is an error that lists the names.</summary>
+    private static T ParseName<T>(string value, string parameter) where T : struct, Enum
+        => !int.TryParse(value.Trim(), out _) && Enum.TryParse<T>(value.Trim(), ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : throw new ArgumentException(
+                $"'{value}' is not a valid {parameter}. Valid values: " +
+                string.Join(", ", Enum.GetNames<T>().Select(name => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(name))) + ".");
+
+    private static DateOnly? ParseDay(string? value, string parameter)
+        => string.IsNullOrWhiteSpace(value)
+            ? null
+            : DateOnly.TryParseExact(value.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var day)
+                ? day
+                : throw new ArgumentException($"'{value}' is not a date for '{parameter}'. Use yyyy-MM-dd, for example 2026-03-01.");
 
     private static object DescribeAccount(ILookup<string, TopologyResourceAccount> accounts, string objectId)
     {
@@ -278,16 +341,22 @@ internal sealed class TenantReadTools
         => string.IsNullOrWhiteSpace(search) ||
            (value?.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase) ?? false);
 
-    private static object Page<T>(IEnumerable<T> source, int limit, Func<T, object> project)
+    private static object Page<T>(IEnumerable<T> source, int limit, int offset, Func<T, object> project, DateTimeOffset? retrievedAtUtc = null)
     {
         var all = source.ToList();
         var take = Math.Clamp(limit <= 0 ? DefaultLimit : limit, 1, MaxLimit);
+        var skip = Math.Max(0, offset);
+        var rows = all.Skip(skip).Take(take).ToList();
+        var more = all.Count > skip + rows.Count;
         return new
         {
+            retrievedAtUtc,
             total = all.Count,
-            returned = Math.Min(take, all.Count),
-            truncated = all.Count > take,
-            rows = all.Take(take).Select(project)
+            offset = skip,
+            returned = rows.Count,
+            truncated = more,
+            nextOffset = more ? skip + rows.Count : (int?)null,
+            rows = rows.Select(project)
         };
     }
 }

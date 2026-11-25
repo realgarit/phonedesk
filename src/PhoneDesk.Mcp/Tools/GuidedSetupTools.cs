@@ -14,7 +14,6 @@ internal sealed class GuidedSetupTools
     private readonly GuidedSetupScriptFactory _scripts;
     private readonly ChangeGate _changes;
     private readonly CreatedObjectGuard _guard;
-    private readonly IValidationService _validation;
     private readonly IDryRunPlanBuilder _planBuilder;
     private readonly IDryRunPlanExporter _planExporter;
     private readonly TenantConnectionService _connection;
@@ -25,7 +24,6 @@ internal sealed class GuidedSetupTools
         GuidedSetupScriptFactory scripts,
         ChangeGate changes,
         CreatedObjectGuard guard,
-        IValidationService validation,
         IDryRunPlanBuilder planBuilder,
         IDryRunPlanExporter planExporter,
         TenantConnectionService connection)
@@ -35,7 +33,6 @@ internal sealed class GuidedSetupTools
         _scripts = scripts;
         _changes = changes;
         _guard = guard;
-        _validation = validation;
         _planBuilder = planBuilder;
         _planExporter = planExporter;
         _connection = connection;
@@ -46,18 +43,18 @@ internal sealed class GuidedSetupTools
     public string Status() => McpJson.Run(() =>
     {
         var variables = _store.Variables;
-        var validation = _validation.ValidateVariables(variables);
+        var problems = _store.Problems();
         return new
         {
             connected = _connection.IsReady,
-            configurationValid = validation.IsValid,
-            configurationProblems = validation.Issues.Select(issue => issue.Message),
+            configurationValid = problems.Count == 0,
+            configurationProblems = problems.Select(problem => problem.Message),
             nextStep = _progress.NextStep,
             allCompleted = _progress.AllCompleted,
             steps = GuidedSetupProgress.Steps.Select(step =>
             {
                 var state = _progress.Get(step.Step);
-                var script = _scripts.GetProvisioningScript(step.Step, variables);
+                var script = ScriptFor(step.Step, variables);
                 return new
                 {
                     step = step.Step,
@@ -88,12 +85,7 @@ internal sealed class GuidedSetupTools
         {
             var state = _progress.Get(step);
             var variables = _store.Variables;
-            var validation = _validation.ValidateVariables(variables);
-            if (!validation.IsValid)
-            {
-                throw new InvalidOperationException(
-                    "The configuration is not valid: " + string.Join(" ", validation.Issues.Select(issue => issue.Message)));
-            }
+            _store.RequireUsable();
 
             if (!_progress.CanRun(step))
             {
@@ -101,7 +93,7 @@ internal sealed class GuidedSetupTools
                     $"Step {step} cannot run yet. Complete or skip step {_progress.NextStep} first.");
             }
 
-            var script = _scripts.GetProvisioningScript(step, variables);
+            var script = ScriptFor(step, variables);
             var definition = GuidedSetupProgress.Steps.First(item => item.Step == step);
             var created = CreatedObjectFor((GuidedSetupStep)step, variables);
             var lateErrorCheck = created is { Type: TenantObjectType.AutoAttendant }
@@ -167,6 +159,18 @@ internal sealed class GuidedSetupTools
         _progress.Reset();
         return new { success = true, nextStep = _progress.NextStep };
     });
+
+    /// <summary>
+    /// The script of a step. The call queue step gets the agent group check in front of it, so it
+    /// cannot take the group of an earlier step that was run for another configuration.
+    /// </summary>
+    private string ScriptFor(int step, ConfigurationDocumentVariables variables)
+    {
+        var script = _scripts.GetProvisioningScript(step, variables);
+        return (GuidedSetupStep)step == GuidedSetupStep.CreateCallQueue
+            ? AgentGroupCheck.InFrontOf(script, variables.M365Group)
+            : script;
+    }
 
     /// <summary>The object a step works on, for the plan, the result and the audit log.</summary>
     private static string TargetFor(GuidedSetupStep step, ConfigurationDocumentVariables variables)

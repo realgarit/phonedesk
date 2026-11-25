@@ -18,15 +18,18 @@ internal sealed class DeleteTools
     private readonly IPowerShellCommandService _commands;
     private readonly ChangeGate _changes;
     private readonly CreatedObjectGuard _guard;
+    private readonly TenantGateway _tenant;
 
     public DeleteTools(
         IPowerShellCommandService commands,
         ChangeGate changes,
-        CreatedObjectGuard guard)
+        CreatedObjectGuard guard,
+        TenantGateway tenant)
     {
         _commands = commands;
         _changes = changes;
         _guard = guard;
+        _tenant = tenant;
     }
 
     [McpServerTool(Name = "delete_call_queue", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
@@ -75,7 +78,19 @@ internal sealed class DeleteTools
         // The group is deleted by its object ID, so the ID is what the guard checks.
         => DeleteAsync(TenantObjectType.M365Group, groupId, "RemoveM365Group",
             key => _commands.GetRemoveM365GroupCommand(key, ProvisioningTools.Require(groupName, "group name")),
-            $"Delete Microsoft 365 group '{groupName}' ({groupId}).", planId, cancellationToken);
+            $"Delete Microsoft 365 group '{groupName}' ({groupId}).", planId, cancellationToken,
+            async (id, token) =>
+            {
+                // The plan shows the name, the script deletes by ID: both must be the same group.
+                var wanted = ProvisioningTools.Require(groupName, "group name");
+                var group = (await _tenant.GetTopologyAsync(refresh: true, token)).Groups
+                    .FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.OrdinalIgnoreCase));
+                if (group is not null && !string.Equals(group.DisplayName?.Trim(), wanted, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"The group with ID {id} is named '{group.DisplayName}', not '{wanted}'. Nothing was deleted. Check the ID with list_m365_groups.");
+                }
+            });
 
     [McpServerTool(Name = "release_phone_number", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = true)]
     [Description("Removes an unassigned Direct Routing phone number from the tenant's number inventory. A number from an operator or from Microsoft is never released. A Direct Routing number that assign_phone_number added stays in the inventory after its resource account is deleted; this removes it. An assigned number is never released." + DeleteNote)]

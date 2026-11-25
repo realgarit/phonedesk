@@ -64,11 +64,27 @@ internal sealed class HealthAndBackupTools
     [McpServerTool(Name = "health_finding_set_suppressed", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Hides one health-check finding for the connected tenant, or shows it again. Use it for a finding the operator has accepted. This is a local preference shared with the desktop app; the tenant is not touched.")]
     public string SetFindingSuppressed(
-        [Description("Finding ID from run_health_check.")] string findingId,
+        [Description("The findingId of a finding from run_health_check, exactly as given there.")] string findingId,
         [Description("True to hide the finding, false to show it again.")] bool suppressed)
         => McpJson.Run(() =>
         {
             _tenant.RequireReady();
+
+            // Only a finding of the last check can be hidden or shown: any other text (a rule ID, an
+            // object name) would be saved, report success and hide nothing.
+            var id = (findingId ?? string.Empty).Trim();
+            var last = _healthCheck.ReevaluateLastRun()
+                ?? throw new InvalidOperationException("There is no health check of this session yet. Call run_health_check first and use a findingId from its result.");
+            var known = (suppressed ? last.ActiveFindings.Concat(last.SuppressedFindings) : last.SuppressedFindings)
+                .Any(finding => string.Equals(finding.FindingId, id, StringComparison.Ordinal));
+            if (!known)
+            {
+                throw new ArgumentException(suppressed
+                    ? $"'{id}' is not a finding of the last health check. Use a findingId from run_health_check (not a rule ID or an object name)."
+                    : $"'{id}' is not a hidden finding of the last health check. See suppressedFindings in run_health_check.");
+            }
+
+            findingId = id;
             if (!_healthCheck.SetFindingSuppressed(findingId, suppressed))
             {
                 throw new InvalidOperationException("The preference could not be saved.");
@@ -82,11 +98,31 @@ internal sealed class HealthAndBackupTools
     public Task<string> BackupTenant(CancellationToken cancellationToken)
         => McpJson.RunAsync(async () => new { success = true, backup = await _tenant.BackupAsync(cancellationToken) });
 
+    [McpServerTool(Name = "list_backups", ReadOnly = true, Idempotent = true, OpenWorld = false)]
+    [Description("Lists the snapshot files of the connected tenant on this computer, newest first, with the time each one was read from the tenant. Use a 'file' value with compare_with_backup to compare the tenant with an older state, for example the one from before yesterday's changes. Reads local files only.")]
+    public string ListBackups() => McpJson.Run(() =>
+    {
+        _tenant.RequireReady();
+        var sessionBackup = _tenant.SessionBackupFile;
+        return new
+        {
+            tenantId = _tenant.TenantId,
+            backups = _tenant.ListBackupFiles().Select(file => new
+            {
+                file,
+                takenUtc = BackupTime(file),
+                sizeBytes = new FileInfo(file).Length,
+                writtenBeforeTheFirstChangeOfThisSession = string.Equals(file, sessionBackup, StringComparison.OrdinalIgnoreCase)
+            })
+        };
+    });
+
     [McpServerTool(Name = "compare_with_backup", ReadOnly = true, Idempotent = true, OpenWorld = true)]
-    [Description("Reads the live tenant again and compares it with a snapshot file: lists every object and property that was added, removed or changed since the snapshot. Without a file it uses the newest backup of the connected tenant. Read-only.")]
+    [Description("Reads the live tenant again and compares it with a snapshot file: lists every object and property that was added, removed or changed since the snapshot. Without a file it uses the newest backup of the connected tenant, which can be one this session wrote; list_backups shows the older ones. Read-only.")]
     public Task<string> CompareWithBackup(
-        [Description("Full path of a snapshot file. Omit to use the newest backup of this tenant.")] string? file = null,
-        [Description("Maximum number of differences to return (default 100).")] int limit = 100,
+        [Description("Full path of a snapshot file, from list_backups. Omit to use the newest backup of this tenant.")] string? file = null,
+        [Description("Maximum number of differences to return (default 100, at most 1000).")] int limit = 100,
+        [Description("Number of differences to skip, to read the next part of a long list.")] int offset = 0,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
@@ -102,14 +138,17 @@ internal sealed class HealthAndBackupTools
             var live = await _tenant.CollectSnapshotAsync(cancellationToken);
             var drift = _tenantAsCode.CompareTopology(snapshot, live);
             var take = Math.Clamp(limit <= 0 ? 100 : limit, 1, 1000);
+            var skip = Math.Max(0, offset);
             return new
             {
                 comparedFile = path,
                 snapshotTakenUtc = snapshot.RetrievedAtUtc,
                 liveReadUtc = live.RetrievedAtUtc,
                 differenceCount = drift.Count,
-                truncated = drift.Count > take,
-                differences = drift.Take(take)
+                offset = skip,
+                truncated = drift.Count > skip + take,
+                nextOffset = drift.Count > skip + take ? skip + take : (int?)null,
+                differences = drift.Skip(skip).Take(take)
             };
         });
 
@@ -120,6 +159,18 @@ internal sealed class HealthAndBackupTools
         _tenant.RequireReady();
         return new { tenantId = _tenant.TenantId, objects = _ledger.List(_tenant.TenantId) };
     });
+
+    /// <summary>The UTC time in a backup file name (phonedesk-topology-yyyyMMddTHHmmssZ.json), or null for another name.</summary>
+    private static DateTimeOffset? BackupTime(string file)
+    {
+        var name = Path.GetFileNameWithoutExtension(file);
+        const string prefix = "phonedesk-topology-";
+        return name.StartsWith(prefix, StringComparison.Ordinal) && DateTimeOffset.TryParseExact(
+            name[prefix.Length..], "yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var time)
+            ? time
+            : null;
+    }
 
     private static object? DescribeOrNull(HealthCheckReport? report) => report is null ? null : Describe(report);
 

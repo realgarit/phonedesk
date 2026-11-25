@@ -58,6 +58,7 @@ internal static class ServiceRegistration
         services.AddSingleton<CreatedObjectLedger>();
         services.AddSingleton<GuidedSetupProgress>();
         services.AddSingleton<TenantGateway>();
+        services.AddSingleton<IBundledModuleVersionService, BundledModuleVersionService>();
         services.AddSingleton<ChangeGate>();
         services.AddSingleton<CreatedObjectGuard>();
 

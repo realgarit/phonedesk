@@ -6,6 +6,9 @@ using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Mcp;
 
+/// <summary>One reason the configuration cannot be used for provisioning yet.</summary>
+internal sealed record ConfigurationProblem(string Code, string Message);
+
 /// <summary>
 /// The configuration the provisioning tools work from. It is the same JSON document the desktop
 /// app exports. The server saves it after every change, because an AI client starts a new server
@@ -14,13 +17,15 @@ namespace PhoneDesk.Mcp;
 internal sealed class ConfigurationStore
 {
     private readonly ITenantAsCodeService _tenantAsCode;
+    private readonly IValidationService _validation;
     private readonly McpEnvironment _environment;
     private readonly Lock _gate = new();
     private ConfigurationDocument _document;
 
-    public ConfigurationStore(ITenantAsCodeService tenantAsCode, McpEnvironment environment)
+    public ConfigurationStore(ITenantAsCodeService tenantAsCode, IValidationService validation, McpEnvironment environment)
     {
         _tenantAsCode = tenantAsCode;
+        _validation = validation;
         _environment = environment;
         _document = LoadSaved() ?? CreateDefault();
     }
@@ -40,10 +45,52 @@ internal sealed class ConfigurationStore
 
     public string ToJson() => _tenantAsCode.SerializeConfiguration(Document);
 
+    /// <summary>
+    /// Everything that keeps the configuration from being used for provisioning: the validation the
+    /// desktop app runs before Guided Setup, values that are not valid, and choices that are not
+    /// complete (see <see cref="ConfigurationChecks"/>). Empty when provisioning can start.
+    /// </summary>
+    public IReadOnlyList<ConfigurationProblem> Problems()
+    {
+        var document = Document;
+        var variables = new ConfigurationDocumentVariables(document);
+        return _validation.ValidateVariables(variables).Issues
+            .Select(issue => new ConfigurationProblem(issue.Code.ToString(), issue.Message))
+            .Concat(ConfigurationChecks.FindInvalidValues(document.Configuration)
+                .Select(message => new ConfigurationProblem("InvalidValue", message)))
+            .Concat(ConfigurationChecks.FindIncompleteChoices(variables)
+                .Select(message => new ConfigurationProblem("IncompleteChoice", message)))
+            .ToList();
+    }
+
+    /// <summary>Values that are outside the known lists but can still be right.</summary>
+    public IReadOnlyList<string> Warnings() => ConfigurationChecks.FindUnknownValues(Document.Configuration);
+
+    /// <summary>Stops a provisioning tool while the configuration has problems.</summary>
+    public void RequireUsable()
+    {
+        var problems = Problems();
+        if (problems.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "The configuration is not valid: " + string.Join(" ", problems.Select(problem => problem.Message)));
+        }
+    }
+
     /// <summary>Replaces the whole configuration with a schema-v1 configuration document.</summary>
     public IReadOnlyList<ConfigurationChange> Replace(string json)
     {
         var imported = _tenantAsCode.DeserializeConfiguration(json);
+
+        // A value the script builders would silently treat as something else is refused here.
+        // A saved configuration is not checked when it is loaded, so an old file still opens;
+        // its problems show in configuration_get.
+        var invalid = ConfigurationChecks.FindInvalidValues(imported.Configuration);
+        if (invalid.Count > 0)
+        {
+            throw new InvalidDataException("Nothing was changed. " + string.Join(" ", invalid));
+        }
+
         return Set(imported);
     }
 

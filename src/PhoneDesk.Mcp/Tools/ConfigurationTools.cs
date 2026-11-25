@@ -14,13 +14,11 @@ namespace PhoneDesk.Mcp.Tools;
 internal sealed class ConfigurationTools
 {
     private readonly ConfigurationStore _store;
-    private readonly IValidationService _validation;
     private readonly McpEnvironment _environment;
 
-    public ConfigurationTools(ConfigurationStore store, IValidationService validation, McpEnvironment environment)
+    public ConfigurationTools(ConfigurationStore store, McpEnvironment environment)
     {
         _store = store;
-        _validation = validation;
         _environment = environment;
     }
 
@@ -29,10 +27,36 @@ internal sealed class ConfigurationTools
     public string Get() => McpJson.Run(Describe);
 
     [McpServerTool(Name = "configuration_update", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Changes single configuration values. Local only; the tenant is not touched. 'changes' maps a path to its new JSON value, for example {\"general.customer\": \"contoso\", \"general.customerGroupName\": \"reception\", \"businessHoursTemplate.openingHours1Start\": \"08:00:00\"}. Use configuration_get to see every path and the current values. Arrays such as businessHoursTemplate.weeklySchedule and holidayTemplate.series are replaced as a whole.")]
+    [Description("Changes single configuration values. Local only; the tenant is not touched. 'changes' maps a path to its new JSON value, for example {\"general.customer\": \"contoso\", \"general.customerGroupName\": \"reception\", \"businessHoursTemplate.openingHours1Start\": \"08:00:00\"}. Use configuration_get to see every path and the current values, and configuration_options for the values that take one of a fixed set of texts (actions, greeting types) and for known languages, time zones and countries. A value outside a fixed set is refused and nothing is changed. Set an action and its target in the same call. Arrays such as businessHoursTemplate.weeklySchedule and holidayTemplate.series are replaced as a whole.")]
     public string Update(
         [Description("Map of configuration path to new JSON value.")] Dictionary<string, JsonElement> changes)
         => McpJson.Run(() => WithChanges(_store.Patch(changes)));
+
+    [McpServerTool(Name = "configuration_options", ReadOnly = true, Idempotent = true, OpenWorld = false)]
+    [Description("Lists the configuration values that take one of a set of texts, with the valid texts in their exact spelling: greeting types, music on hold, the overflow, timeout and no-agent actions of the call queue, the actions of the auto attendant, and the known languages, time zones, usage locations and phone number types. 'closed' is true when no other text is accepted. Also gives the number limits. Read it before you set one of these values; never guess a spelling.")]
+    public string Options() => McpJson.Run(() => new
+    {
+        options = ConfigurationChecks.Options.Select(option => new
+        {
+            path = option.Path,
+            meaning = option.Meaning,
+            closed = option.Closed,
+            values = option.Values
+        }),
+        limits = new object[]
+        {
+            new { path = "callQueueTemplate.timeoutThreshold", unit = "seconds", minimum = PhoneDesk.Services.ConstantsService.CallQueue.MinTimeoutThreshold, usedWhenEmpty = PhoneDesk.Services.ConstantsService.CallQueue.TimeoutThreshold },
+            new { path = "callQueueTemplate.overflowThreshold", unit = "calls", minimum = 0, usedWhenEmpty = PhoneDesk.Services.ConstantsService.CallQueue.OverflowThreshold }
+        },
+        rules = new[]
+        {
+            "An action TransferToTarget or TransferToVoicemail needs its target (the same path with 'Target' added). Without a target the call would be disconnected, so the configuration is not valid until the target is set.",
+            "TransferToVoicemail takes the object ID of a Microsoft 365 group (shared voicemail). Use lookup_m365_group_id to read it.",
+            "A greeting type AudioFile needs the audio file ID (import_audio_file); TextToSpeech needs the prompt text.",
+            "A holiday entry has both endDate and endTime, or neither.",
+            "In businessHoursTemplate.weeklySchedule the second time range of a day is used only when hasSecondRange is true."
+        }
+    });
 
     [McpServerTool(Name = "configuration_replace", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Replaces the whole configuration with a PhoneDesk configuration document (schemaVersion 1, kind 'phonedesk.configuration'), the same JSON the desktop app exports. Local only.")]
@@ -238,13 +262,14 @@ internal sealed class ConfigurationTools
     private object WithChanges(object changes)
     {
         var description = Describe();
-        return new { applied = true, changes, computedNames = description.ComputedNames, validation = description.Validation };
+        return new { applied = true, changes, computedNames = description.ComputedNames, validation = description.Validation, warnings = description.Warnings };
     }
 
     private ConfigurationDescription Describe()
     {
         var variables = _store.Variables;
-        var validation = _validation.ValidateVariables(variables);
+        var problems = _store.Problems();
+        var warnings = _store.Warnings();
         return new ConfigurationDescription(
             JsonNode.Parse(_store.ToJson())!,
             new
@@ -260,10 +285,11 @@ internal sealed class ConfigurationTools
             },
             new
             {
-                valid = validation.IsValid,
-                problems = validation.Issues.Select(issue => new { code = issue.Code, message = issue.Message })
-            });
+                valid = problems.Count == 0,
+                problems = problems.Select(problem => new { code = JsonNamingPolicy.CamelCase.ConvertName(problem.Code), message = problem.Message })
+            },
+            warnings.Count == 0 ? null : warnings);
     }
 
-    private sealed record ConfigurationDescription(JsonNode Document, object ComputedNames, object Validation);
+    private sealed record ConfigurationDescription(JsonNode Document, object ComputedNames, object Validation, IReadOnlyList<string>? Warnings);
 }

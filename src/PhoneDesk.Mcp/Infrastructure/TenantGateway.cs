@@ -27,6 +27,7 @@ internal sealed class TenantGateway
     private string? _latestSnapshotTenantId;
     private TopologySnapshotDocument? _latestSnapshot;
     private TopologySnapshotDocument? _baseline;
+    private bool _latestSnapshotOutdated;
 
     public TenantGateway(
         ITenantCommandRunner runner,
@@ -105,8 +106,27 @@ internal sealed class TenantGateway
         return topology;
     }
 
+    /// <summary>
+    /// The latest snapshot, or null when a change ran after it was read. Reads that must show the
+    /// tenant as it is now use this; the backup and the baseline keep the older snapshot.
+    /// </summary>
+    public TopologySnapshotDocument? CurrentSnapshot => _latestSnapshotOutdated ? null : LatestSnapshot;
+
     /// <summary>Forgets the cached topology after a change, so the next read shows the new state.</summary>
-    public void InvalidateTopology() => _topologyCache.Clear();
+    public void InvalidateTopology()
+    {
+        _topologyCache.Clear();
+        _latestSnapshotOutdated = true;
+    }
+
+    /// <summary>Forgets what was read from the tenant, after a sign-out. The backup files and the baseline stay.</summary>
+    public void ForgetReads()
+    {
+        _topologyCache.Clear();
+        _latestSnapshot = null;
+        _latestSnapshotTenantId = null;
+        _latestSnapshotOutdated = false;
+    }
 
     public async Task<TopologySnapshotDocument> CollectSnapshotAsync(CancellationToken cancellationToken)
     {
@@ -116,6 +136,7 @@ internal sealed class TenantGateway
             (command, operation) => ReadAsync(command, operation, cancellationToken));
         _latestSnapshotTenantId = tenantId;
         _latestSnapshot = snapshot;
+        _latestSnapshotOutdated = false;
         return snapshot;
     }
 
@@ -169,13 +190,22 @@ internal sealed class TenantGateway
     }
 
     /// <summary>The newest backup file of the connected tenant, or null when there is none.</summary>
-    public string? FindLatestBackupFile()
+    public string? FindLatestBackupFile() => ListBackupFiles().FirstOrDefault();
+
+    /// <summary>The backup files of the connected tenant, newest first. The file name carries the UTC time of the read.</summary>
+    public IReadOnlyList<string> ListBackupFiles()
     {
         var directory = _environment.BackupDirectory(TenantId);
         return Directory.Exists(directory)
             ? Directory.EnumerateFiles(directory, "phonedesk-topology-*.json")
                 .OrderByDescending(file => file, StringComparer.Ordinal)
-                .FirstOrDefault()
-            : null;
+                .ToList()
+            : Array.Empty<string>();
     }
+
+    /// <summary>The backup this session wrote before its first change, when there is one.</summary>
+    public string? SessionBackupFile
+        => _sessionBackup is not null && string.Equals(_sessionBackupTenantId, TenantId, StringComparison.OrdinalIgnoreCase)
+            ? _sessionBackup.File
+            : null;
 }

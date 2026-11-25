@@ -14,7 +14,7 @@ with the app; there is nothing extra to download.
 | Area | Tools |
 | --- | --- |
 | Session | `session_status`, `check_modules`, `connect_teams`, `connect_graph`, `disconnect` |
-| Configuration (local) | `configuration_get`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays` |
+| Configuration (local) | `configuration_get`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays`, `swiss_holidays_apply` |
 | Read the tenant | `tenant_overview`, `list_auto_attendants`, `list_call_queues`, `list_resource_accounts`, `list_m365_groups`, `tenant_details`, `audit_history` |
 | Health check | `run_health_check`, `health_rules`, `health_rule_set`, `health_finding_set_suppressed` |
 | Backup and comparison | `backup_tenant`, `compare_with_backup`, `created_objects` |
@@ -32,6 +32,13 @@ to the inventory, and releases only such a number. An assigned number, and a num
 Graph for some seconds, and complete on a second run. The server records every object a run
 created from that object's own line in the output, also when the run failed later, so
 `created_objects` lists the objects of all runs.
+
+`swiss_holidays` lists the public holidays of a Swiss canton and year, and `swiss_holidays_apply`
+writes them to the holiday entries of the configuration, like the holiday picker of the desktop app.
+In Aargau, Fribourg and Solothurn the holidays depend on the region. Without a region both tools
+return the regions of the canton and the localities each one covers, and write nothing. An unknown
+region is an error; the server never falls back to a shorter list. The years are 2025 to 2030, and
+`includeAdditionalRestDays: false` leaves out the additional cantonal rest days.
 
 The desktop Tenant Report is not a separate tool. `tenant_details` returns the same data in
 structured form, and the AI client writes the report in the language and layout you ask for.

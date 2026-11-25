@@ -93,6 +93,22 @@ internal sealed class ConfigurationStore
         return Replace(root.ToJsonString());
     }
 
+    /// <summary>Replaces the holiday entries and leaves every other value as it is.</summary>
+    public IReadOnlyList<ConfigurationChange> SetHolidaySeries(IReadOnlyList<PortableHolidayEntry> series)
+    {
+        var current = Document;
+        var next = current with
+        {
+            Configuration = current.Configuration with
+            {
+                HolidayTemplate = current.Configuration.HolidayTemplate with { Series = series }
+            }
+        };
+
+        // Through the serializer, so the same checks apply as for every other change.
+        return Replace(_tenantAsCode.SerializeConfiguration(next));
+    }
+
     private static string ResolveKey(JsonObject parent, string segment, string path)
     {
         foreach (var property in parent)

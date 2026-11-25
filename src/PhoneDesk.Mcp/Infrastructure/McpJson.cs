@@ -49,6 +49,14 @@ internal static class McpJson
         }
     }
 
+    /// <summary>Adds one value to a result and keeps the fields of the result where they are.</summary>
+    public static object With(object result, string name, object? value)
+    {
+        var node = JsonSerializer.SerializeToNode(result, Options)!.AsObject();
+        node[name] = JsonSerializer.SerializeToNode(value, Options);
+        return node;
+    }
+
     /// <summary>Keeps long script output inside a size an AI client can read.</summary>
     public static string? Truncate(string? value, int maxLength = 6000)
         => string.IsNullOrEmpty(value) || value.Length <= maxLength

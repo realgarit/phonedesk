@@ -18,6 +18,7 @@ EXPECTED_TOOLS = {
     "configuration_get", "configuration_update", "tenant_overview", "run_health_check",
     "backup_tenant", "compare_with_backup", "guided_setup_status", "guided_setup_run_step",
     "create_call_queue", "create_auto_attendant", "delete_call_queue", "bulk_setup", "audit_history",
+    "list_holiday_schedules", "holiday_call_handling", "copy_holiday_call_handling",
 }
 
 

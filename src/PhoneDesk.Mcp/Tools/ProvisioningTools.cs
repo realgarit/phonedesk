@@ -23,6 +23,8 @@ internal sealed class ProvisioningTools
     private readonly TenantGateway _tenant;
     private readonly CreatedObjectGuard _guard;
     private readonly CreatedObjectLedger _ledger;
+    private readonly HolidayCallHandlingReader _holidays;
+    private readonly TimeProvider _time;
 
     public ProvisioningTools(
         ConfigurationStore store,
@@ -30,8 +32,12 @@ internal sealed class ProvisioningTools
         ChangeGate changes,
         TenantGateway tenant,
         CreatedObjectGuard guard,
-        CreatedObjectLedger ledger)
+        CreatedObjectLedger ledger,
+        HolidayCallHandlingReader holidays,
+        TimeProvider time)
     {
+        _holidays = holidays;
+        _time = time;
         _store = store;
         _commands = commands;
         _changes = changes;
@@ -307,11 +313,12 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "attach_holiday_schedule", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Attaches a holiday schedule to an auto attendant with a spoken greeting, so callers hear the greeting on those dates." + ChangeNote)]
+    [Description("Attaches a holiday schedule to an auto attendant with a spoken greeting, after which the call ends: callers hear the greeting on those dates. For another call handling (audio file, transfer, voicemail, no greeting) copy the call handling of an existing schedule with copy_holiday_call_handling. The first call reads the auto attendant and refuses the plan when Teams would not save it: a holiday that starts at the same time, an overlap the user did not accept, the call flow limit, or authorized users that no longer exist. A schedule that is attached already is reported and not attached again. After the save the server reads the auto attendant again and reports whether the schedule is attached and whether Teams holds the greeting exactly as it was sent." + ChangeNote)]
     public Task<string> AttachHolidaySchedule(
         [Description("Holiday schedule name. Omit to use the configuration.")] string? holidayName = null,
         [Description("Auto attendant name. Omit to use the configuration.")] string? autoAttendantName = null,
         [Description("Greeting text read to callers on a holiday. Omit to use the configuration.")] string? greeting = null,
+        [Description("True when the user accepts that the schedule overlaps a holiday that is attached already. Two holidays that start at the same time are refused in every case.")] bool acceptOverlaps = false,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
@@ -320,13 +327,103 @@ internal sealed class ProvisioningTools
             var schedule = Pick(holidayName, variables.HolidayName, "holiday schedule name");
             var attendant = Pick(autoAttendantName, variables.AaDisplayName, "auto attendant name");
             var prompt = Require(greeting ?? variables.HolidayGreetingPromptDE, "holiday greeting");
-            return await _changes.PlanOrApplyAsync(
+
+            // The script finds both objects by name and takes what it finds. The checks need the IDs.
+            var (attendantId, _) = await _holidays.ResolveAutoAttendantAsync(attendant, cancellationToken);
+            var before = await _holidays.ReadAsync(new[] { attendantId }, true, true, cancellationToken);
+            var named = before.Schedules
+                .Where(item => string.Equals(item.Name.Trim(), schedule, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (named.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No schedule is named '{schedule}'. Create it first (create_holiday_schedule); list_holiday_schedules shows the schedules of the tenant.");
+            }
+
+            if (named.Count > 1)
+            {
+                throw new InvalidOperationException(
+                    $"{named.Count} schedules are named '{schedule}' ({string.Join(", ", named.Select(item => item.Id))}), so the name does not say which one to attach. " +
+                    "Rename one of them in Teams first.");
+            }
+
+            var scheduleId = named[0].Id;
+            var assessment = HolidayCallHandling.AssessAttach(
+                before,
+                attendantId,
+                scheduleId,
+                acceptOverlaps,
+                HolidayCallHandlingTools.NowFor(_time, await _tenant.GetTopologyAsync(false, cancellationToken), attendantId));
+            var overlaps = assessment.Overlaps.Select(HolidayCallHandlingTools.OverlapView).ToList();
+            if (assessment.AlreadyAttached)
+            {
+                return new
+                {
+                    status = "alreadyAttached",
+                    success = true,
+                    note = $"Schedule '{schedule}' is attached to auto attendant '{attendant}' already. Nothing was changed.",
+                    verification = VerifyAttachedGreeting(before, attendantId, scheduleId, prompt)
+                };
+            }
+
+            if (assessment.Blockers.Count > 0)
+            {
+                return new
+                {
+                    status = "blocked",
+                    success = false,
+                    error = "The schedule cannot be attached: " + string.Join(" ", assessment.Blockers.Select(blocker => blocker.Message)),
+                    blockers = assessment.Blockers,
+                    overlaps,
+                    next = "Nothing was changed and no plan was made. Remove the cause or change the arguments, then call the tool again."
+                };
+            }
+
+            var applied = false;
+            var outcome = await _changes.PlanOrApplyAsync(
                 new ChangeRequest("AttachHolidayToAutoAttendant", attendant,
                     _commands.GetAttachHolidayToAutoAttendantCommand(schedule, attendant, prompt),
-                    $"Attach holiday schedule '{schedule}' to auto attendant '{attendant}'."),
+                    $"Attach holiday schedule '{schedule}' to auto attendant '{attendant}'.")
+                {
+                    OnSuccess = _ => applied = true,
+                    // The schedule was not attached before this call, so finding it attached proves the save.
+                    ChangeWasMadeDespiteError = async (_, token) =>
+                    {
+                        var after = await _holidays.ReadAsync(new[] { attendantId }, true, false, token);
+                        return after.FindAutoAttendant(attendantId)?.HolidayLinkFor(scheduleId) is not null;
+                    }
+                },
                 planId,
                 cancellationToken);
+            if (string.IsNullOrWhiteSpace(planId))
+            {
+                return overlaps.Count == 0 ? outcome : McpJson.With(outcome, "overlaps", overlaps);
+            }
+
+            if (!applied)
+            {
+                return outcome;
+            }
+
+            var saved = await _holidays.ReadAsync(new[] { attendantId }, true, false, cancellationToken);
+            return McpJson.With(outcome, "verification", VerifyAttachedGreeting(saved, attendantId, scheduleId, prompt));
         });
+
+    /// <summary>Compares the greeting Teams holds for the schedule with the greeting that was sent, character by character.</summary>
+    internal static object VerifyAttachedGreeting(HolidayCallHandlingState state, string attendantId, string scheduleId, string greeting)
+    {
+        var attendant = state.FindAutoAttendant(attendantId);
+        var link = attendant?.HolidayLinkFor(scheduleId);
+        var flow = link is null ? null : attendant!.FindCallFlow(link.CallFlowId);
+        var stored = flow?.Greetings.Select(item => item.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text));
+        return new
+        {
+            attached = link is not null,
+            greetingAsSent = link is not null && string.Equals(stored, greeting, StringComparison.Ordinal),
+            greetingInTeams = stored,
+            callHandling = HolidayCallHandling.Describe(flow)
+        };
+    }
 
     [McpServerTool(Name = "import_audio_file", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = true)]
     [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold. Teams removes an uploaded file by itself after 48 to 72 hours when no call queue or auto attendant uses it; it cannot be removed earlier." + ChangeNote)]

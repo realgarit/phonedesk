@@ -14,13 +14,11 @@ namespace PhoneDesk.Mcp.Tools;
 internal sealed class ConfigurationTools
 {
     private readonly ConfigurationStore _store;
-    private readonly IValidationService _validation;
     private readonly McpEnvironment _environment;
 
-    public ConfigurationTools(ConfigurationStore store, IValidationService validation, McpEnvironment environment)
+    public ConfigurationTools(ConfigurationStore store, McpEnvironment environment)
     {
         _store = store;
-        _validation = validation;
         _environment = environment;
     }
 
@@ -29,10 +27,36 @@ internal sealed class ConfigurationTools
     public string Get() => McpJson.Run(Describe);
 
     [McpServerTool(Name = "configuration_update", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Changes single configuration values. Local only; the tenant is not touched. 'changes' maps a path to its new JSON value, for example {\"general.customer\": \"contoso\", \"general.customerGroupName\": \"reception\", \"businessHoursTemplate.openingHours1Start\": \"08:00:00\"}. Use configuration_get to see every path and the current values. Arrays such as businessHoursTemplate.weeklySchedule and holidayTemplate.series are replaced as a whole.")]
+    [Description("Changes single configuration values. Local only; the tenant is not touched. 'changes' maps a path to its new JSON value, for example {\"general.customer\": \"contoso\", \"general.customerGroupName\": \"reception\", \"businessHoursTemplate.openingHours1Start\": \"08:00:00\"}. Use configuration_get to see every path and the current values, and configuration_options for the values that take one of a fixed set of texts (actions, greeting types) and for known languages, time zones and countries. A value outside a fixed set is refused and nothing is changed. Set an action and its target in the same call. Arrays such as businessHoursTemplate.weeklySchedule and holidayTemplate.series are replaced as a whole.")]
     public string Update(
         [Description("Map of configuration path to new JSON value.")] Dictionary<string, JsonElement> changes)
         => McpJson.Run(() => WithChanges(_store.Patch(changes)));
+
+    [McpServerTool(Name = "configuration_options", ReadOnly = true, Idempotent = true, OpenWorld = false)]
+    [Description("Lists the configuration values that take one of a set of texts, with the valid texts in their exact spelling: greeting types, music on hold, the overflow, timeout and no-agent actions of the call queue, the actions of the auto attendant, and the known languages, time zones, usage locations and phone number types. 'closed' is true when no other text is accepted. Also gives the number limits. Read it before you set one of these values; never guess a spelling.")]
+    public string Options() => McpJson.Run(() => new
+    {
+        options = ConfigurationChecks.Options.Select(option => new
+        {
+            path = option.Path,
+            meaning = option.Meaning,
+            closed = option.Closed,
+            values = option.Values
+        }),
+        limits = new object[]
+        {
+            new { path = "callQueueTemplate.timeoutThreshold", unit = "seconds", minimum = PhoneDesk.Services.ConstantsService.CallQueue.MinTimeoutThreshold, usedWhenEmpty = PhoneDesk.Services.ConstantsService.CallQueue.TimeoutThreshold },
+            new { path = "callQueueTemplate.overflowThreshold", unit = "calls", minimum = 0, usedWhenEmpty = PhoneDesk.Services.ConstantsService.CallQueue.OverflowThreshold }
+        },
+        rules = new[]
+        {
+            "An action TransferToTarget or TransferToVoicemail needs its target (the same path with 'Target' added). Without a target the call would be disconnected, so the configuration is not valid until the target is set.",
+            "TransferToVoicemail takes the object ID of a Microsoft 365 group (shared voicemail). Use lookup_m365_group_id to read it.",
+            "A greeting type AudioFile needs the audio file ID (import_audio_file); TextToSpeech needs the prompt text.",
+            "A holiday entry has both endDate and endTime, or neither.",
+            "In businessHoursTemplate.weeklySchedule the second time range of a day is used only when hasSecondRange is true."
+        }
+    });
 
     [McpServerTool(Name = "configuration_replace", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("Replaces the whole configuration with a PhoneDesk configuration document (schemaVersion 1, kind 'phonedesk.configuration'), the same JSON the desktop app exports. Local only.")]
@@ -82,7 +106,7 @@ internal sealed class ConfigurationTools
         });
 
     [McpServerTool(Name = "swiss_holidays", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
+    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Each holiday has a 'label' like the desktop app shows: an additional cantonal rest day is not a statutory holiday, although most businesses of the canton are closed, so name these days to the user and ask whether the customer is closed on them ('review' lists them). Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich, are not in the list; add them with configuration_update when the customer is closed. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
     public string SwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
@@ -104,12 +128,13 @@ internal sealed class ConfigurationTools
                 regionRequired = false,
                 completeness = HolidayResultCompleteness.Complete,
                 note = selection.Note,
+                review = Review(selection.Holidays),
                 holidays = selection.Holidays.Select(Describe)
             };
         });
 
     [McpServerTool(Name = "swiss_holidays_apply", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. It only adds: entries that are already there stay, and a date that is already there with the same time and name is not added twice. To remove entries, set holidayTemplate.series with configuration_update. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first.")]
+    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. It only adds: entries that are already there stay, and a date that is already there with the same time and name is not added twice. To remove entries, set holidayTemplate.series with configuration_update. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first, and ask about the additional cantonal rest days before you include them.")]
     public string ApplySwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
@@ -142,6 +167,7 @@ internal sealed class ConfigurationTools
                 year,
                 region = selection.Region?.Code,
                 note = selection.Note,
+                review = Review(added),
                 added = added.Select(Describe),
                 alreadyPresent = selection.Holidays.Count - added.Count,
                 holidayEntriesNow = series.Count,
@@ -212,8 +238,36 @@ internal sealed class ConfigurationTools
         date = DateOnly.FromDateTime(holiday.Date),
         time = TimeOnly.FromTimeSpan(holiday.Time),
         name = holiday.Name,
-        category = holiday.Category
+        category = holiday.Category,
+        label = Label(holiday.Category)
     };
+
+    /// <summary>The label the desktop holiday picker shows for a category (its English catalog text).</summary>
+    internal static string Label(HolidayCategory category) => category switch
+    {
+        HolidayCategory.Statutory => "Statutory holiday (Art. 20a ArG)",
+        HolidayCategory.AdditionalCantonalRestDay => "Additional cantonal rest day · confirm with customer",
+        HolidayCategory.SundayObservance => "Sunday observance",
+        _ => "Customer-specific / unclassified"
+    };
+
+    /// <summary>
+    /// Names the days the operator must confirm with the customer, as the desktop picker does with
+    /// its label and its "include additional cantonal rest days" switch. Null when there are none.
+    /// </summary>
+    private static object? Review(IReadOnlyList<HolidayDate> holidays)
+    {
+        var additional = holidays.Where(holiday => holiday.Category == HolidayCategory.AdditionalCantonalRestDay).ToList();
+        return additional.Count == 0
+            ? null
+            : new
+            {
+                additionalCantonalRestDays = additional.Select(holiday => new { date = DateOnly.FromDateTime(holiday.Date), name = holiday.Name }),
+                message = $"{additional.Count} of these days are additional cantonal rest days. They are not statutory holidays under Art. 20a ArG, " +
+                          "but the canton treats them as rest days and most businesses are closed. Confirm with the customer whether they are closed on them. " +
+                          "Use includeAdditionalRestDays=false to leave them out."
+            };
+    }
 
     /// <summary>A canton, year and region with its holidays; <see cref="Holidays"/> is null while a region is still needed.</summary>
     private sealed record HolidaySelection(
@@ -238,13 +292,14 @@ internal sealed class ConfigurationTools
     private object WithChanges(object changes)
     {
         var description = Describe();
-        return new { applied = true, changes, computedNames = description.ComputedNames, validation = description.Validation };
+        return new { applied = true, changes, computedNames = description.ComputedNames, validation = description.Validation, warnings = description.Warnings };
     }
 
     private ConfigurationDescription Describe()
     {
         var variables = _store.Variables;
-        var validation = _validation.ValidateVariables(variables);
+        var problems = _store.Problems();
+        var warnings = _store.Warnings();
         return new ConfigurationDescription(
             JsonNode.Parse(_store.ToJson())!,
             new
@@ -260,10 +315,11 @@ internal sealed class ConfigurationTools
             },
             new
             {
-                valid = validation.IsValid,
-                problems = validation.Issues.Select(issue => new { code = issue.Code, message = issue.Message })
-            });
+                valid = problems.Count == 0,
+                problems = problems.Select(problem => new { code = JsonNamingPolicy.CamelCase.ConvertName(problem.Code), message = problem.Message })
+            },
+            warnings.Count == 0 ? null : warnings);
     }
 
-    private sealed record ConfigurationDescription(JsonNode Document, object ComputedNames, object Validation);
+    private sealed record ConfigurationDescription(JsonNode Document, object ComputedNames, object Validation, IReadOnlyList<string>? Warnings);
 }

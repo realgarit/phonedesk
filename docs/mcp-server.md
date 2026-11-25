@@ -14,10 +14,10 @@ with the app; there is nothing extra to download.
 | Area | Tools |
 | --- | --- |
 | Session | `session_status`, `check_modules`, `connect_teams`, `connect_graph`, `disconnect` |
-| Configuration (local) | `configuration_get`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays`, `swiss_holidays_apply` |
+| Configuration (local) | `configuration_get`, `configuration_options`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays`, `swiss_holidays_apply` |
 | Read the tenant | `tenant_overview`, `list_auto_attendants`, `list_call_queues`, `list_resource_accounts`, `list_m365_groups`, `tenant_details`, `audit_history` |
 | Health check | `run_health_check`, `health_rules`, `health_rule_set`, `health_finding_set_suppressed` |
-| Backup and comparison | `backup_tenant`, `compare_with_backup`, `created_objects` |
+| Backup and comparison | `backup_tenant`, `list_backups`, `compare_with_backup`, `created_objects` |
 | Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset` |
 | Single operations | `create_m365_group`, `lookup_m365_group_id`, `create_resource_account`, `set_resource_account_usage_location`, `assign_resource_account_license`, `assign_phone_number`, `create_call_queue`, `create_auto_attendant`, `associate_resource_account`, `create_holiday_schedule`, `verify_auto_attendant`, `attach_holiday_schedule`, `import_audio_file` |
 | Bulk | `bulk_setup_template`, `bulk_setup` |
@@ -39,6 +39,43 @@ In Aargau, Fribourg and Solothurn the holidays depend on the region. Without a r
 return the regions of the canton and the localities each one covers, and write nothing. An unknown
 region is an error; the server never falls back to a shorter list. The years are 2025 to 2030, and
 `includeAdditionalRestDays: false` leaves out the additional cantonal rest days.
+
+Each holiday carries the label the desktop picker shows. An additional cantonal rest day is not a
+statutory holiday under Art. 20a ArG, but the canton treats it as a rest day and most businesses
+are closed. The result names these days in `review` and tells the client to confirm them with the
+customer. Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich,
+are in neither head; add them as own entries when the customer is closed.
+
+### Checks the desktop app does with its controls
+
+The desktop app keeps many values right through its controls: a dropdown offers only valid
+texts, a number box has a minimum, a delete button works on the selected row. An AI client sends
+free text, so the server checks these values itself:
+
+- **Fixed texts.** Greeting types, music on hold and the actions of the call queue and the auto
+  attendant take one of a fixed set of texts. `configuration_options` lists them. A change with
+  another text is refused and nothing is saved. Without this check the script would use another
+  behaviour (hang up, no greeting) and report success.
+- **Complete choices.** An action that transfers the call needs its target, and a greeting from
+  an audio file or from text needs the file ID or the text. While one is missing the
+  configuration is not valid, and `create_call_queue`, `create_auto_attendant` and the Guided
+  Setup steps do not run.
+- **Limits.** A call queue timeout under 30 seconds is refused, and a holiday entry has an end
+  date and an end time, or neither.
+- **Known values.** A language, time zone, usage location or phone number type outside the known
+  lists is saved, and the result carries a warning.
+- **Agent group of the call queue.** The call queue script reuses the group ID an earlier step
+  left in the PowerShell session. The server puts a check in front of the unchanged script, so
+  the ID is used only when it belongs to the group the configuration names.
+- **Resource accounts only.** Usage location, license and phone number go to a resource account:
+  the one of the configuration, one the server created, or one the tenant lists.
+- **Unknown filter values are errors.** A misspelled audit outcome, health finding ID or region
+  gives an error with the valid values, never an empty result.
+
+`tenant_details` reads the snapshot again after a change the server made, and every row list
+gives `retrievedAtUtc`. Long lists are read in parts with `offset` and `nextOffset`.
+`list_backups` shows every snapshot file of the tenant, so `compare_with_backup` can compare with
+an older state than the newest backup.
 
 The desktop Tenant Report is not a separate tool. `tenant_details` returns the same data in
 structured form, and the AI client writes the report in the language and layout you ask for.

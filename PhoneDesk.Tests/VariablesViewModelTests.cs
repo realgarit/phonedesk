@@ -22,6 +22,29 @@ namespace PhoneDesk.Tests
             harness.PowerShellCommandService.VerifyNoOtherCalls();
         }
 
+        /// <summary>
+        /// The MCP server checks configuration values against the lists in ConfigurationChecks,
+        /// because it has no dropdowns. Both heads must offer the same texts.
+        /// </summary>
+        [Fact]
+        public void OptionLists_AreTheOnesTheMcpServerChecksAgainst()
+        {
+            var vm = CreateViewModel(new ViewModelTestHarness());
+
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.GreetingTypes, vm.GreetingTypeOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.MusicOnHoldTypes, vm.MusicOnHoldTypeOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.QueueActions, vm.OverflowActionOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.QueueActions, vm.TimeoutActionOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.NoAgentActions, vm.NoAgentActionOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.VoicemailGreetingTypes, vm.VoicemailGreetingTypeOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.GreetingTypes, vm.AaGreetingTypeOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.AutoAttendantActions, vm.AaActionOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.Languages, VariablesViewModel.LanguageOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.TimeZones, VariablesViewModel.TimeZoneOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.UsageLocations, VariablesViewModel.UsageLocationOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.PhoneNumberTypes, VariablesViewModel.PhoneNumberTypeOptions);
+        }
+
         private static VariablesViewModel CreateViewModel(ViewModelTestHarness harness)
             => new VariablesViewModel(
                 harness.PowerShellContextService.Object,

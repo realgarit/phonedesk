@@ -22,19 +22,22 @@ internal sealed class ProvisioningTools
     private readonly ChangeGate _changes;
     private readonly TenantGateway _tenant;
     private readonly CreatedObjectGuard _guard;
+    private readonly CreatedObjectLedger _ledger;
 
     public ProvisioningTools(
         ConfigurationStore store,
         IPowerShellCommandService commands,
         ChangeGate changes,
         TenantGateway tenant,
-        CreatedObjectGuard guard)
+        CreatedObjectGuard guard,
+        CreatedObjectLedger ledger)
     {
         _store = store;
         _commands = commands;
         _changes = changes;
         _tenant = tenant;
         _guard = guard;
+        _ledger = ledger;
     }
 
     [McpServerTool(Name = "create_m365_group", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
@@ -54,7 +57,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "lookup_m365_group_id", ReadOnly = true, Idempotent = true, OpenWorld = true)]
-    [Description("Looks up the object ID of a Microsoft 365 group by name. With saveToConfiguration=true the ID is written to general.m365GroupId of the local configuration. Reads from the tenant only.")]
+    [Description("Looks up the object ID of a Microsoft 365 group by name. Use the ID as the target of a TransferToVoicemail action (shared voicemail), for example callQueueTemplate.timeoutActionTarget. With saveToConfiguration=true the ID is also written to general.m365GroupId of the local configuration, as a note; the call queue finds its agent group by name, not from this value. Reads from the tenant only.")]
     public Task<string> LookupM365GroupId(
         [Description("Group name. Omit to use the name computed from the configuration.")] string? name = null,
         [Description("True to store the ID in the local configuration.")] bool saveToConfiguration = false,
@@ -82,7 +85,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "create_resource_account", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Creates a Teams resource account for a call queue or an auto attendant. An existing account with the same UPN is reused." + ChangeNote)]
+    [Description("Creates a Teams resource account for a call queue or an auto attendant. An existing account with the same UPN is reused. A UPN without a domain gets the fallback domain of the configuration." + ChangeNote)]
     public Task<string> CreateResourceAccount(
         [Description("callQueue or autoAttendant.")] string kind,
         [Description("User principal name. Omit to use the one computed from the configuration.")] string? upn = null,
@@ -93,11 +96,12 @@ internal sealed class ProvisioningTools
         {
             var variables = _store.Variables;
             var isQueue = IsCallQueue(kind);
-            var accountUpn = Pick(upn, (isQueue ? variables.RacqUPN : variables.RaaaUPN), "UPN");
+            var accountUpn = CompleteUpn(Pick(upn, (isQueue ? variables.RacqUPN : variables.RaaaUPN), "UPN"), variables.MsFallbackDomain);
             var accountName = Pick(displayName, (isQueue ? variables.RacqDisplayName : variables.RaaaDisplayName), "display name");
+            var applicationId = Require(isQueue ? variables.CsAppCqId : variables.CsAppAaId, "application ID");
             var script = isQueue
-                ? _commands.GetCreateResourceAccountCommand(accountUpn, accountName, variables.CsAppCqId)
-                : _commands.GetCreateAutoAttendantResourceAccountCommand(accountUpn, accountName, variables.CsAppAaId);
+                ? _commands.GetCreateResourceAccountCommand(accountUpn, accountName, applicationId)
+                : _commands.GetCreateAutoAttendantResourceAccountCommand(accountUpn, accountName, applicationId);
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.ResourceAccount, accountUpn, "CreateResourceAccount", script,
                     $"Create the {(isQueue ? "call queue" : "auto attendant")} resource account '{accountUpn}'."),
@@ -106,7 +110,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "set_resource_account_usage_location", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Sets the usage location (two-letter country code) of a resource account. A license can be assigned only after this." + ChangeNote)]
+    [Description("Sets the usage location (two-letter country code) of a resource account. A license can be assigned only after this. The UPN must be a resource account: the one of the configuration, one this server created, or one that list_resource_accounts shows." + ChangeNote)]
     public Task<string> SetUsageLocation(
         [Description("callQueue or autoAttendant.")] string kind,
         [Description("User principal name. Omit to use the one computed from the configuration.")] string? upn = null,
@@ -118,7 +122,13 @@ internal sealed class ProvisioningTools
             var variables = _store.Variables;
             var isQueue = IsCallQueue(kind);
             var accountUpn = Pick(upn, (isQueue ? variables.RacqUPN : variables.RaaaUPN), "UPN");
-            var location = Require(usageLocation ?? variables.UsageLocation, "usage location");
+            await RequireResourceAccountAsync(accountUpn, variables, cancellationToken);
+            var location = Require(usageLocation ?? variables.UsageLocation, "usage location").ToUpperInvariant();
+            if (location.Length != 2 || !location.All(char.IsAsciiLetterUpper))
+            {
+                throw new ArgumentException($"'{location}' is not a usage location. Give the two-letter country code, for example CH.");
+            }
+
             var script = isQueue
                 ? _commands.GetUpdateResourceAccountUsageLocationCommand(accountUpn, location)
                 : _commands.GetUpdateAutoAttendantResourceAccountUsageLocationCommand(accountUpn, location);
@@ -129,7 +139,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "assign_resource_account_license", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Assigns the Teams Phone resource account license to a resource account. The tenant must have a free license and the account needs a usage location." + ChangeNote)]
+    [Description("Assigns the Teams Phone resource account license to a resource account. The tenant must have a free license and the account needs a usage location. The UPN must be a resource account: the one of the configuration, one this server created, or one that list_resource_accounts shows." + ChangeNote)]
     public Task<string> AssignLicense(
         [Description("callQueue or autoAttendant.")] string kind,
         [Description("User principal name. Omit to use the one computed from the configuration.")] string? upn = null,
@@ -141,6 +151,7 @@ internal sealed class ProvisioningTools
             var variables = _store.Variables;
             var isQueue = IsCallQueue(kind);
             var accountUpn = Pick(upn, (isQueue ? variables.RacqUPN : variables.RaaaUPN), "UPN");
+            await RequireResourceAccountAsync(accountUpn, variables, cancellationToken);
             var sku = Require(skuId ?? variables.SkuId, "SKU ID");
             var script = isQueue
                 ? _commands.GetAssignLicenseCommand(accountUpn, sku)
@@ -152,19 +163,25 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "assign_phone_number", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Assigns a phone number to an auto attendant resource account. The account needs its license first." + ChangeNote)]
+    [Description("Assigns a phone number to an auto attendant resource account. The account needs its license first. The UPN must be a resource account: the one of the configuration, one this server created, or one that list_resource_accounts shows." + ChangeNote)]
     public Task<string> AssignPhoneNumber(
         [Description("User principal name. Omit to use the auto attendant resource account from the configuration.")] string? upn = null,
         [Description("Phone number in E.164 format, for example +41441234567. Omit to use the configuration.")] string? phoneNumber = null,
-        [Description("Phone number type, for example DirectRouting, CallingPlan or OperatorConnect. Omit to use the configuration.")] string? phoneNumberType = null,
+        [Description("Phone number type: DirectRouting, CallingPlan or OperatorConnect. Omit to use the configuration.")] string? phoneNumberType = null,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             var variables = _store.Variables;
             var accountUpn = Pick(upn, variables.RaaaUPN, "UPN");
+            await RequireResourceAccountAsync(accountUpn, variables, cancellationToken);
             var number = Require(phoneNumber ?? variables.RaaAnr, "phone number");
             var type = Require(phoneNumberType ?? variables.PhoneNumberType, "phone number type");
+            if (!PhoneNumberScripts.IsE164(number))
+            {
+                throw new ArgumentException($"'{number}' is not a phone number in E.164 format, for example +41441234567.");
+            }
+
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest("AssignPhoneNumber", accountUpn,
                     _commands.GetAssignPhoneNumberToAutoAttendantCommand(accountUpn, number, type),
@@ -184,28 +201,33 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "create_call_queue", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Creates the call queue from the configuration (name, language, agent group, greeting, music on hold, overflow, timeout and no-agent handling) and associates it with its resource account. An existing call queue with the same name is updated to the configuration." + ChangeNote)]
+    [Description("Creates the call queue from the configuration (name, language, agent group, greeting, music on hold, overflow, timeout and no-agent handling) and associates it with its resource account. The name, the agent group and the resource account are the ones computed from the configuration (see configuration_get); for another call queue change general.customerGroupName, which gives it its own group and resource account. The configuration must be valid. An existing call queue with the same name is updated to the configuration." + ChangeNote)]
     public Task<string> CreateCallQueue(
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
+            // The same check as Guided Setup: a configuration with a problem never reaches the script.
+            _store.RequireUsable();
             var variables = _store.Variables;
             var name = Pick(null, variables.CqDisplayName, "call queue name");
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.CallQueue, name, "CreateCallQueue",
-                    _commands.GetCreateCallQueueCommand(variables), $"Create call queue '{name}'."),
+                    AgentGroupCheck.InFrontOf(_commands.GetCreateCallQueueCommand(variables), variables.M365Group),
+                    $"Create call queue '{name}' with agent group '{variables.M365Group}' and resource account '{variables.RacqUPN}'."),
                 planId,
                 cancellationToken);
         });
 
     [McpServerTool(Name = "create_auto_attendant", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Creates the auto attendant from the configuration: it builds the default and after-hours call flows and the opening-hours schedule in one script. An existing auto attendant with the same name is updated to the configuration." + ChangeNote)]
+    [Description("Creates the auto attendant from the configuration: it builds the default and after-hours call flows and the opening-hours schedule in one script. The configuration must be valid. An existing auto attendant with the same name is updated to the configuration." + ChangeNote)]
     public Task<string> CreateAutoAttendant(
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
+            // The same check as Guided Setup step 7: a configuration with a problem never reaches the script.
+            _store.RequireUsable();
             var variables = _store.Variables;
             var name = Pick(null, variables.AaDisplayName, "auto attendant name");
             var script = _commands.GetCreateAutoAttendantCommand(variables);
@@ -344,6 +366,61 @@ internal sealed class ProvisioningTools
             OnSuccessAsync = (result, token) => _guard.ClaimAsync(type, key, operation, result.RawOutput, token),
             OnFailureAsync = (result, token) => _guard.ClaimAfterFailureAsync(type, key, operation, result, token)
         };
+
+    /// <summary>A UPN without a domain gets the fallback domain, as on the desktop pages; any other malformed UPN is refused.</summary>
+    internal static string CompleteUpn(string upn, string? fallbackDomain)
+    {
+        var value = upn.Trim();
+        if (!value.Contains('@'))
+        {
+            if (!PhoneDesk.Models.ResourceAccountUpn.IsValidFallbackDomain(fallbackDomain))
+            {
+                throw new ArgumentException(
+                    $"'{value}' has no domain. Give the full user principal name, or set general.msFallbackDomain in the configuration.");
+            }
+
+            value = PhoneDesk.Models.ResourceAccountUpn.Build(value, fallbackDomain);
+        }
+
+        var parts = value.Split('@');
+        if (parts.Length != 2 || parts[0].Length == 0 || parts[0].Any(char.IsWhiteSpace) ||
+            !PhoneDesk.Models.ResourceAccountUpn.IsValidFallbackDomain(parts[1]))
+        {
+            throw new ArgumentException($"'{value}' is not a user principal name. Example: racq-contoso-reception@contoso.onmicrosoft.com.");
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Usage location, license and phone number go to a resource account only. Without this check
+    /// a mistyped UPN, or the UPN of a person, would get the license or the number.
+    /// </summary>
+    private async Task RequireResourceAccountAsync(string upn, ConfigurationDocumentVariables variables, CancellationToken cancellationToken)
+    {
+        bool Same(string? other) => string.Equals(other?.Trim(), upn, StringComparison.OrdinalIgnoreCase);
+
+        // The accounts of the configuration and the ones this server created need no tenant read:
+        // a new resource account is not visible in the tenant for some seconds.
+        if ((!string.IsNullOrWhiteSpace(variables.Customer) && (Same(variables.RacqUPN) || Same(variables.RaaaUPN))) ||
+            _ledger.Contains(_tenant.TenantId, TenantObjectType.ResourceAccount, upn))
+        {
+            return;
+        }
+
+        foreach (var refresh in new[] { false, true })
+        {
+            var topology = await _tenant.GetTopologyAsync(refresh, cancellationToken);
+            if (topology.ResourceAccounts.Any(account => Same(account.UserPrincipalName)))
+            {
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"'{upn}' is not a resource account of this tenant. Check the spelling with list_resource_accounts. " +
+            "Usage location, license and phone number are set on resource accounts only.");
+    }
 
     internal static bool IsCallQueue(string kind)
         => kind?.Trim().ToLowerInvariant() switch

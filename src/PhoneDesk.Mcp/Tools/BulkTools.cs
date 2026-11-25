@@ -35,10 +35,11 @@ internal sealed class BulkTools
     });
 
     [McpServerTool(Name = "bulk_setup", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Sets up several complete phone systems from CSV text, one per row, in one script. Every row is validated first; one invalid row stops the whole run. CHANGES THE TENANT. Call it first without planId: it returns the rows, their computed names and the exact script as a plan and changes nothing. Show the plan to the user, then call it again with the same CSV and the planId to run it.")]
+    [Description("Sets up several complete phone systems from CSV text, one per row, in one script. Every row is validated first; one invalid row stops the whole run, unless skipInvalidRows is true: then the valid rows are planned and the result lists the rows that were left out. CHANGES THE TENANT. Call it first without planId: it returns the rows, their computed names and the exact script as a plan and changes nothing. Show the plan to the user, then call it again with the same CSV and the planId to run it.")]
     public Task<string> BulkSetup(
         [Description("CSV text with the header row from bulk_setup_template.")] string csv,
         [Description("The planId from the first call. Omit to get the plan.")] string? planId = null,
+        [Description("True to set up the valid rows and leave out the invalid ones. Tell the user which rows were left out. Use the same value in both calls.")] bool skipInvalidRows = false,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
@@ -49,20 +50,33 @@ internal sealed class BulkTools
             }
 
             // The same row rules and cross-row checks as the desktop bulk page.
-            var problems = _planBuilder.BuildBulkPlan(entries).Entries
+            var planned = _planBuilder.BuildBulkPlan(entries).Entries;
+            var problems = planned
                 .Where(entry => !entry.IsValid)
                 .Select(entry => $"Row {entry.RowNumber}: " + string.Join(" ", entry.ValidationErrors.Concat(
                     entry.PreflightChecks
                         .Where(check => check.Status == Planning.PreflightStatus.Fail)
                         .Select(check => check.Detail))))
                 .ToList();
+            if (problems.Count > 0 && !skipInvalidRows)
+            {
+                throw new InvalidOperationException(
+                    "The CSV has invalid rows. Correct them, or pass skipInvalidRows=true to set up the valid rows only. " + string.Join(" ", problems));
+            }
+
             if (problems.Count > 0)
             {
-                throw new InvalidOperationException("The CSV has invalid rows. " + string.Join(" ", problems));
+                // Like the desktop "skip invalid rows" switch: the plan entries are in row order.
+                entries = planned.Where(entry => entry.IsValid).Select(entry => entries[entry.RowNumber - 1]).ToList();
+                if (entries.Count == 0)
+                {
+                    throw new InvalidOperationException("No row of the CSV is valid. " + string.Join(" ", problems));
+                }
             }
 
             var summary = $"Set up {entries.Count} phone system(s): " +
-                          string.Join("; ", entries.Select(entry => $"{entry.CqDisplayName} + {entry.AaDisplayName}"));
+                          string.Join("; ", entries.Select(entry => $"{entry.CqDisplayName} + {entry.AaDisplayName}")) +
+                          (problems.Count > 0 ? $". Left out {problems.Count} invalid row(s): " + string.Join(" ", problems) : string.Empty);
             return await _changes.PlanOrApplyAsync(
                 new ChangeRequest("BulkOperations", $"{entries.Count} entries", _bulk.GenerateBulkScript(entries), summary)
                 {

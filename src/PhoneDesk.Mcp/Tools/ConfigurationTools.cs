@@ -109,13 +109,12 @@ internal sealed class ConfigurationTools
         });
 
     [McpServerTool(Name = "swiss_holidays_apply", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. Entries that are already there stay, and a date that is already there with the same time and name is not added twice. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first.")]
+    [Description("Writes the public holidays of a Swiss canton and year to the holiday entries of the configuration (holidayTemplate.series), the list create_holiday_schedule works from. Local only; the tenant is not touched. It only adds: entries that are already there stay, and a date that is already there with the same time and name is not added twice. To remove entries, set holidayTemplate.series with configuration_update. For Aargau (AG), Fribourg (FR) and Solothurn (SO) a region is needed; without it nothing is written and the result lists the regions. Show the user the holidays from swiss_holidays first.")]
     public string ApplySwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
         [Description(RegionDescription)] string? region = null,
-        [Description(RestDaysDescription)] bool includeAdditionalRestDays = true,
-        [Description("True to remove the holiday entries that are in the configuration now and keep only the ones of this call. False (default) adds to them.")] bool replaceExisting = false)
+        [Description(RestDaysDescription)] bool includeAdditionalRestDays = true)
         => McpJson.Run(() =>
         {
             var selection = Select(canton, year, region, includeAdditionalRestDays);
@@ -124,15 +123,13 @@ internal sealed class ConfigurationTools
                 return selection.RegionQuestion();
             }
 
-            var series = replaceExisting
-                ? new List<PortableHolidayEntry>()
-                : _store.Document.Configuration.HolidayTemplate.Series.ToList();
-            var added = HolidaySeriesMerge.MissingFrom(
-                replaceExisting ? Array.Empty<IHolidayEntry>() : _store.Variables.HolidaySeries, selection.Holidays);
+            // Only ever adds: manual closures and the entries of other years stay.
+            var series = _store.Document.Configuration.HolidayTemplate.Series.ToList();
+            var added = HolidaySeriesMerge.MissingFrom(_store.Variables.HolidaySeries, selection.Holidays);
             series.AddRange(added.Select(holiday => new PortableHolidayEntry(
                 DateOnly.FromDateTime(holiday.Date), TimeOnly.FromTimeSpan(holiday.Time), holiday.Name, null, null, holiday.Category)));
 
-            if (added.Count > 0 || replaceExisting)
+            if (added.Count > 0)
             {
                 _store.SetHolidaySeries(series);
             }

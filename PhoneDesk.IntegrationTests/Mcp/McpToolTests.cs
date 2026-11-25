@@ -196,19 +196,34 @@ public sealed class McpToolTests
     }
 
     [Fact]
-    public void SwissHolidaysApply_CanLeaveOutAdditionalRestDaysAndReplaceTheEntries()
+    public void SwissHolidaysApply_CanLeaveOutAdditionalRestDays()
     {
         using var host = new McpTestHost().Configured();
         var tools = host.Tool<ConfigurationTools>();
-        tools.ApplySwissHolidays("ZH", 2026);
 
-        var result = McpTestHost.Parse(tools.ApplySwissHolidays("TI", 2026, includeAdditionalRestDays: false, replaceExisting: true));
+        var result = McpTestHost.Parse(tools.ApplySwissHolidays("TI", 2026, includeAdditionalRestDays: false));
 
         var series = host.Get<ConfigurationStore>().Document.Configuration.HolidayTemplate.Series;
         Assert.Equal(series.Count, result.GetProperty("holidayEntriesNow").GetInt32());
         Assert.Equal(9, series.Count);
         Assert.DoesNotContain(series, entry => entry.Category == HolidayCategory.AdditionalCantonalRestDay);
-        Assert.DoesNotContain(series, entry => entry.Name == "Karfreitag");
+    }
+
+    [Fact]
+    public void SwissHolidaysApply_NeverRemovesEntries()
+    {
+        var method = typeof(ConfigurationTools).GetMethod(nameof(ConfigurationTools.ApplySwissHolidays))!;
+        Assert.DoesNotContain(method.GetParameters(), parameter => parameter.Name!.Contains("replace", StringComparison.OrdinalIgnoreCase));
+
+        using var host = new McpTestHost().Configured();
+        var tools = host.Tool<ConfigurationTools>();
+        tools.ApplySwissHolidays("ZH", 2026);
+        tools.ApplySwissHolidays("ZH", 2027);
+        tools.ApplySwissHolidays("TI", 2026);
+
+        var series = host.Get<ConfigurationStore>().Document.Configuration.HolidayTemplate.Series;
+        Assert.Contains(series, entry => entry.Name == "Karfreitag" && entry.Date.Year == 2026);
+        Assert.Equal(9, series.Count(entry => entry.Date.Year == 2027));
     }
 
     [Fact]

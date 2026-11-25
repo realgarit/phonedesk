@@ -61,6 +61,7 @@ internal static class ServiceRegistration
         services.AddSingleton<IBundledModuleVersionService, BundledModuleVersionService>();
         services.AddSingleton<ChangeGate>();
         services.AddSingleton<CreatedObjectGuard>();
+        services.AddSingleton<HolidayCallHandlingReader>();
 
         return services;
     }

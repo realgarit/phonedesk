@@ -10,6 +10,7 @@ internal static class ServerInstructions
         1. session_status. If not connected: check_modules, then connect_teams, then connect_graph. Each sign-in opens a browser window on the user's computer; tell the user before you call it. A connect call returns after about 45 seconds; when it reports waitingForSignIn, ask the user to finish in the browser and call it again. Both sign-ins must use the same organization.
         2. To look at a tenant: tenant_overview, the list_* tools, tenant_details, run_health_check. These only read.
         3. To build a phone system: fill the configuration (configuration_get, configuration_update; configuration_options lists the values that take a fixed text, such as actions and greeting types), then run the Guided Setup steps 1 to 8 in order (guided_setup_status, guided_setup_run_step). Single operations are available as separate tools.
+        4. For the holidays of a new year in a tenant that has holidays already: list_holiday_schedules and holiday_call_handling show what callers get on each schedule, per auto attendant. Create the new schedule, then copy_holiday_call_handling attaches it to each auto attendant with last year's call handling. Report its verification to the user for every auto attendant.
 
         Changes:
         - Every tool that changes the tenant works in two calls. The first call (no planId) returns the exact script and a planId and changes nothing. Show the user what will happen and get their agreement. The second call, with the same arguments and the planId, runs it.

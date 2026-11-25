@@ -20,6 +20,7 @@ with the app; there is nothing extra to download.
 | Backup and comparison | `backup_tenant`, `list_backups`, `compare_with_backup`, `created_objects` |
 | Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset` |
 | Single operations | `create_m365_group`, `lookup_m365_group_id`, `create_resource_account`, `set_resource_account_usage_location`, `assign_resource_account_license`, `assign_phone_number`, `create_call_queue`, `create_auto_attendant`, `associate_resource_account`, `create_holiday_schedule`, `verify_auto_attendant`, `attach_holiday_schedule`, `import_audio_file` |
+| Holiday schedules that exist | `list_holiday_schedules`, `holiday_call_handling`, `copy_holiday_call_handling` |
 | Bulk | `bulk_setup_template`, `bulk_setup` |
 | Delete | `delete_call_queue`, `delete_auto_attendant`, `delete_holiday_schedule`, `delete_resource_account`, `delete_m365_group`, `release_phone_number` |
 
@@ -45,6 +46,54 @@ statutory holiday under Art. 20a ArG, but the canton treats it as a rest day and
 are closed. The result names these days in `review` and tells the client to confirm them with the
 customer. Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich,
 are in neither head; add them as own entries when the customer is closed.
+
+### Holidays of a new year
+
+A holiday schedule holds dates only. What callers get on those dates is a call flow on each auto
+attendant that uses the schedule, so one schedule can send the callers of one number to voicemail
+and the callers of another number to an external number. The three tools work per auto attendant
+and take every object by its ID, never by its name.
+
+- `list_holiday_schedules` reads the schedules only: ID, date ranges, whether all dates have
+  passed, and the auto attendants that use each one.
+- `holiday_call_handling` shows, for one auto attendant or for all, what callers get on each
+  holiday schedule: the greeting (text, or audio file with its ID), the menu action, the transfer
+  target, the voicemail options and the priority. It also lists holiday schedules of the auto
+  attendant that overlap and the number of call flows against the limit.
+- `copy_holiday_call_handling` attaches a schedule to one auto attendant with the call handling
+  another schedule has there. For a new year: create the new schedule, then copy last year's call
+  handling, once per auto attendant. The new call flow uses the greetings and the menu of the
+  source call flow as they are, so a transfer without a greeting, an audio file and the voicemail
+  options are all kept.
+
+Before a plan is made the server reads the auto attendant and refuses the plan when Teams would
+not save it. The result names the cause and changes nothing:
+
+- **Same start time.** Two holidays of one auto attendant that start at the same time. Teams
+  refuses that; there is no switch for it.
+- **Overlap.** The new schedule overlaps a holiday that is attached already, for example a single
+  holiday inside a closure of several days. The result shows both date ranges and the call
+  handling of the other schedule. `acceptOverlaps: true` allows it.
+- **Call flow limit.** An auto attendant can have 21 call flows beside its default call flow.
+  At the limit the result lists the attached schedules whose dates have all passed.
+  `replaceScheduleId` takes one of them off the auto attendant in the same save; the schedule
+  itself stays in the tenant. A schedule with a date that has not passed is not accepted.
+- **Authorized users that no longer exist.** Teams does not save an auto attendant that lists
+  one. The result names the user IDs; `removeMissingAuthorizedUsers: true` takes these entries
+  off in the same save.
+
+After the save the server reads the auto attendant again. `verification` says whether the
+schedule is attached and whether the call flow is the same as the source, compared value by
+value; a greeting text is compared character by character. When Teams reports an error but the
+schedule is attached, the change counts as made. A schedule that is attached already is
+reported as `alreadyAttached` and nothing is changed, so a call can be repeated.
+
+`attach_holiday_schedule` (a spoken greeting, then the call ends) has the same checks before the
+plan and the same read-back. Its `verification.greetingAsSent` is false when Teams holds another
+text than the one that was sent. That happens with an apostrophe: the script builder writes an
+apostrophe twice, so `aujourd'hui` arrives as `aujourd''hui`. The script builder is not changed
+by the server; correct such a greeting in Teams, or copy a correct call flow with
+`copy_holiday_call_handling`.
 
 ### Checks the desktop app does with its controls
 

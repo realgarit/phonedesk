@@ -21,6 +21,24 @@ namespace PhoneDesk.Tests
             Assert.Equal(string.Empty, _sanitizer.SanitizeString(""));
         }
 
+        [Theory]
+        [InlineData("Nous sommes fermés aujourd'hui.", "Nous sommes fermés aujourd'hui.")]
+        [InlineData("Nous sommes fermés aujourd\u2019hui.", "Nous sommes fermés aujourd\u2019hui.")]
+        [InlineData("Müller & Söhne; bitte warten", "Müller & Söhne; bitte warten")]
+        [InlineData("say \"hi\" $(Get-Date) `n", "say hi (Get-Date) n")]
+        [InlineData("smart \u201Cquote\u201D \uFF04x", "smart quote x")]
+        public void SanitizeSpokenText_KeepsApostrophesAndRemovesWhatEndsADoubleQuotedString(string input, string expected)
+        {
+            Assert.Equal(expected, _sanitizer.SanitizeSpokenText(input));
+        }
+
+        [Fact]
+        public void SanitizeSpokenText_NullOrEmpty_ReturnsEmpty()
+        {
+            Assert.Equal(string.Empty, _sanitizer.SanitizeSpokenText(null!));
+            Assert.Equal(string.Empty, _sanitizer.SanitizeSpokenText(""));
+        }
+
         [Fact]
         public void SanitizeString_SingleQuotes_AreDoubled()
         {

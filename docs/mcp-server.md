@@ -95,10 +95,11 @@ reported as `alreadyAttached` and nothing is changed, so a call can be repeated.
 
 `attach_holiday_schedule` (a spoken greeting, then the call ends) has the same checks before the
 plan and the same read-back. Its `verification.greetingAsSent` is false when Teams holds another
-text than the one that was sent. That happens with an apostrophe: the script builder writes an
-apostrophe twice, so `aujourd'hui` arrives as `aujourd''hui`. The script builder is not changed
-by the server; correct such a greeting in Teams, or copy a correct call flow with
-`copy_holiday_call_handling`.
+text than the one that was sent. The script builder removes the characters that can end or
+expand a double-quoted PowerShell string from a spoken text: the double quote, the dollar sign
+and the backtick. Apostrophes, plain and typographic, arrive unchanged (before 3.37.2 an
+apostrophe was written twice, so `aujourd'hui` arrived as `aujourd''hui`; correct such a greeting
+in Teams, or attach the schedule again).
 
 ### Checks the desktop app does with its controls
 

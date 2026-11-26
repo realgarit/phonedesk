@@ -177,7 +177,7 @@ catch {{
             }
             else if (greetingType == "TextToSpeech" && !string.IsNullOrWhiteSpace(ttsPrompt))
             {
-                var sanitizedTtsPrompt = _sanitizer.SanitizeString(ttsPrompt);
+                var sanitizedTtsPrompt = _sanitizer.SanitizeSpokenText(ttsPrompt);
                 sb.AppendLine($"${prefix}Greeting = New-CsAutoAttendantPrompt -TextToSpeechPrompt \"{sanitizedTtsPrompt}\"");
                 greetingVar = $"@(${prefix}Greeting)";
             }
@@ -245,7 +245,7 @@ catch {{
         {
             var sanitizedHolidayName = _sanitizer.SanitizeString(holidayName);
             var sanitizedAaDisplayName = _sanitizer.SanitizeString(aaDisplayName);
-            var sanitizedGreetingPrompt = _sanitizer.SanitizeString(holidayGreetingPrompt);
+            var sanitizedGreetingPrompt = _sanitizer.SanitizeSpokenText(holidayGreetingPrompt);
 
             return $@"
 try {{

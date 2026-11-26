@@ -15,6 +15,7 @@ namespace PhoneDesk.Tests
         {
             _mockSanitizer = new Mock<IPowerShellSanitizationService>();
             _mockSanitizer.Setup(s => s.SanitizeString(It.IsAny<string>())).Returns<string>(s => s);
+            _mockSanitizer.Setup(s => s.SanitizeSpokenText(It.IsAny<string>())).Returns<string>(s => s);
             _mockSanitizer.Setup(s => s.SanitizeIdentifier(It.IsAny<string>())).Returns<string>(s => s);
             _builder = new AutoAttendantScriptBuilder(_mockSanitizer.Object);
         }
@@ -97,6 +98,8 @@ namespace PhoneDesk.Tests
             Assert.Contains("hd-test", script);
             Assert.Contains("aa-test", script);
             Assert.Contains("Holiday greeting", script);
+            _mockSanitizer.Verify(s => s.SanitizeSpokenText("Holiday greeting"), Times.Once());
+            _mockSanitizer.Verify(s => s.SanitizeString("Holiday greeting"), Times.Never());
         }
 
         [Fact]

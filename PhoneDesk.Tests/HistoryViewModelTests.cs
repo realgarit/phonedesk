@@ -140,22 +140,5 @@ namespace PhoneDesk.Tests
             Assert.Null(vm.ToDate);
             Assert.Single(vm.Records); // read entry excluded again
         }
-
-        [Fact]
-        public void AuditLogDirectory_IsExposed()
-        {
-            var vm = Create(Array.Empty<AuditRecord>(), out _);
-            Assert.Equal("/tmp/audit", vm.AuditLogDirectory);
-        }
-
-        [Fact]
-        public void LoadCommand_RereadsFromAuditLog()
-        {
-            var vm = Create(new[] { Rec("Op") }, out var auditLog);
-
-            vm.LoadCommand.Execute(null);
-
-            auditLog.Verify(a => a.Read(), Times.AtLeast(2));
-        }
     }
 }

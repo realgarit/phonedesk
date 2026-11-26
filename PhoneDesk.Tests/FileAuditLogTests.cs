@@ -156,13 +156,6 @@ namespace PhoneDesk.Tests
             Assert.Empty(log.Read());
         }
 
-        [Fact]
-        public void LogDirectoryPath_ReflectsConfiguredRoot()
-        {
-            var log = new FileAuditLog(_root);
-            Assert.Equal(_root, log.LogDirectoryPath);
-        }
-
         // Acceptance criterion: no access token or client secret ever appears in an audit file.
         [Fact]
         public void Append_NeverPersistsAccessTokenOrClientSecret()

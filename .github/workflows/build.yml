@@ -117,14 +117,10 @@ jobs:
         git commit --quiet -m "chore: sync app.manifest version to ${VERSION}" -- app.manifest
         git push --quiet origin "HEAD:${RELEASE_REF}"
 
-    - name: Start release pull request validation
-      if: steps.release.outputs.prs_created == 'true'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RELEASE_PR: ${{ steps.release.outputs.pr }}
-      run: |
-        RELEASE_REF="$(jq -r '.headBranchName' <<< "$RELEASE_PR")"
-        gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_REF" -f validate_ref="$RELEASE_REF"
+    # No separate validation run for the release pull request: the step above checks the version
+    # sources, and the release build that starts when the pull request is merged builds and tests
+    # all four platforms before it packages anything. A validation run can still be started by
+    # hand with the validate_ref input.
 
   validate-release:
     name: Validate Release Version
@@ -451,10 +447,10 @@ jobs:
 
   pr-validate:
     name: PR Validate ${{ matrix.runtime }}
-    # Build + test + publish on every runtime without releasing. It runs for the release PR
-    # (dispatched with validate_ref) and for pull requests nobody tests locally: Dependabot and
-    # the bundled-module update. Other pull requests are tested locally before they are opened;
-    # their checks are the Semgrep scan and the Codex review.
+    # Build + test + publish on every runtime without releasing. It runs for pull requests nobody
+    # tests locally (Dependabot and the bundled-module update) and when it is started by hand with
+    # validate_ref. Other pull requests are tested locally before they are opened; their checks
+    # are the Semgrep scan and the Codex review. The release pull request has no run of its own.
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.validate_ref != '') ||
       (github.event_name == 'pull_request' &&

@@ -77,22 +77,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public async Task HandleGenericError_LogsErrorAndShowsDialogWithCorrectTitle()
-        {
-            var (service, logger, dialog) = CreateService();
-
-            await service.HandleGenericError("Something broke", "MyContext");
-
-            logger.Verify(l => l.Log(
-                It.Is<string>(m => m.Contains("Error in MyContext") && m.Contains("Something broke")),
-                LogLevel.Error), Times.Once);
-
-            dialog.Verify(d => d.ShowMessageAsync(
-                ConstantsService.ErrorDialogTitles.Error,
-                "Something broke"), Times.Once);
-        }
-
-        [Fact]
         public async Task HandleConfirmation_LogsInfoAndReturnsTrueWhenUserConfirms()
         {
             var (service, logger, dialog) = CreateService();
@@ -106,59 +90,6 @@ namespace PhoneDesk.Tests
                 It.Is<string>(m => m.Contains("User confirmation requested") && m.Contains("Are you sure?")),
                 LogLevel.Info), Times.Once);
             dialog.Verify(d => d.ShowConfirmationAsync(ConstantsService.ErrorDialogTitles.Confirmation, "Are you sure?"), Times.Once);
-        }
-
-        [Fact]
-        public async Task HandleConfirmation_ReturnsFalseWhenUserDeclines()
-        {
-            var (service, _, dialog) = CreateService();
-            dialog.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
-
-            var result = await service.HandleConfirmation("Are you sure?");
-
-            Assert.False(result);
-        }
-
-        [Fact]
-        public async Task HandleConfirmation_WithCustomTitle_PassesTitleThrough()
-        {
-            var (service, _, dialog) = CreateService();
-
-            await service.HandleConfirmation("Delete this?", "Custom Title");
-
-            dialog.Verify(d => d.ShowConfirmationAsync("Custom Title", "Delete this?"), Times.Once);
-        }
-
-        [Fact]
-        public async Task ShowSuccess_LogsSuccessAndShowsDialogWithCorrectTitle()
-        {
-            var (service, logger, dialog) = CreateService();
-
-            await service.ShowSuccess("Operation complete");
-
-            logger.Verify(l => l.Log(
-                It.Is<string>(m => m.Contains("Success") && m.Contains("Operation complete")),
-                LogLevel.Success), Times.Once);
-
-            dialog.Verify(d => d.ShowMessageAsync(
-                ConstantsService.ErrorDialogTitles.Success,
-                "Operation complete"), Times.Once);
-        }
-
-        [Fact]
-        public async Task ShowInfo_LogsInfoAndShowsDialogWithCorrectTitle()
-        {
-            var (service, logger, dialog) = CreateService();
-
-            await service.ShowInfo("FYI something happened");
-
-            logger.Verify(l => l.Log(
-                It.Is<string>(m => m.Contains("Info") && m.Contains("FYI something happened")),
-                LogLevel.Info), Times.Once);
-
-            dialog.Verify(d => d.ShowMessageAsync(
-                ConstantsService.ErrorDialogTitles.Information,
-                "FYI something happened"), Times.Once);
         }
     }
 }

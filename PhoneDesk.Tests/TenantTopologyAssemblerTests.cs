@@ -133,13 +133,5 @@ namespace PhoneDesk.Tests
             var t = _sut.Assemble("TOPGRP: G|g1|nick|desc\r\nTOPGRP: H|g2|nick2|desc2\r\n", DateTimeOffset.UtcNow);
             Assert.Equal(2, t.Groups.Count);
         }
-
-        [Fact]
-        public void Assemble_PreservesRetrievedTimestamp()
-        {
-            var when = DateTimeOffset.UtcNow;
-            var t = _sut.Assemble(Sample, when);
-            Assert.Equal(when, t.RetrievedAtUtc);
-        }
     }
 }

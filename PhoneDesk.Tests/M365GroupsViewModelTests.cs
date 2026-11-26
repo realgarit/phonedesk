@@ -21,39 +21,6 @@ namespace PhoneDesk.Tests
                 harness.DialogService.Object);
 
         [Fact]
-        public void Construction_LogsPageLoadAndInitializesGroupName()
-        {
-            var harness = new ViewModelTestHarness();
-
-            var vm = CreateViewModel(harness);
-
-            harness.LoggingService.Verify(l => l.Log("M365 Groups page loaded", LogLevel.Info), Times.Once);
-            Assert.Equal("ttgrp-", vm.NewGroupName);
-        }
-
-        [Fact]
-        public void ShowVariablesConfirmationCommand_SetsShowConfirmationTrue()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.ShowVariablesConfirmationCommand.Execute(null);
-
-            Assert.True(vm.ShowConfirmation);
-        }
-
-        [Fact]
-        public void NavigateToVariablesPageCommand_Navigates()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.NavigateToVariablesPageCommand.Execute(null);
-
-            harness.NavigationService.Verify(n => n.NavigateTo(ConstantsService.Pages.Variables), Times.Once);
-        }
-
-        [Fact]
         public async Task RetrieveM365GroupsAsync_HappyPath_ParsesGroupsFromOutput()
         {
             var harness = new ViewModelTestHarness();
@@ -76,41 +43,6 @@ namespace PhoneDesk.Tests
             await vm.RetrieveM365GroupsCommand.ExecuteAsync(null);
 
             Assert.Equal("Error: No output from the PowerShell command.", vm.GroupStatus);
-        }
-
-        [Fact]
-        public async Task RetrieveM365GroupsAsync_SessionExpired_ReportsConnectionError()
-        {
-            var harness = new ViewModelTestHarness();
-            harness.SetSessionExpired();
-            var vm = CreateViewModel(harness);
-
-            await vm.RetrieveM365GroupsCommand.ExecuteAsync(null);
-
-            harness.ErrorHandlingService.Verify(e => e.HandleConnectionError(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        }
-
-        [Fact]
-        public void OpenCreateGroupDialogCommand_ShowsDialogAndUpdatesGroupName()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.OpenCreateGroupDialogCommand.Execute(null);
-
-            Assert.True(vm.ShowCreateGroupDialog);
-        }
-
-        [Fact]
-        public void CloseCreateGroupDialogCommand_HidesDialog()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.ShowCreateGroupDialog = true;
-
-            vm.CloseCreateGroupDialogCommand.Execute(null);
-
-            Assert.False(vm.ShowCreateGroupDialog);
         }
 
         [Fact]

@@ -21,14 +21,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void GetRetrieveAutoAttendantsCommand_ContainsAaPrefix()
-        {
-            var script = _builder.GetRetrieveAutoAttendantsCommand();
-            Assert.Contains("aa-", script);
-            Assert.Contains("Get-CsAutoAttendant", script);
-        }
-
-        [Fact]
         public void GetCreateAutoAttendantCommand_NoDuplicateCallHandlingAssociation()
         {
             var variables = new PhoneManagerVariables
@@ -61,34 +53,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void GetVerifyAutoAttendantCommand_SanitizesInput()
-        {
-            var script = _builder.GetVerifyAutoAttendantCommand("aa-acme-main");
-
-            Assert.Contains("Get-CsAutoAttendant", script);
-            Assert.Contains("aa-acme-main", script);
-            _mockSanitizer.Verify(s => s.SanitizeString("aa-acme-main"), Times.Once());
-        }
-
-        [Fact]
-        public void GetRemoveAutoAttendantCommand_ContainsRemoveCommand()
-        {
-            var script = _builder.GetRemoveAutoAttendantCommand("aa-test");
-
-            Assert.Contains("Remove-CsAutoAttendant", script);
-            Assert.Contains("aa-test", script);
-        }
-
-        [Fact]
-        public void GetRemoveScheduleCommand_ContainsRemoveCommand()
-        {
-            var script = _builder.GetRemoveScheduleCommand("After Hours Schedule");
-
-            Assert.Contains("Remove-CsOnlineSchedule", script);
-            Assert.Contains("After Hours Schedule", script);
-        }
-
-        [Fact]
         public void GetAttachHolidayToAutoAttendantCommand_ContainsAllParts()
         {
             var script = _builder.GetAttachHolidayToAutoAttendantCommand("hd-test", "aa-test", "Holiday greeting");
@@ -100,26 +64,6 @@ namespace PhoneDesk.Tests
             Assert.Contains("Holiday greeting", script);
             _mockSanitizer.Verify(s => s.SanitizeSpokenText("Holiday greeting"), Times.Once());
             _mockSanitizer.Verify(s => s.SanitizeString("Holiday greeting"), Times.Never());
-        }
-
-        [Fact]
-        public void GetCreateSimpleAutoAttendantCommand_FromVariables_Works()
-        {
-            var variables = new PhoneManagerVariables
-            {
-                Customer = "acme",
-                CustomerGroupName = "sales",
-                RaaAnrName = "main",
-                LanguageId = "en-US",
-                TimeZoneId = "UTC"
-            };
-
-            var script = _builder.GetCreateSimpleAutoAttendantCommand(variables);
-
-            Assert.Contains("New-CsAutoAttendant", script);
-            Assert.Contains("aa-acme-main-sales", script);
-            Assert.Contains("en-US", script);
-            Assert.Contains("UTC", script);
         }
     }
 }

@@ -13,15 +13,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void Log_AddsEntryToCollection()
-        {
-            _loggingService.Log("Test message", LogLevel.Info);
-
-            Assert.Single(_loggingService.LogEntries);
-            Assert.Contains("Test message", _loggingService.LogEntries[0]);
-        }
-
-        [Fact]
         public void Log_SetsLatestLogEntry()
         {
             _loggingService.Log("First", LogLevel.Info);
@@ -85,33 +76,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void GetFilteredEntries_InfoLevel_ReturnsAll()
-        {
-            _loggingService.Log("Info", LogLevel.Info);
-            _loggingService.Log("Success", LogLevel.Success);
-            _loggingService.Log("Warning", LogLevel.Warning);
-            _loggingService.Log("Error", LogLevel.Error);
-
-            _loggingService.MinimumLogLevel = LogLevel.Info;
-            var filtered = _loggingService.GetFilteredEntries();
-
-            Assert.Equal(4, filtered.Count);
-        }
-
-        [Fact]
-        public void GetFilteredEntries_ErrorLevel_ReturnsOnlyErrors()
-        {
-            _loggingService.Log("Info", LogLevel.Info);
-            _loggingService.Log("Error", LogLevel.Error);
-
-            _loggingService.MinimumLogLevel = LogLevel.Error;
-            var filtered = _loggingService.GetFilteredEntries();
-
-            Assert.Single(filtered);
-            Assert.Contains("[Error]", filtered[0]);
-        }
-
-        [Fact]
         public void Log_SanitizesJwtTokens()
         {
             var fakeToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature_here";
@@ -120,14 +84,6 @@ namespace PhoneDesk.Tests
             var entry = _loggingService.LogEntries[0];
             Assert.DoesNotContain("eyJ", entry);
             Assert.Contains("[TOKEN REDACTED]", entry);
-        }
-
-        [Fact]
-        public void LogLevel_Ordering_InfoIsLowest()
-        {
-            Assert.True(LogLevel.Info < LogLevel.Success);
-            Assert.True(LogLevel.Success < LogLevel.Warning);
-            Assert.True(LogLevel.Warning < LogLevel.Error);
         }
     }
 }

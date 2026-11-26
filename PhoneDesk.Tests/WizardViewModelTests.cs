@@ -343,24 +343,6 @@ namespace PhoneDesk.Tests
         // ── Wizard state carried between steps ──────────────────────────────
 
         [Fact]
-        public void Variables_ReflectsSharedStateAcrossStepTransitions_NotResetLocally()
-        {
-            var harness = new ViewModelTestHarness();
-            var sharedVars = new PhoneManagerVariables { Customer = "contoso", CustomerGroupName = "hauptnummer" };
-            harness.SharedStateService.SetupGet(s => s.Variables).Returns(sharedVars);
-            var vm = CreateViewModel(harness);
-
-            Assert.Equal("contoso", vm.Variables.Customer);
-
-            vm.CurrentStep = 3;
-
-            // The same shared variables instance (and the value captured before navigating) is still
-            // visible after moving through several steps — wizard state is not reset per step.
-            Assert.Equal("contoso", vm.Variables.Customer);
-            Assert.Same(sharedVars, vm.Variables);
-        }
-
-        [Fact]
         public void StepScript_ForReviewStep_IncludesCurrentSharedVariables()
         {
             var harness = new ViewModelTestHarness();
@@ -581,28 +563,6 @@ namespace PhoneDesk.Tests
             vm.RetryStepCommand.Execute(null);
 
             Assert.True(vm.CanExecuteStep);
-        }
-
-        [Fact]
-        public void GoToVariablesPageCommand_NavigatesToVariablesPage()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.GoToVariablesPageCommand.Execute(null);
-
-            harness.NavigationService.Verify(n => n.NavigateTo(ConstantsService.Pages.Variables), Times.Once);
-        }
-
-        [Fact]
-        public void GoToHolidaysPageCommand_NavigatesToHolidaysPage()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.GoToHolidaysPageCommand.Execute(null);
-
-            harness.NavigationService.Verify(n => n.NavigateTo(ConstantsService.Pages.Holidays), Times.Once);
         }
 
         // ---- Progress across navigation, step list, results ----

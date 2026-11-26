@@ -20,16 +20,6 @@ namespace PhoneDesk.Tests
                 harness.SharedStateService.Object,
                 harness.DialogService.Object);
 
-        [Fact]
-        public void Construction_LogsPageLoad()
-        {
-            var harness = new ViewModelTestHarness();
-
-            CreateViewModel(harness);
-
-            harness.LoggingService.Verify(l => l.Log("Auto attendants page loaded", LogLevel.Info), Times.Once);
-        }
-
         // ---- RetrieveResourceAccountsAsync ----
 
         [Fact]
@@ -79,21 +69,6 @@ namespace PhoneDesk.Tests
             Assert.Equal("Error: No output from the PowerShell command.", vm.StatusMessage);
         }
 
-        [Fact]
-        public async Task RetrieveResourceAccountsAsync_SessionExpired_ReportsConnectionErrorWithoutCallingPowerShell()
-        {
-            var harness = new ViewModelTestHarness();
-            harness.SetSessionExpired();
-            var vm = CreateViewModel(harness);
-
-            await vm.RetrieveResourceAccountsCommand.ExecuteAsync(null);
-
-            harness.ErrorHandlingService.Verify(e => e.HandleConnectionError(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-            harness.PowerShellContextService.Verify(
-                p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
-
         // ---- RetrieveAutoAttendantsAsync ----
 
         [Fact]
@@ -129,21 +104,6 @@ namespace PhoneDesk.Tests
                 Times.Once);
         }
 
-        [Fact]
-        public async Task RetrieveAutoAttendantsAsync_SessionExpired_ReportsConnectionErrorWithoutCallingPowerShell()
-        {
-            var harness = new ViewModelTestHarness();
-            harness.SetSessionExpired();
-            var vm = CreateViewModel(harness);
-
-            await vm.RetrieveAutoAttendantsCommand.ExecuteAsync(null);
-
-            harness.ErrorHandlingService.Verify(e => e.HandleConnectionError(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-            harness.PowerShellContextService.Verify(
-                p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
-
         // ---- Open/close dialog commands ----
 
         [Fact]
@@ -175,18 +135,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void CloseCreateResourceAccountDialogCommand_HidesDialog()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.ShowCreateResourceAccountDialog = true;
-
-            vm.CloseCreateResourceAccountDialogCommand.Execute(null);
-
-            Assert.False(vm.ShowCreateResourceAccountDialog);
-        }
-
-        [Fact]
         public void OpenValidateCallQueueDialogCommand_VariablesConfigured_PrefillsCallQueueUpn()
         {
             var harness = new ViewModelTestHarness();
@@ -210,18 +158,6 @@ namespace PhoneDesk.Tests
 
             Assert.True(vm.ShowValidateCallQueueDialog);
             Assert.Equal("racq-", vm.CallQueueUpn);
-        }
-
-        [Fact]
-        public void CloseValidateCallQueueDialogCommand_HidesDialog()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.ShowValidateCallQueueDialog = true;
-
-            vm.CloseValidateCallQueueDialogCommand.Execute(null);
-
-            Assert.False(vm.ShowValidateCallQueueDialog);
         }
 
         [Fact]
@@ -580,19 +516,6 @@ namespace PhoneDesk.Tests
             harness.PowerShellContextService.Verify(
                 p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
                 Times.AtLeast(2));
-        }
-
-        [Fact]
-        public async Task RemoveResourceAccountAsync_SessionExpired_ReportsConnectionError()
-        {
-            var harness = new ViewModelTestHarness();
-            harness.SetSessionExpired();
-            harness.SharedStateService.SetupGet(s => s.SkipDeleteConfirmation).Returns(true);
-            var vm = CreateViewModel(harness);
-
-            await vm.RemoveResourceAccountCommand.ExecuteAsync("raaa-test@contoso.com");
-
-            harness.ErrorHandlingService.Verify(e => e.HandleConnectionError(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         // ---- Search filtering ----

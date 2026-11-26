@@ -220,17 +220,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void NavigateToCommand_DelegatesToNavigationService()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.NavigateToCommand.Execute(ConstantsService.Pages.M365Groups);
-
-            harness.NavigationService.Verify(n => n.NavigateTo(ConstantsService.Pages.M365Groups), Times.Once);
-        }
-
-        [Fact]
         public void CurrentPageChanged_ResolvesNewViewModelFromFactory()
         {
             var harness = new ViewModelTestHarness();
@@ -268,28 +257,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void ToggleSettingsCommand_TogglesIsSettingsOpen()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.ToggleSettingsCommand.Execute(null);
-            Assert.True(vm.IsSettingsOpen);
-
-            vm.ToggleSettingsCommand.Execute(null);
-            Assert.False(vm.IsSettingsOpen);
-        }
-
-        [Fact]
-        public void CurrentLanguage_StartsInEnglish()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            Assert.Equal(AppLanguage.English, vm.CurrentLanguage);
-        }
-
-        [Fact]
         public void CurrentLanguage_SettingGermanPersistsChoiceAndRaisesNotification()
         {
             var store = new TrackingUserPreferencesStore();
@@ -323,76 +290,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void CloseSettingsCommand_ClosesSettingsPanel()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.IsSettingsOpen = true;
-
-            vm.CloseSettingsCommand.Execute(null);
-
-            Assert.False(vm.IsSettingsOpen);
-        }
-
-        [Fact]
-        public void ToggleLogDialogCommand_TogglesIsLogDialogOpen()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.ToggleLogDialogCommand.Execute(null);
-            Assert.True(vm.IsLogDialogOpen);
-
-            vm.ToggleLogDialogCommand.Execute(null);
-            Assert.False(vm.IsLogDialogOpen);
-        }
-
-        [Fact]
-        public void CloseLogDialogCommand_ClosesLogDialog()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.IsLogDialogOpen = true;
-
-            vm.CloseLogDialogCommand.Execute(null);
-
-            Assert.False(vm.IsLogDialogOpen);
-        }
-
-        [Fact]
-        public void ClearLogCommand_ClearsLoggingService()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.ClearLogCommand.Execute(null);
-
-            harness.LoggingService.Verify(l => l.Clear(), Times.Once);
-        }
-
-        [Fact]
-        public void OpenUpdatePageCommand_NoReleaseUrl_DoesNotThrow()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            var exception = Record.Exception(() => vm.OpenUpdatePageCommand.Execute(null));
-
-            Assert.Null(exception);
-        }
-
-        [Fact]
-        public void SkipScriptPreview_ProxiesToSharedStateService()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.SkipScriptPreview = true;
-
-            harness.SharedStateService.VerifySet(s => s.SkipScriptPreview = true, Times.Once);
-        }
-
-        [Fact]
         public void RefreshConnectionStatus_RaisesPropertyChangedForConnectionProperties()
         {
             var harness = new ViewModelTestHarness();
@@ -411,17 +308,6 @@ namespace PhoneDesk.Tests
             Assert.Contains(nameof(MainWindowViewModel.IsTeamsConnected), raisedProperties);
             Assert.Contains(nameof(MainWindowViewModel.IsGraphConnected), raisedProperties);
             Assert.Contains(nameof(MainWindowViewModel.ConnectionStatusText), raisedProperties);
-        }
-
-        [Fact]
-        public void Dispose_DetachesEventHandlersWithoutThrowing()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            var exception = Record.Exception(() => vm.Dispose());
-
-            Assert.Null(exception);
         }
 
         private MainWindowViewModel CreateViewModel(ViewModelTestHarness harness, ITranslationService translationService)

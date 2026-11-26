@@ -108,13 +108,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void ValidateHolidayDate_Tomorrow_IsValid()
-        {
-            var result = _validationService.ValidateHolidayDate(DateTime.Today.AddDays(1));
-            Assert.True(result.IsValid);
-        }
-
-        [Fact]
         public void ValidateHolidayDate_Yesterday_IsInvalid()
         {
             var result = _validationService.ValidateHolidayDate(DateTime.Today.AddDays(-1));

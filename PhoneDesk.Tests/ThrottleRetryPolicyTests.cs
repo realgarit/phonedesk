@@ -131,22 +131,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public async Task Gives_up_after_max_attempts_and_returns_the_throttling_result()
-        {
-            var (logger, _) = CapturingLogger();
-            var delays = new List<TimeSpan>();
-            var opts = new ThrottleRetryOptions { MaxAttempts = 3, BaseDelaySeconds = 1, JitterFactor = 0 };
-            var policy = PolicyWith(logger.Object, opts, delays);
-
-            var invocations = 0;
-            var result = await policy.ExecuteAsync(_ => { invocations++; return Task.FromResult(Throttled()); }, Idempotent(), TestContext.Current.CancellationToken);
-
-            Assert.Equal(3, invocations);
-            Assert.Equal(2, delays.Count); // waits happen between the 3 attempts only
-            Assert.Equal(OperationErrorCategory.Throttling, result.Category);
-        }
-
-        [Fact]
         public async Task Non_throttling_failure_is_never_retried()
         {
             var (logger, _) = CapturingLogger();

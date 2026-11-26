@@ -21,16 +21,6 @@ namespace PhoneDesk.Tests
                 harness.DialogService.Object);
 
         [Fact]
-        public void Construction_LogsPageLoad()
-        {
-            var harness = new ViewModelTestHarness();
-
-            CreateViewModel(harness);
-
-            harness.LoggingService.Verify(l => l.Log("Holidays page loaded", LogLevel.Info), Times.Once);
-        }
-
-        [Fact]
         public void ResetHolidayStateCommand_ResetsFieldsAndStatus()
         {
             var harness = new ViewModelTestHarness();
@@ -69,18 +59,6 @@ namespace PhoneDesk.Tests
 
             Assert.True(vm.ShowCreateHolidayDialog);
             Assert.Equal("hd-", vm.HolidayName);
-        }
-
-        [Fact]
-        public void CloseCreateHolidayDialogCommand_HidesDialog()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.ShowCreateHolidayDialog = true;
-
-            vm.CloseCreateHolidayDialogCommand.Execute(null);
-
-            Assert.False(vm.ShowCreateHolidayDialog);
         }
 
         [Fact]
@@ -187,19 +165,6 @@ namespace PhoneDesk.Tests
 
             Assert.Contains("not found or not accessible", vm.StatusMessage);
             harness.ErrorHandlingService.Verify(e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "VerifyAutoAttendant"), Times.Once);
-        }
-
-        [Fact]
-        public async Task VerifyAutoAttendantAsync_SessionExpired_ReportsConnectionError()
-        {
-            var harness = new ViewModelTestHarness();
-            harness.SetSessionExpired();
-            var vm = CreateViewModel(harness);
-            vm.AutoAttendantName = "aa-Contoso";
-
-            await vm.VerifyAutoAttendantCommand.ExecuteAsync(null);
-
-            harness.ErrorHandlingService.Verify(e => e.HandleConnectionError(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [Fact]

@@ -18,16 +18,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void Constructor_LogsInitialization()
-        {
-            var logger = new Mock<ILoggingService>();
-
-            _ = new NavigationService(logger.Object);
-
-            logger.Verify(l => l.Log("Navigation service initialized", LogLevel.Info), Times.Once);
-        }
-
-        [Fact]
         public void NavigateTo_UpdatesCurrentPage()
         {
             var logger = new Mock<ILoggingService>();
@@ -36,17 +26,6 @@ namespace PhoneDesk.Tests
             service.NavigateTo(ConstantsService.Pages.Variables);
 
             Assert.Equal(ConstantsService.Pages.Variables, service.CurrentPage);
-        }
-
-        [Fact]
-        public void NavigateTo_LogsNavigation()
-        {
-            var logger = new Mock<ILoggingService>();
-            var service = new NavigationService(logger.Object);
-
-            service.NavigateTo(ConstantsService.Pages.Variables);
-
-            logger.Verify(l => l.Log($"Navigated to {ConstantsService.Pages.Variables} page", LogLevel.Info), Times.Once);
         }
 
         [Fact]
@@ -62,19 +41,6 @@ namespace PhoneDesk.Tests
             service.NavigateTo(ConstantsService.Pages.Variables);
 
             Assert.Equal(0, raiseCount);
-        }
-
-        [Fact]
-        public void NavigateTo_SamePageTwice_DoesNotLogNavigationTwice()
-        {
-            var logger = new Mock<ILoggingService>();
-            var service = new NavigationService(logger.Object);
-            service.NavigateTo(ConstantsService.Pages.Variables);
-            logger.Invocations.Clear();
-
-            service.NavigateTo(ConstantsService.Pages.Variables);
-
-            logger.Verify(l => l.Log(It.Is<string>(s => s.StartsWith("Navigated to")), It.IsAny<LogLevel>()), Times.Never);
         }
 
         [Fact]

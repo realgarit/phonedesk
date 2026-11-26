@@ -38,10 +38,11 @@ public sealed class ReleaseConfigurationTests
         // Without the build.yml sync step, every release PR fails version validation.
         var buildWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "build.yml"));
         Assert.Contains("name: Sync app.manifest on release pull request", buildWorkflow);
-        Assert.True(
-            buildWorkflow.IndexOf("name: Sync app.manifest on release pull request", StringComparison.Ordinal)
-                < buildWorkflow.IndexOf("name: Start release pull request validation", StringComparison.Ordinal),
-            "app.manifest must be synced before release pull request validation starts");
+        // The sync step is also the version check of the release pull request: no other run checks it before the merge.
+        var syncStep = buildWorkflow[buildWorkflow.IndexOf("name: Sync app.manifest on release pull request", StringComparison.Ordinal)..];
+        Assert.Contains("bash scripts/validate-version-sync.sh \"$VERSION\"", syncStep);
+        // The release pull request starts no validation run: the release build tests all platforms.
+        Assert.DoesNotContain("gh workflow run build.yml", buildWorkflow);
     }
 
     [Fact]

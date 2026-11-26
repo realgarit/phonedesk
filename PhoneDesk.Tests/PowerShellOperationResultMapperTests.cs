@@ -207,13 +207,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void Map_HonorsSuppliedCorrelationId()
-        {
-            var result = PowerShellOperationResultMapper.Map(Exec("SUCCESS: ok"), correlationId: "fixed-id");
-            Assert.Equal("fixed-id", result.CorrelationId);
-        }
-
-        [Fact]
         public void Failure_BuildsTypedFailureWithoutRoundTrip()
         {
             var result = PowerShellOperationResultMapper.Failure(

@@ -92,19 +92,6 @@ namespace PhoneDesk.Tests
             "SUCCESS: Tenant topology retrieved";
 
         [Fact]
-        public void Constructor_LogsPageLoaded()
-        {
-            var harness = new ViewModelTestHarness();
-            var docBuilder = CreateDocBuilderMock();
-
-            var vm = CreateViewModel(harness, docBuilder);
-
-            harness.LoggingService.Verify(l => l.Log("Documentation page loaded", LogLevel.Info), Times.Once);
-            Assert.Equal(string.Empty, vm.DocumentationOutput);
-            Assert.False(vm.IsExporting);
-        }
-
-        [Fact]
         public async Task ExportTopologySnapshotQueriesLiveTenantAndIncludesFullReportInventory()
         {
             var harness = new ViewModelTestHarness();

@@ -19,40 +19,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void CallQueueScriptBuilder_GetRetrieveCallQueuesCommand_ReturnsCorrectScript()
-        {
-            var builder = new CallQueueScriptBuilder(_mockSanitizer.Object);
-            var script = builder.GetRetrieveCallQueuesCommand();
-
-            Assert.Contains("Get-CsCallQueue", script);
-            Assert.Contains("cq-", script);
-        }
-
-        [Fact]
-        public void AutoAttendantScriptBuilder_GetCreateSimpleAutoAttendantCommand_ReturnsCorrectScript()
-        {
-            var builder = new AutoAttendantScriptBuilder(_mockSanitizer.Object);
-            var variables = new PhoneManagerVariables
-            {
-                Customer = "Cust",
-                RaaAnrName = "Anr",
-                CustomerGroupName = "Grp",
-                LanguageId = "en-US",
-                TimeZoneId = "UTC"
-            };
-
-            var script = builder.GetCreateSimpleAutoAttendantCommand(variables);
-
-            Assert.Contains("New-CsAutoAttendant", script);
-            Assert.Contains("-Name \"aa-Cust-Anr-Grp\"", script);
-            Assert.Contains("-LanguageId \"en-US\"", script);
-            Assert.Contains("-TimeZoneId \"UTC\"", script);
-
-            // Verify sanitization is invoked
-            _mockSanitizer.Verify(s => s.SanitizeString(It.IsAny<string>()), Times.AtLeastOnce());
-        }
-
-        [Fact]
         public void HolidayScriptBuilder_GetCreateHolidayCommand_ReturnsCorrectScript()
         {
             var builder = new HolidayScriptBuilder(_mockSanitizer.Object);

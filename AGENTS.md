@@ -58,7 +58,8 @@ Release-please repeatedly created v4.0.0 PRs because old squashed commit `0406e3
 ## CI
 
 - Build runs on Windows, macOS (x64 + arm64), Linux
-- **Pull requests**: the four-platform `PR Validate` job runs only for Dependabot PRs, the bundled-module update PR (`module-compatibility/*`) and the release PR (dispatched with `validate_ref`). Every other PR is tested locally before it is opened (`dotnet test PhoneDesk.slnx -c Release`, both test projects); its checks on GitHub are the Semgrep scan (`review`) and the Codex review. Local tests run on Windows only, so a Linux- or macOS-only break shows first in the release PR validation.
+- **Pull requests**: the four-platform `PR Validate` job runs only for Dependabot PRs and the bundled-module update PR (`module-compatibility/*`); it can be started by hand with `validate_ref`. Every other PR, the release PR included, is tested locally before it is opened (`dotnet test PhoneDesk.slnx -c Release`, both test projects); its checks on GitHub are the Semgrep scan (`review`) and the Codex review. The release PR can be merged as soon as its Semgrep check is green. Local tests run on Windows only, so a Linux- or macOS-only break shows first in the release build after the merge: it tests all four platforms before it packages, and a failed release is recovered with the `release_tag` input after the fix.
+- **Unit tests**: keep tests that protect behaviour (validation, generated scripts, view-model flows, portability, holidays, localization, release configuration). Do not add tests that only show a mock passes a value through, that a getter returns what was set, or that repeat an existing case.
 - Windows: Inno Setup installer; macOS: ad-hoc signed .app bundle; Linux: zip
 - **PR checkout**: `github.event.pull_request.head.sha` (not merge ref) to avoid race where merge ref is deleted before runner picks up the job
 - `dotnet test` skips screenshot gen unless `GENERATE_SCREENSHOTS=1`
@@ -74,6 +75,10 @@ Always: **branch → run the full test suite locally → commit → push + open 
 - **Visual verification required for UI changes**: never merge new/changed pages, dialogs, or panels on unit tests alone. Render every new/affected page in its key states (empty, populated, long text, filters open) via the headless harness (`ScreenshotGenerator.cs` pattern, `GENERATE_SCREENSHOTS=1`), then actually inspect the resulting PNGs for overflow, clipping, alignment, and centering before opening the PR. This was learned the hard way — UI shipped with unit tests only has twice gone out with text overflow / mis-centered layouts (History page, Dashboard, dry-run preview).
 - Icon and screenshot/brand conventions, the Clean Architecture layering, the frozen Graph/PowerShell + auth surface, the macOS signing/delivery pipeline, and the branch→PR→CI→merge→cleanup workflow are covered above under their own sections — treat those as the durable ground truth alongside this one.
 - Homebrew cask auto-bump (`PAT_TOKEN` → `realgarit/homebrew-tap`) has tap write access and is confirmed working end-to-end; no manual cask bumps needed.
+
+## Two heads
+
+Every feature and every fix goes into both heads in the same change: the desktop app (GUI) and the MCP server. Put the logic in `PhoneDesk.Application/Operations` and let a ViewModel and an MCP tool adapt it. A change that only one head can have (a control, a tool description) says so in its PR.
 
 ## Cross-agent conventions
 

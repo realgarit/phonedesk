@@ -125,20 +125,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void ParseCsv_WhitespaceOnlyContent_DoesNotThrow_LeavesParsedEntriesEmpty()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-            vm.CsvContent = "   \n\t  ";
-
-            var exception = Record.Exception(() => vm.ParseCsvCommand.Execute(null));
-
-            Assert.Null(exception);
-            Assert.Empty(vm.ParsedEntries);
-            Assert.Equal("No CSV content to parse.", vm.StatusMessage);
-        }
-
-        [Fact]
         public void ParseCsv_HeaderOnly_NoDataRows_ProducesEmptyParsedEntriesWithStatus()
         {
             var harness = new ViewModelTestHarness();

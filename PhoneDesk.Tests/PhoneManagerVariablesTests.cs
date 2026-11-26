@@ -110,18 +110,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void DefaultValues_AreCorrect()
-        {
-            var vars = new PhoneManagerVariables();
-
-            Assert.Equal(string.Empty, vars.Customer);
-            Assert.Equal(string.Empty, vars.CustomerGroupName);
-            Assert.Equal(string.Empty, vars.MsFallbackDomain);
-            Assert.False(vars.UsePerDaySchedule);
-            Assert.Equal(7, vars.WeeklySchedule.Count);
-        }
-
-        [Fact]
         public void M365GroupId_PrefillsTargetFields()
         {
             var vars = new PhoneManagerVariables();

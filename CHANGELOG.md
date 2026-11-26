@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.38.0](https://github.com/realgarit/phonedesk/compare/v3.37.2...v3.38.0) (2026-11-26)
+
+
+### Features
+
+* route opening hours to the call queue and add an outbound caller ID setting ([c438665](https://github.com/realgarit/phonedesk/commit/c43866576c98b6deee0b878091dc46dc3088836d))
+* route opening hours to the call queue and add an outbound caller ID setting ([2015bd8](https://github.com/realgarit/phonedesk/commit/2015bd880cf60c3f56d3529cc11aacf8ecf22fcc))
+
 ## [3.37.2](https://github.com/realgarit/phonedesk/compare/v3.37.1...v3.37.2) (2026-11-26)
 
 

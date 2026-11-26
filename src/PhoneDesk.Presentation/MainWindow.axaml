@@ -178,6 +178,13 @@
                                 </StackPanel>
                             </ListBoxItem>
 
+                            <ListBoxItem Tag="PhoneNumbers" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationPhoneNumbers}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                                    <fi:SymbolIcon Symbol="NumberSymbol"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationPhoneNumbers}" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ListBoxItem>
+
                             <ListBoxItem Tag="BulkOperations" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationBulkOperations}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="TableMultiple"/>

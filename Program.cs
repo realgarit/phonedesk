@@ -123,6 +123,7 @@ class Program
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<HealthCheckViewModel>();
         services.AddTransient<HolidayManagerViewModel>();
+        services.AddTransient<PhoneNumbersViewModel>();
         services.AddSingleton<PhoneDesk.Operations.IHolidayBackupStore>(_ => new FileHolidayBackupStore());
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<GetStartedViewModel>();

@@ -1321,5 +1321,16 @@
   "PhoneNumbersPreviewUnassign": "Bereit. Die Nummer wird vom Konto entfernt und bleibt im Bestand.",
   "PhoneNumbersPreviewAssign": "Bereit. «Anwenden» zeigt das Skript, bevor es ausgeführt wird.",
   "PhoneNumbersPreviewBlocked": "Nicht möglich: {details}",
-  "PhoneNumbersUnverifiedStatus": "Die Änderung wurde gesendet, aber die Nummer konnte nicht erneut gelesen werden. Das Ergebnis ist daher nicht bestätigt. Lesen Sie die Liste und prüfen Sie die Nummer. {details}"
+  "PhoneNumbersUnverifiedStatus": "Die Änderung wurde gesendet, aber die Nummer konnte nicht erneut gelesen werden. Das Ergebnis ist daher nicht bestätigt. Lesen Sie die Liste und prüfen Sie die Nummer. {details}",
+  "GetStartedExpectedTenantWatermark": "Erwartete Organisation (optional): Domäne, Name oder Mandanten-ID",
+  "GetStartedExpectedTenantHint": "Wenn Sie für mehrere Kunden arbeiten, geben Sie die gemeinte Organisation ein. Erreicht eine Anmeldung eine andere Organisation, meldet PhoneDesk dies und sendet keine Änderung.",
+  "GetStartedIdentityTeams": "Microsoft Teams: {name} ({id})",
+  "GetStartedIdentityGraph": "Microsoft Graph: {account} ({id})",
+  "GetStartedRestartGraphSignInAction": "Anmeldung neu starten",
+  "GetStartedGraphSignInRestarted": "Die Anmeldung bei Microsoft Graph wurde abgebrochen. Wählen Sie erneut «Verbinden», um ein neues Anmeldefenster zu öffnen, und ignorieren Sie das alte.",
+  "ValidationTenantIdentityMismatch": "Die Verbindungen sind nicht die erwarteten. Es wird nichts an den Mandanten gesendet. Öffnen Sie die Bereitschaftsprüfung für die Details.",
+  "GetStartedSetupGuidanceIdentity": "Die Anmeldungen haben funktioniert, sind aber nicht die erwarteten. Melden Sie sich ab und danach mit dem richtigen Konto erneut an.",
+  "GetStartedIdentityTenantsDiffer": "Microsoft Teams ist mit {teams} verbunden, aber Microsoft Graph ist als {account} bei einer anderen Organisation angemeldet.",
+  "GetStartedIdentityUnexpectedTenant": "Sie haben {expected} erwartet, aber die Anmeldung hat {actual} erreicht.",
+  "GetStartedIdentityUnexpectedAccount": "Sie haben das Konto {expected} erwartet, aber Microsoft Graph ist als {actual} angemeldet."
 }

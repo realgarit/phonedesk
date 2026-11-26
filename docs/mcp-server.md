@@ -131,6 +131,29 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### The right tenant, and a sign-in that hangs
+
+A sign-in can report success and still be wrong: the browser kept the session of the previous
+customer, so the connection is to another tenant, or Microsoft Teams and Microsoft Graph are
+in different tenants. Both heads now read who the connections are and stop on a problem.
+
+- After each sign-in the tenant of Microsoft Teams (ID, name, domains) and the tenant and account
+  of Microsoft Graph are read from the tenant.
+- `connect_teams` and `connect_graph` take `expectedTenant` (tenant ID, a domain, or the exact
+  name) and `expectedAccount`. In the desktop app the Readiness Check page has a field for the
+  expected organization.
+- With a problem (two tenants, another tenant, another account) the connect call reports a
+  failure although the sign-in worked, `session_status` and `tenant_identity` show the problem,
+  and the server sends no read and no change until the user signs out and signs in correctly.
+  In the desktop app the page is not ready and every operation that checks its prerequisites
+  stops.
+- `restart_sign_in` with `graph` drops a Microsoft Graph sign-in that hangs (the browser window
+  was closed). The next `connect_graph` opens a new window; a sign-in that is finished later in
+  the old window connects nothing; the Microsoft Teams connection stays. The desktop app has
+  **Start sign-in again** on the Microsoft Graph card while the sign-in is open.
+- A Microsoft Teams sign-in cannot be given up: it holds the PowerShell session until it ends.
+  `restart_sign_in` with `teams` says what the user can do. This part of the request is open.
+
 ### Phone numbers
 
 The desktop app has these on the **Phone Numbers** page; the server has one tool for each. Both

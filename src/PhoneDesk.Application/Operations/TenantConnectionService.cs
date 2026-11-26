@@ -39,6 +39,7 @@ public sealed class TenantConnectionService
     private readonly ISessionManager _session;
     private readonly ITenantTopologyCache _topologyCache;
     private readonly ITenantHealthCheckCache _healthCheckCache;
+    private readonly TenantIdentityGuard _identity;
     private readonly Lock _gate = new();
 
     private Task<TenantCommandOutcome>? _pendingTeamsSignIn;
@@ -50,8 +51,10 @@ public sealed class TenantConnectionService
         IMsalGraphAuthenticationService graphAuthentication,
         ISessionManager session,
         ITenantTopologyCache topologyCache,
-        ITenantHealthCheckCache healthCheckCache)
+        ITenantHealthCheckCache healthCheckCache,
+        TenantIdentityGuard? identity = null)
     {
+        _identity = identity ?? new TenantIdentityGuard();
         _runner = runner;
         _commands = commands;
         _graphAuthentication = graphAuthentication;
@@ -87,6 +90,65 @@ public sealed class TenantConnectionService
             {
                 return _pendingTeamsSignIn is { IsCompleted: false };
             }
+        }
+    }
+
+    /// <summary>True while the Microsoft Graph sign-in window is open.</summary>
+    public bool GraphSignInOpen
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _pendingGraphSignIn is { IsCompleted: false };
+            }
+        }
+    }
+
+    public TenantIdentityGuard Identity => _identity;
+
+    /// <summary>
+    /// Gives up the Microsoft Graph sign-in that is open, so the next connect call opens a new
+    /// window. The old attempt cannot be stopped, but its result is never used: a sign-in that is
+    /// finished later in the old window connects nothing. The Microsoft Teams connection stays.
+    /// Returns false when no Microsoft Graph sign-in was open.
+    /// </summary>
+    public bool AbandonGraphSignIn()
+    {
+        lock (_gate)
+        {
+            if (_pendingGraphSignIn is null)
+            {
+                return false;
+            }
+
+            _pendingGraphSignIn = null;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Reads who the connections are signed in as and keeps the result for the checks before a
+    /// change. Returns null when the identity could not be read; that is not a mismatch.
+    /// </summary>
+    public async Task<TenantIdentityInfo?> RefreshIdentityAsync(CancellationToken cancellationToken)
+    {
+        if (TeamsSignInOpen || (!_session.TeamsConnected && !_session.GraphConnected))
+        {
+            return _identity.Identity;
+        }
+
+        var outcome = await _runner.RunAsync(
+            new TenantCommandRequest(TenantIdentity.GetReadCommand(), "ReadConnectionIdentity") { IsIdempotentRead = true }, cancellationToken);
+        try
+        {
+            var identity = TenantIdentity.Parse(string.IsNullOrEmpty(outcome.Result.RawOutput) ? outcome.Result.Value : outcome.Result.RawOutput);
+            _identity.Update(identity);
+            return identity;
+        }
+        catch (InvalidDataException)
+        {
+            return null;
         }
     }
 
@@ -148,7 +210,7 @@ public sealed class TenantConnectionService
             _session.UpdateTenantInfo(tenant.Id, tenant.Name);
         }
 
-        return Ok("Connected to Microsoft Teams.");
+        return await WithIdentityAsync("Connected to Microsoft Teams.", cancellationToken);
     }
 
     public async Task<ConnectionOutcome> ConnectGraphAsync(CancellationToken cancellationToken)
@@ -200,7 +262,7 @@ public sealed class TenantConnectionService
         _session.UpdateGraphConnection(connected, authentication.Account);
 
         return connected
-            ? Ok("Connected to Microsoft Graph.")
+            ? await WithIdentityAsync("Connected to Microsoft Graph.", cancellationToken)
             : Fail("Microsoft Graph could not be connected.", outcome.Result.ErrorMessage ?? outcome.Result.RawOutput);
     }
 
@@ -223,6 +285,12 @@ public sealed class TenantConnectionService
         _session.UpdateModulesChecked(modulesChecked);
         _topologyCache.Clear();
         _healthCheckCache.Clear();
+        _identity.ClearIdentity();
+        lock (_gate)
+        {
+            _pendingGraphSignIn = null;
+        }
+
         return Ok("Disconnected from Microsoft Teams and Microsoft Graph.");
     }
 
@@ -251,6 +319,21 @@ public sealed class TenantConnectionService
             // The caller gave up on this call; the sign-in itself stays open for the next call.
             return false;
         }
+    }
+
+    /// <summary>
+    /// A sign-in that worked is still a failure for the caller when it reached another tenant or
+    /// account than expected, or when the two connections are in different tenants.
+    /// </summary>
+    private async Task<ConnectionOutcome> WithIdentityAsync(string message, CancellationToken cancellationToken)
+    {
+        await RefreshIdentityAsync(cancellationToken);
+        var problems = _identity.Problems;
+        return problems.Count == 0
+            ? Ok(message)
+            : Fail(
+                message + " But it is not the expected identity, so no change will be sent until this is corrected.",
+                string.Join(" ", problems.Select(problem => problem.Message)));
     }
 
     private ConnectionOutcome Ok(string message) => new(true, message, null, GetStatus());

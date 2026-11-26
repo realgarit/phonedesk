@@ -64,6 +64,16 @@
                         <TextBlock Name="SameOrganizationRequirement"
                                    Text="{loc:Translate Key=GetStartedSameOrganizationRequirement}"
                                    FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBox Name="ExpectedTenantBox" Text="{Binding ExpectedTenant}" MaxWidth="460" HorizontalAlignment="Left" MinWidth="320" Margin="0,6,0,0"
+                                 Watermark="{loc:Translate Key=GetStartedExpectedTenantWatermark}"
+                                 AutomationProperties.Name="{loc:Translate Key=GetStartedExpectedTenantWatermark}"/>
+                        <TextBlock Text="{loc:Translate Key=GetStartedExpectedTenantHint}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <SelectableTextBlock Name="ConnectionIdentity" Text="{Binding IdentityText}" IsVisible="{Binding HasIdentity}"
+                                             FontSize="12" TextWrapping="Wrap"/>
+                        <TextBlock Name="ConnectionIdentityProblem" Text="{Binding IdentityProblemText}" IsVisible="{Binding HasIdentityProblem}"
+                                   FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"/>
                     </StackPanel>
                     <Button Grid.Column="2"
                             Command="{Binding NavigateToPageCommand}"
@@ -262,6 +272,14 @@
                             <StackPanel Orientation="Horizontal">
                                 <fi:SymbolIcon Symbol="Cloud"/>
                                 <TextBlock Text="{Binding GraphActionText}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Name="RestartGraphSignIn" Command="{Binding RestartGraphSignInCommand}"
+                                IsVisible="{Binding GraphSignInPending}"
+                                Classes="IconText" MinWidth="160" Margin="0,8,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowCounterclockwise"/>
+                                <TextBlock Text="{loc:Translate Key=GetStartedRestartGraphSignInAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding DisconnectGraphCommand}"

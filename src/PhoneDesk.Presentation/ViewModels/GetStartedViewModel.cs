@@ -25,6 +25,125 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private bool _canProceed;
 
+        /// <summary>The tenant the operator means: its ID, one of its domains or its name. Optional.</summary>
+        [ObservableProperty]
+        private string _expectedTenant = string.Empty;
+
+        /// <summary>True while the Microsoft Graph sign-in window is open and the page waits for it.</summary>
+        [ObservableProperty]
+        private bool _graphSignInPending;
+
+        private readonly PhoneDesk.Operations.TenantIdentityGuard _identityGuard;
+        private TaskCompletionSource<bool>? _abandonGraphSignIn;
+
+        /// <summary>Who the connections are signed in as, read from the tenant after a sign-in.</summary>
+        public string IdentityText
+        {
+            get
+            {
+                var identity = _identityGuard.Identity;
+                if (identity is null || (!identity.TeamsKnown && !identity.GraphKnown))
+                {
+                    return string.Empty;
+                }
+
+                var parts = new List<string>();
+                if (identity.TeamsKnown)
+                {
+                    parts.Add(GetText(
+                        UiTextKey.GetStartedIdentityTeams,
+                        "Microsoft Teams: {name} ({id})",
+                        new Dictionary<string, object?> { ["name"] = identity.TeamsTenantName, ["id"] = identity.TeamsTenantId }));
+                }
+
+                if (identity.GraphKnown)
+                {
+                    parts.Add(GetText(
+                        UiTextKey.GetStartedIdentityGraph,
+                        "Microsoft Graph: {account} ({id})",
+                        new Dictionary<string, object?> { ["account"] = identity.GraphAccount, ["id"] = identity.GraphTenantId }));
+                }
+
+                return string.Join(Environment.NewLine, parts);
+            }
+        }
+
+        public bool HasIdentity => !string.IsNullOrEmpty(IdentityText);
+
+        /// <summary>Why nothing may be changed with these connections, or empty.</summary>
+        public string IdentityProblemText
+        {
+            get
+            {
+                var identity = _identityGuard.Identity;
+                var expectation = _identityGuard.Expectation;
+                return string.Join(" ", _identityGuard.Problems.Select(problem => problem.Code switch
+                {
+                    "tenantsDiffer" => GetText(
+                        UiTextKey.GetStartedIdentityTenantsDiffer,
+                        "Microsoft Teams is connected to {teams}, but Microsoft Graph is signed in to another organization as {account}.",
+                        new Dictionary<string, object?> { ["teams"] = identity?.TeamsTenantName, ["account"] = identity?.GraphAccount }),
+                    "unexpectedTenant" => GetText(
+                        UiTextKey.GetStartedIdentityUnexpectedTenant,
+                        "You expected {expected}, but the sign-in reached {actual}.",
+                        new Dictionary<string, object?>
+                        {
+                            ["expected"] = expectation.Tenant,
+                            ["actual"] = identity is { TeamsKnown: true } ? identity.TeamsTenantName : identity?.GraphAccount
+                        }),
+                    "unexpectedAccount" => GetText(
+                        UiTextKey.GetStartedIdentityUnexpectedAccount,
+                        "You expected the account {expected}, but Microsoft Graph is signed in as {actual}.",
+                        new Dictionary<string, object?> { ["expected"] = expectation.Account, ["actual"] = identity?.GraphAccount }),
+                    _ => problem.Message
+                }));
+            }
+        }
+
+        public bool HasIdentityProblem => _identityGuard.Problems.Count > 0;
+
+        partial void OnExpectedTenantChanged(string value)
+        {
+            _identityGuard.SetExpectation(value, _identityGuard.Expectation.Account);
+            RaiseIdentityChanged();
+        }
+
+        private void RaiseIdentityChanged()
+        {
+            OnPropertyChanged(nameof(IdentityText));
+            OnPropertyChanged(nameof(HasIdentity));
+            OnPropertyChanged(nameof(IdentityProblemText));
+            OnPropertyChanged(nameof(HasIdentityProblem));
+            UpdateCanProceed();
+        }
+
+        /// <summary>Reads who the connections are signed in as. A read that fails changes nothing.</summary>
+        private async Task RefreshIdentityAsync()
+        {
+            var result = await ExecutePowerShellCommandAsync(PhoneDesk.Operations.TenantIdentity.GetReadCommand(), "ReadConnectionIdentity");
+            try
+            {
+                _identityGuard.Update(PhoneDesk.Operations.TenantIdentity.Parse(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput));
+            }
+            catch (System.IO.InvalidDataException)
+            {
+                // The sign-in itself worked; the identity stays unknown and nothing is blocked by it.
+            }
+
+            RaiseIdentityChanged();
+        }
+
+        /// <summary>
+        /// Gives up the Microsoft Graph sign-in that is open, so the operator can start a new one. The
+        /// old browser window cannot be closed from here; a sign-in that is finished there later
+        /// connects nothing. The Microsoft Teams connection stays.
+        /// </summary>
+        [RelayCommand]
+        private void RestartGraphSignIn()
+        {
+            _abandonGraphSignIn?.TrySetResult(true);
+        }
+
         private UiTextKey? _lastSetupErrorKey;
         private string? _lastSetupErrorFallback;
 
@@ -35,6 +154,10 @@ namespace PhoneDesk.ViewModels
             ? GetText(
                 UiTextKey.GetStartedSetupGuidanceReady,
                 "Your connections are ready. Continue to Configuration.")
+            : HasIdentityProblem
+                ? GetText(
+                    UiTextKey.GetStartedSetupGuidanceIdentity,
+                    "The sign-ins worked, but they are not the expected ones. Sign out, then sign in again with the right account.")
             : _lastSetupErrorKey is { } errorKey
                 ? GetText(errorKey, _lastSetupErrorFallback ?? string.Empty)
                 : !ModulesChecked
@@ -122,10 +245,13 @@ namespace PhoneDesk.ViewModels
             IValidationService validationService,
             IMsalGraphAuthenticationService msalAuthService,
             IAuditLog? auditLog = null,
-            ITranslationService? translationService = null)
+            ITranslationService? translationService = null,
+            PhoneDesk.Operations.TenantIdentityGuard? identityGuard = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, auditLog: auditLog, translationService: translationService)
         {
+            _identityGuard = identityGuard ?? new PhoneDesk.Operations.TenantIdentityGuard();
+            _expectedTenant = _identityGuard.Expectation.Tenant ?? string.Empty;
             _msalAuthService = msalAuthService;
             _modulesChecked = _sessionManager.ModulesChecked;
             _teamsConnected = _sessionManager.TeamsConnected;
@@ -305,6 +431,11 @@ namespace PhoneDesk.ViewModels
                     _sessionManager.UpdateTenantInfo(tenantId, tenantName);
                 }
 
+                if (TeamsConnected)
+                {
+                    await RefreshIdentityAsync();
+                }
+
                 UpdateCanProceed();
             }
             catch (Exception ex)
@@ -351,8 +482,33 @@ namespace PhoneDesk.ViewModels
                     "Authenticating to Microsoft Graph...",
                     LogLevel.Info);
 
-                // Step 1: Authenticate using MSAL (opens browser popup)
-                var authResult = await _msalAuthService.AuthenticateAsync();
+                // Step 1: Authenticate using MSAL (opens browser popup). A sign-in window that was closed
+                // never reports back, so the operator can give up the wait and start again.
+                var signIn = _msalAuthService.AuthenticateAsync();
+                var abandon = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _abandonGraphSignIn = abandon;
+                GraphSignInPending = true;
+                try
+                {
+                    if (await Task.WhenAny(signIn, abandon.Task) != signIn)
+                    {
+                        // The old attempt is not awaited any more: when it finishes later, its result is not used.
+                        GraphConnected = false;
+                        _sessionManager.UpdateGraphConnection(false);
+                        UpdateCanProceed();
+                        SetSetupError(
+                            UiTextKey.GetStartedGraphSignInRestarted,
+                            "The Microsoft Graph sign-in was given up. Select Connect again to open a new sign-in window, and ignore the old one.");
+                        return;
+                    }
+                }
+                finally
+                {
+                    GraphSignInPending = false;
+                    _abandonGraphSignIn = null;
+                }
+
+                var authResult = await signIn;
 
                 if (!authResult.Success || string.IsNullOrEmpty(authResult.AccessToken))
                 {
@@ -408,6 +564,11 @@ namespace PhoneDesk.ViewModels
                 }
 
                 _sessionManager.UpdateGraphConnection(GraphConnected, account);
+                if (GraphConnected)
+                {
+                    await RefreshIdentityAsync();
+                }
+
                 UpdateCanProceed();
             }
             catch (Exception ex)
@@ -446,6 +607,8 @@ namespace PhoneDesk.ViewModels
                 var result = await ExecutePowerShellCommandAsync(command, "DisconnectTeams");
                 TeamsConnected = false;
                 _sessionManager.UpdateTeamsConnection(false);
+                _identityGuard.ClearIdentity();
+                RaiseIdentityChanged();
                 LogLocalized(
                     UiTextKey.GetStartedDisconnectTeamsSuccessLog,
                     "Disconnected from Microsoft Teams",
@@ -485,6 +648,8 @@ namespace PhoneDesk.ViewModels
                 var result = await ExecutePowerShellCommandAsync(command, "DisconnectGraph");
                 GraphConnected = false;
                 _sessionManager.UpdateGraphConnection(false);
+                _identityGuard.ClearIdentity();
+                RaiseIdentityChanged();
                 LogLocalized(
                     UiTextKey.GetStartedDisconnectGraphSuccessLog,
                     "Disconnected from Microsoft Graph",
@@ -507,7 +672,8 @@ namespace PhoneDesk.ViewModels
 
         private void UpdateCanProceed()
         {
-            CanProceed = ModulesChecked && TeamsConnected && GraphConnected;
+            // Connected to another tenant than expected, or to two tenants, is not ready.
+            CanProceed = ModulesChecked && TeamsConnected && GraphConnected && _identityGuard.Problems.Count == 0;
             UpdateGuidance();
         }
 

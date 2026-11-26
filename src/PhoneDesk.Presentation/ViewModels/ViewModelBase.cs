@@ -322,6 +322,9 @@ namespace PhoneDesk.ViewModels
                 ValidationErrorCode.GraphNotConnected => GetText(
                     UiTextKey.ValidationGraphNotConnected,
                     "Not connected to Microsoft Graph. Please connect to Graph first."),
+                ValidationErrorCode.TenantIdentityMismatch => GetText(
+                    UiTextKey.ValidationTenantIdentityMismatch,
+                    "The connections are not the expected ones. Nothing is sent to the tenant. Open Readiness Check for the details."),
                 ValidationErrorCode.CustomerNameRequired => GetText(
                     UiTextKey.ValidationCustomerNameRequired,
                     "Customer name is required."),

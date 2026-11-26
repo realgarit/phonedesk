@@ -10,6 +10,84 @@ namespace PhoneDesk.Tests
     {
         private readonly Mock<IMsalGraphAuthenticationService> _msalAuthService = new();
 
+        private GetStartedViewModel CreateViewModel(ViewModelTestHarness harness, PhoneDesk.Operations.TenantIdentityGuard guard) =>
+            new GetStartedViewModel(
+                harness.PowerShellContextService.Object,
+                harness.PowerShellCommandService.Object,
+                harness.LoggingService.Object,
+                harness.SessionManager.Object,
+                harness.NavigationService.Object,
+                harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object,
+                _msalAuthService.Object,
+                translationService: harness.TranslationService,
+                identityGuard: guard);
+
+        [Fact]
+        public async Task ConnectTeams_ToAnotherOrganizationThanExpected_IsNotReadyAndSaysWhy()
+        {
+            // The sign-in works, but the browser kept the session of another customer.
+            var harness = new ViewModelTestHarness();
+            harness.PowerShellContextService
+                .Setup(p => p.ExecuteCommandWithDetailsAsync(
+                    It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string? script, Dictionary<string, string>? _, IProgress<PowerShellProgress>? _, CancellationToken _) =>
+                    new PowerShellExecutionResult
+                    {
+                        // The mocked command service returns no script text for the connect command.
+                        Output = script is not null && script.Contains("PDIDENTITY_JSON", StringComparison.Ordinal)
+                            ? "PDIDENTITY_JSON: {\"teamsTenantId\":\"11111111-1111-1111-1111-111111111111\",\"teamsTenantName\":\"Contoso\",\"teamsDomains\":[\"contoso.com\"],\"graphTenantId\":\"11111111-1111-1111-1111-111111111111\",\"graphAccount\":\"admin@contoso.com\"}"
+                            : "Connected to tenant: Contoso (11111111-1111-1111-1111-111111111111)\nSUCCESS"
+                    });
+            harness.SessionManager.SetupGet(session => session.ModulesChecked).Returns(true);
+            var guard = new PhoneDesk.Operations.TenantIdentityGuard();
+            var vm = CreateViewModel(harness, guard);
+            vm.ModulesChecked = true;
+            vm.GraphConnected = true;
+            vm.ExpectedTenant = "fabrikam.com";
+
+            await vm.ConnectTeamsCommand.ExecuteAsync(null);
+
+            Assert.True(vm.TeamsConnected);
+            Assert.False(vm.CanProceed);
+            Assert.True(vm.HasIdentityProblem);
+            Assert.Equal("You expected fabrikam.com, but the sign-in reached Contoso.", vm.IdentityProblemText);
+            Assert.StartsWith("The sign-ins worked, but they are not the expected ones.", vm.SetupGuidance);
+            Assert.Contains("Microsoft Teams: Contoso (11111111-1111-1111-1111-111111111111)", vm.IdentityText);
+
+            // The operator corrects the expectation: the same connections are ready.
+            vm.ExpectedTenant = "contoso.com";
+            Assert.False(vm.HasIdentityProblem);
+            Assert.True(vm.CanProceed);
+        }
+
+        [Fact]
+        public async Task RestartGraphSignIn_GivesUpASignInThatHangsAndItsLateResultConnectsNothing()
+        {
+            var harness = new ViewModelTestHarness();
+            var hanging = new TaskCompletionSource<(bool Success, string? AccessToken, string? Account, string? ErrorMessage)>();
+            _msalAuthService.Setup(m => m.AuthenticateAsync(It.IsAny<nint?>())).Returns(hanging.Task);
+            var vm = CreateViewModel(harness, new PhoneDesk.Operations.TenantIdentityGuard());
+            vm.ModulesChecked = true;
+
+            var connecting = vm.ConnectGraphCommand.ExecuteAsync(null);
+            Assert.True(vm.GraphSignInPending);
+
+            vm.RestartGraphSignInCommand.Execute(null);
+            await connecting;
+
+            Assert.False(vm.GraphSignInPending);
+            Assert.False(vm.GraphConnected);
+            Assert.False(vm.IsBusy);
+            Assert.Contains("given up", vm.SetupGuidance);
+
+            // The old window is finished later: nothing is connected by it.
+            hanging.SetResult((true, "old-token", "someone@fabrikam.com", null));
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            Assert.False(vm.GraphConnected);
+            harness.SessionManager.Verify(s => s.UpdateGraphConnection(true, It.IsAny<string?>()), Times.Never);
+        }
+
         private GetStartedViewModel CreateViewModel(ViewModelTestHarness harness) =>
             new GetStartedViewModel(
                 harness.PowerShellContextService.Object,

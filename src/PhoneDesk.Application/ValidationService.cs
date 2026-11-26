@@ -11,9 +11,12 @@ namespace PhoneDesk.Services
         [GeneratedRegex(@"^\+[1-9]\d{6,14}$", RegexOptions.Compiled)]
         private static partial Regex E164PhonePattern();
 
-        public ValidationService(ISessionManager sessionManager)
+        private readonly PhoneDesk.Operations.TenantIdentityGuard? _identity;
+
+        public ValidationService(ISessionManager sessionManager, PhoneDesk.Operations.TenantIdentityGuard? identity = null)
         {
             _sessionManager = sessionManager;
+            _identity = identity;
         }
 
         public ValidationResult ValidatePrerequisites()
@@ -39,6 +42,15 @@ namespace PhoneDesk.Services
                 result.AddError(
                     ValidationErrorCode.GraphNotConnected,
                     "Not connected to Microsoft Graph. Please connect to Graph first.");
+            }
+
+            // Connected, but to another tenant than expected, or to two tenants: nothing may be changed.
+            var identityProblems = _identity?.Problems;
+            if (identityProblems is { Count: > 0 })
+            {
+                result.AddError(
+                    ValidationErrorCode.TenantIdentityMismatch,
+                    string.Join(" ", identityProblems.Select(problem => problem.Message)));
             }
 
             return result;

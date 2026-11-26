@@ -1320,5 +1320,6 @@
   "PhoneNumbersPreviewMove": "Bereit. Die Nummer wird verschoben: Das Konto, das sie jetzt hat, verliert sie.",
   "PhoneNumbersPreviewUnassign": "Bereit. Die Nummer wird vom Konto entfernt und bleibt im Bestand.",
   "PhoneNumbersPreviewAssign": "Bereit. «Anwenden» zeigt das Skript, bevor es ausgeführt wird.",
-  "PhoneNumbersPreviewBlocked": "Nicht möglich: {details}"
+  "PhoneNumbersPreviewBlocked": "Nicht möglich: {details}",
+  "PhoneNumbersUnverifiedStatus": "Die Änderung wurde gesendet, aber die Nummer konnte nicht erneut gelesen werden. Das Ergebnis ist daher nicht bestätigt. Lesen Sie die Liste und prüfen Sie die Nummer. {details}"
 }

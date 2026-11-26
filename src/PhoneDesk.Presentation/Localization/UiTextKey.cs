@@ -1325,4 +1325,5 @@ public enum UiTextKey
     PhoneNumbersPreviewUnassign,
     PhoneNumbersPreviewAssign,
     PhoneNumbersPreviewBlocked,
+    PhoneNumbersUnverifiedStatus,
 }

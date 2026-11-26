@@ -41,6 +41,18 @@ public sealed class PhoneNumberRow
 
     public IReadOnlyList<string> Capabilities { get; init; } = Array.Empty<string>();
 
+    /// <summary>NotBlocked, BlockedForever or BlockedUntil: Teams refuses a blocked number for another account.</summary>
+    public string AssignmentBlockedState { get; init; } = string.Empty;
+
+    public bool IsBlockedForAssignment
+        => AssignmentBlockedState.StartsWith("Blocked", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when the number belongs to something that is not an account, for example a Teams shared
+    /// calling routing policy. Such a number is not changed here.
+    /// </summary>
+    public bool IsAssignedToAPolicy => IsAssigned && !Guid.TryParse(AssignedToId, out _);
+
     /// <summary>The account the number is assigned to, when it was looked up.</summary>
     public NumberOwner? Owner { get; init; }
 
@@ -105,6 +117,12 @@ public static class PhoneNumbers
 
     public static readonly IReadOnlyList<string> Types = new[] { "DirectRouting", "CallingPlan", "OperatorConnect" };
 
+    /// <summary>Teams returns 1000 numbers per call at most; a larger inventory is read page by page.</summary>
+    public const int PageSize = 1000;
+
+    /// <summary>The most numbers one list reads. A result of this size is reported as possibly incomplete.</summary>
+    public const int MaximumRows = 20000;
+
     /// <summary>Owners are looked up for a list only up to this number: one lookup is one call to Teams.</summary>
     public const int OwnerLookupLimit = 100;
 
@@ -146,7 +164,7 @@ public static class PhoneNumbers
     /// Lists numbers of the inventory. <paramref name="contains"/> filters on digits of the number,
     /// <paramref name="status"/> on "assigned" or "unassigned". The script only reads.
     /// </summary>
-    public static string GetListCommand(string? contains = null, string? status = null, int top = 500)
+    public static string GetListCommand(string? contains = null, string? status = null, int top = MaximumRows)
     {
         var digits = new string((contains ?? string.Empty).Where(char.IsDigit).ToArray());
         var filter = status?.Trim().ToLowerInvariant() switch
@@ -157,10 +175,11 @@ public static class PhoneNumbers
             _ => throw new ArgumentException($"'{status}' is not a status filter. Use assigned, unassigned or all.")
         };
         return ListTemplate
-            .Replace("__CONTAINS__", digits.Length == 0 ? string.Empty : " -TelephoneNumberContains '" + digits + "'", StringComparison.Ordinal)
+            .Replace("__CONTAINS__", digits.Length == 0 ? string.Empty : " -TelephoneNumberContain '" + digits + "'", StringComparison.Ordinal)
             .Replace("__STATUS__", filter, StringComparison.Ordinal)
             .Replace("__ASSIGNEDONLY__", string.Equals(status?.Trim(), "assigned", StringComparison.OrdinalIgnoreCase) ? "$true" : "$false", StringComparison.Ordinal)
-            .Replace("__TOP__", Math.Clamp(top, 1, 5000).ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("__TOP__", Math.Clamp(top, 1, MaximumRows).ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("__PAGE__", PageSize.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("__LOOKUPS__", OwnerLookupLimit.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 
@@ -209,10 +228,22 @@ public static class PhoneNumbers
             blockers.Add(new("typeMismatch", $"The number {wanted} is a {row.Type} number in the inventory, not {RequireType(type)}."));
         }
 
+        if (row is { IsAssignedToAPolicy: true })
+        {
+            blockers.Add(new("assignedToPolicy",
+                $"The number {wanted} is assigned to '{row.AssignedToId}', which is not an account (for example a shared calling routing policy). It is not changed here."));
+        }
+
         var owner = row?.Owner;
         var alreadyThere = target is not null && row is not null && row.IsAssigned && HolidayCallHandling.SameId(row.AssignedToId, target.Id);
+        if (row is { IsBlockedForAssignment: true } && !alreadyThere)
+        {
+            blockers.Add(new("assignmentBlocked",
+                $"Teams blocks the number {wanted} for assignment ({row.AssignmentBlockedState}). An administrator removes the block with Remove-CsPhoneNumberAssignmentBlock."));
+        }
+
         var kind = row is not null && row.IsAssigned && !alreadyThere ? PhoneNumberChangeKind.Reassign : PhoneNumberChangeKind.Assign;
-        if (kind == PhoneNumberChangeKind.Reassign && !allowReassign)
+        if (kind == PhoneNumberChangeKind.Reassign && !allowReassign && row is { IsAssignedToAPolicy: false })
         {
             blockers.Add(new("assignedElsewhere",
                 $"The number {wanted} is assigned to {(owner is null ? row!.AssignedToId : owner.Label)}. " +
@@ -266,6 +297,11 @@ public static class PhoneNumbers
         if (row is null)
         {
             blockers.Add(new("numberNotInInventory", $"The tenant has no number {wanted}."));
+        }
+        else if (row.IsAssignedToAPolicy)
+        {
+            blockers.Add(new("assignedToPolicy",
+                $"The number {wanted} is assigned to '{row.AssignedToId}', which is not an account (for example a shared calling routing policy). It is not changed here."));
         }
 
         return new PhoneNumberAssessment
@@ -381,6 +417,7 @@ public static class PhoneNumbers
                     assignedToId = [string]$pdItem.AssignedPstnTargetId
                     city = [string]$pdItem.City
                     capabilities = @(@($pdItem.Capability) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+                    assignmentBlockedState = [string]$pdItem.AssignmentBlockedState
                     owner = $pdOwner
                 }
             }
@@ -389,7 +426,15 @@ public static class PhoneNumbers
     private const string ListTemplate = """
         try {
         """ + NewLine + OwnerFunction + NewLine + """
-            $pdNumbers = @(Get-CsPhoneNumberAssignment__CONTAINS____STATUS__ -Top __TOP__ -ErrorAction Stop)
+            # Teams returns __PAGE__ numbers per call at most, so the inventory is read page by page.
+            $pdNumbers = @()
+            $pdSkip = 0
+            do {
+                $pdTake = [Math]::Min(__PAGE__, __TOP__ - $pdNumbers.Count)
+                $pdPage = @(Get-CsPhoneNumberAssignment__CONTAINS____STATUS__ -Skip $pdSkip -Top $pdTake -ErrorAction Stop)
+                $pdNumbers += $pdPage
+                $pdSkip += $pdPage.Count
+            } while ($pdPage.Count -eq __PAGE__ -and $pdNumbers.Count -lt __TOP__)
             if (__ASSIGNEDONLY__) {
                 $pdNumbers = @($pdNumbers | Where-Object { $_.AssignedPstnTargetId })
             }
@@ -399,7 +444,9 @@ public static class PhoneNumbers
                 if (-not $pdItem) { continue }
                 $pdOwner = $null
                 $pdTargetId = [string]$pdItem.AssignedPstnTargetId
-                if ($pdTargetId) {
+                $pdIsAccount = $false
+                if ($pdTargetId) { $pdIsAccount = [guid]::TryParse($pdTargetId, [ref][guid]::Empty) }
+                if ($pdIsAccount) {
                     if (-not $pdOwners.ContainsKey($pdTargetId) -and $pdOwners.Count -lt __LOOKUPS__) {
                         try { $pdOwners[$pdTargetId] = (& $pdOwnerOf $pdTargetId) } catch { $pdOwners[$pdTargetId] = $null }
                     }

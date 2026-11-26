@@ -204,8 +204,18 @@ namespace PhoneDesk.ViewModels
 
                 // The tenant decides what happened: after a move that failed, the status says who has the number.
                 var after = await ReadCheckAsync(assessment.Number, target);
-                var problem = after is null ? result.ErrorMessage ?? string.Empty : PhoneNumbers.Verify(assessment, after);
                 await ReadListAsync();
+                if (after is null)
+                {
+                    // The change ran, but the number could not be read again: that is not a confirmation.
+                    StatusMessage = GetText(
+                        UiTextKey.PhoneNumbersUnverifiedStatus,
+                        "The change was sent, but the number could not be read again, so the result is not confirmed. Read the list and check the number. {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Succeeded ? string.Empty : result.ErrorMessage ?? string.Empty });
+                    return;
+                }
+
+                var problem = PhoneNumbers.Verify(assessment, after);
                 StatusMessage = string.IsNullOrEmpty(problem)
                     ? GetText(UiTextKey.PhoneNumbersVerifiedStatus, "Saved. The number was read again and shows the change.")
                     : GetText(

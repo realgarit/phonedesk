@@ -38,8 +38,9 @@ internal sealed class PhoneNumberTools
         => McpJson.RunAsync(async () =>
         {
             var wantedType = string.IsNullOrWhiteSpace(type) ? null : PhoneNumbers.RequireType(type);
-            var result = await _tenant.ReadAsync(PhoneNumbers.GetListCommand(search, status, 5000), "ListPhoneNumbers", cancellationToken);
-            var rows = PhoneNumbers.ParseList(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput)
+            var result = await _tenant.ReadAsync(PhoneNumbers.GetListCommand(search, status), "ListPhoneNumbers", cancellationToken);
+            var read = PhoneNumbers.ParseList(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput);
+            var rows = read
                 .Where(row => wantedType is null || string.Equals(row.Type, wantedType, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(row => row.Number, StringComparer.Ordinal)
                 .ToList();
@@ -52,6 +53,11 @@ internal sealed class PhoneNumberTools
                 unassigned = rows.Count(row => !row.IsAssigned),
                 offset = skip,
                 nextOffset = skip + page.Count < rows.Count ? skip + page.Count : (int?)null,
+                // The inventory is read page by page up to a limit; at the limit there can be more numbers.
+                possiblyIncomplete = read.Count >= PhoneNumbers.MaximumRows,
+                note = read.Count >= PhoneNumbers.MaximumRows
+                    ? $"The tenant has {PhoneNumbers.MaximumRows} numbers or more for this filter; only the first {PhoneNumbers.MaximumRows} were read. Narrow the search."
+                    : null,
                 numbers = page
             };
         });
@@ -243,6 +249,7 @@ internal sealed class PhoneNumberTools
             status = row.Status,
             assigned = row.IsAssigned,
             capabilities = row.Capabilities,
+            blockedForAssignment = row.IsBlockedForAssignment ? row.AssignmentBlockedState : null,
             city = string.IsNullOrWhiteSpace(row.City) ? null : row.City,
             assignedToId = row.IsAssigned ? row.AssignedToId : null,
             assignedTo = OwnerView(row.Owner)

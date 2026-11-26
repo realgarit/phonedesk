@@ -124,6 +124,27 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public async Task Apply_DoesNotCallAChangeConfirmedWhenTheNumberCannotBeReadAgain()
+        {
+            var harness = new ViewModelTestHarness();
+            var tenant = new Tenant { List = ListOutput(), Check = CheckOutput(Anna) };
+            tenant.Attach(harness);
+            var vm = CreateViewModel(harness);
+            await vm.LoadCommand.ExecuteAsync(null);
+            vm.SelectedNumber = vm.Numbers[0];
+            vm.OpenUnassignCommand.Execute(null);
+            await vm.CheckCommand.ExecuteAsync(null);
+            Assert.True(vm.CanApply);
+
+            // The change runs; the read after it fails.
+            tenant.OnChange = () => tenant.Check = "ERROR: Failed to read the phone number: the service is busy";
+            await vm.ApplyCommand.ExecuteAsync(null);
+
+            Assert.Single(tenant.Changes);
+            Assert.StartsWith("The change was sent, but the number could not be read again", vm.StatusMessage);
+        }
+
+        [Fact]
         public async Task Check_RefusesTextThatIsNotANumberOrAnAccount()
         {
             var harness = new ViewModelTestHarness();

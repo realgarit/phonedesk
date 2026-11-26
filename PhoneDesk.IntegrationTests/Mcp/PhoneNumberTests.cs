@@ -24,12 +24,12 @@ public sealed class PhoneNumberTests
 
     /// <summary>A tenant with two employees, one resource account and three numbers.</summary>
     private const string FakeTeams = """
-        $global:pdUsers = @(
+        $global:pdFakeUsers = @(
             [pscustomobject]@{ Identity = '11111111-aaaa-0000-0000-000000000001'; UserPrincipalName = 'anna@contoso.com'; DisplayName = 'Anna Muster'; AccountType = 'User'; LineUri = 'tel:+41441110001'; FeatureTypes = @('Teams', 'PhoneSystem') },
             [pscustomobject]@{ Identity = '22222222-bbbb-0000-0000-000000000002'; UserPrincipalName = 'ben@contoso.com'; DisplayName = 'Ben Beispiel'; AccountType = 'User'; LineUri = ''; FeatureTypes = @('Teams', 'PhoneSystem') },
             [pscustomobject]@{ Identity = '33333333-cccc-0000-0000-000000000003'; UserPrincipalName = 'raaa-contoso-main@contoso.com'; DisplayName = 'raaa-contoso-main'; AccountType = 'ResourceAccount'; LineUri = ''; FeatureTypes = @('VoiceApp') }
         )
-        $global:pdNumbers = @(
+        $global:pdFakeNumbers = @(
             [pscustomobject]@{ TelephoneNumber = '+41441110001'; NumberType = 'CallingPlan'; PstnAssignmentStatus = 'UserAssigned'; AssignedPstnTargetId = '11111111-aaaa-0000-0000-000000000001'; City = 'Zürich'; Capability = @('UserAssignment') },
             [pscustomobject]@{ TelephoneNumber = '+41441110002'; NumberType = 'CallingPlan'; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = 'Zürich'; Capability = @('UserAssignment') },
             [pscustomobject]@{ TelephoneNumber = '+41441110003'; NumberType = 'OperatorConnect'; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = ''; Capability = @('VoiceApplicationAssignment') }
@@ -37,26 +37,28 @@ public sealed class PhoneNumberTests
         $global:pdFailSetFor = @()
         function global:Get-CsOnlineUser {
             [CmdletBinding()] param([string]$Identity)
-            $pdFound = $global:pdUsers | Where-Object { $_.Identity -eq $Identity -or $_.UserPrincipalName -eq $Identity } | Select-Object -First 1
+            $pdFound = $global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity -or $_.UserPrincipalName -eq $Identity } | Select-Object -First 1
             if (-not $pdFound) { throw "User $Identity not found" }
             $pdFound
         }
         function global:Get-CsPhoneNumberAssignment {
-            [CmdletBinding()] param([string]$TelephoneNumber, [string]$TelephoneNumberContains, [string]$PstnAssignmentStatus, [int]$Top)
-            $pdResult = $global:pdNumbers
-            if ($TelephoneNumber) { $pdResult = $pdResult | Where-Object { $_.TelephoneNumber -eq $TelephoneNumber } }
-            if ($TelephoneNumberContains) { $pdResult = $pdResult | Where-Object { ($_.TelephoneNumber -replace '\D', '') -like "*$TelephoneNumberContains*" } }
-            if ($PstnAssignmentStatus) { $pdResult = $pdResult | Where-Object { $_.PstnAssignmentStatus -eq $PstnAssignmentStatus } }
-            $pdResult
+            # The parameters of the real cmdlet: an unknown name fails the call, as it does in Teams.
+            [CmdletBinding(PositionalBinding = $false)] param([string]$TelephoneNumber, [string]$TelephoneNumberContain, [string]$PstnAssignmentStatus, [int]$Top = 500, [int]$Skip = 0)
+            if ($Top -gt 1000) { throw "Top cannot be greater than 1000." }
+            $pdResult = @($global:pdFakeNumbers)
+            if ($TelephoneNumber) { $pdResult = @($pdResult | Where-Object { $_.TelephoneNumber -eq $TelephoneNumber }) }
+            if ($TelephoneNumberContain) { $pdResult = @($pdResult | Where-Object { ($_.TelephoneNumber -replace '\D', '') -like "*$TelephoneNumberContain*" }) }
+            if ($PstnAssignmentStatus) { $pdResult = @($pdResult | Where-Object { $_.PstnAssignmentStatus -eq $PstnAssignmentStatus }) }
+            $pdResult | Select-Object -Skip $Skip -First $Top
         }
         function global:Set-CsPhoneNumberAssignment {
             [CmdletBinding()] param([string]$Identity, [string]$PhoneNumber, [string]$PhoneNumberType)
             if ($global:pdFailSetFor -contains $Identity) { throw "The user lacks appropriate licenses." }
-            $pdUser = $global:pdUsers | Where-Object { $_.Identity -eq $Identity }
-            $pdRow = $global:pdNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
+            $pdUser = $global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity }
+            $pdRow = $global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
             if (-not $pdRow) {
                 $pdRow = [pscustomobject]@{ TelephoneNumber = $PhoneNumber; NumberType = $PhoneNumberType; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = ''; Capability = @() }
-                $global:pdNumbers += $pdRow
+                $global:pdFakeNumbers += $pdRow
             }
             $pdRow.AssignedPstnTargetId = $Identity
             $pdRow.PstnAssignmentStatus = if ($pdUser.AccountType -eq 'User') { 'UserAssigned' } else { 'VoiceApplicationAssigned' }
@@ -64,10 +66,10 @@ public sealed class PhoneNumberTests
         }
         function global:Remove-CsPhoneNumberAssignment {
             [CmdletBinding()] param([string]$Identity, [string]$PhoneNumber, [string]$PhoneNumberType)
-            $pdRow = $global:pdNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
+            $pdRow = $global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
             $pdRow.AssignedPstnTargetId = $null
             $pdRow.PstnAssignmentStatus = 'Unassigned'
-            ($global:pdUsers | Where-Object { $_.Identity -eq $Identity }).LineUri = ''
+            ($global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity }).LineUri = ''
         }
         """;
 
@@ -114,6 +116,42 @@ public sealed class PhoneNumberTests
         Assert.Equal(ServiceNumber, Assert.Single(byDigits).Number);
         var assignedOnly = PhoneNumbers.ParseList(McpHolidayCallHandlingTests.RunPowerShell(FakeTeams, PhoneNumbers.GetListCommand(status: "assigned")));
         Assert.Equal(AnnaNumber, Assert.Single(assignedOnly).Number);
+    }
+
+    [Fact]
+    public void List_ReadsALargeInventoryPageByPage()
+    {
+        // 2300 numbers: Teams returns 1000 per call at most.
+        var output = McpHolidayCallHandlingTests.RunPowerShell(
+            FakeTeams + """
+
+            $global:pdFakeNumbers = @(1..2300 | ForEach-Object {
+                [pscustomobject]@{ TelephoneNumber = ('+4144{0:D7}' -f $_); NumberType = 'CallingPlan'; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = ''; Capability = @('UserAssignment'); AssignmentBlockedState = 'NotBlocked' }
+            })
+            """,
+            PhoneNumbers.GetListCommand());
+        var rows = PhoneNumbers.ParseList(output);
+
+        Assert.Equal(2300, rows.Count);
+        Assert.Equal(2300, rows.Select(row => row.Number).Distinct().Count());
+    }
+
+    [Fact]
+    public void Check_RefusesABlockedNumberAndANumberThatBelongsToAPolicy()
+    {
+        var blocked = Check(McpHolidayCallHandlingTests.RunPowerShell(
+            FakeTeams + "\n($global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq '" + FreeNumber + "' }) | Add-Member -NotePropertyName AssignmentBlockedState -NotePropertyValue 'BlockedUntil'\n",
+            PhoneNumbers.GetCheckCommand(FreeNumber, "ben@contoso.com")));
+        Assert.Equal("assignmentBlocked", Assert.Single(PhoneNumbers.AssessAssign(blocked, FreeNumber, null, false).Blockers).Code);
+
+        // A number of a shared calling routing policy has no account as owner.
+        var policy = Check(McpHolidayCallHandlingTests.RunPowerShell(
+            FakeTeams + "\n$pdPolicyRow = $global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq '" + FreeNumber + "' }\n$pdPolicyRow.AssignedPstnTargetId = 'TeamsSharedCallingRoutingPolicy|Tag:SC1'\n$pdPolicyRow.PstnAssignmentStatus = 'PolicyAssigned'\n",
+            PhoneNumbers.GetCheckCommand(FreeNumber, "ben@contoso.com")));
+        Assert.True(policy.Number!.IsAssignedToAPolicy);
+        Assert.Null(policy.Number.Owner);
+        Assert.Equal("assignedToPolicy", Assert.Single(PhoneNumbers.AssessAssign(policy, FreeNumber, null, allowReassign: true).Blockers).Code);
+        Assert.Equal("assignedToPolicy", Assert.Single(PhoneNumbers.AssessUnassign(policy, FreeNumber).Blockers).Code);
     }
 
     [Fact]
@@ -202,7 +240,7 @@ public sealed class PhoneNumberTests
 
         // Between the preview and the run the number went to the resource account.
         var output = McpHolidayCallHandlingTests.RunPowerShell(
-            FakeTeams + "\n($global:pdNumbers | Where-Object { $_.TelephoneNumber -eq '" + AnnaNumber + "' }).AssignedPstnTargetId = '" + Reception + "'\n",
+            FakeTeams + "\n($global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq '" + AnnaNumber + "' }).AssignedPstnTargetId = '" + Reception + "'\n",
             PhoneNumbers.GetChangeCommand(move),
             PhoneNumbers.GetCheckCommand(AnnaNumber, Ben));
         Assert.Contains("is not assigned to the account the preview showed. Nothing was changed.", output);
@@ -332,7 +370,7 @@ public sealed class PhoneNumberTests
         Assert.True(applied.GetProperty("verification").GetProperty("asRequested").GetBoolean());
         Assert.False(applied.GetProperty("verification").GetProperty("numberNow").GetProperty("assigned").GetBoolean());
 
-        host.PowerShell.Respond(PhoneNumbers.GetListCommand(null, "unassigned", 5000), PhoneNumbers.ListMarker + JsonSerializer.Serialize(new[]
+        host.PowerShell.Respond(PhoneNumbers.GetListCommand(null, "unassigned"), PhoneNumbers.ListMarker + JsonSerializer.Serialize(new[]
         {
             new { number = FreeNumber, type = "CallingPlan", status = "Unassigned", assignedToId = "", city = "", capabilities = new[] { "UserAssignment" }, owner = (object?)null },
             new { number = ServiceNumber, type = "OperatorConnect", status = "Unassigned", assignedToId = "", city = "", capabilities = new[] { "VoiceApplicationAssignment" }, owner = (object?)null }

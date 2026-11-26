@@ -101,6 +101,27 @@ and the backtick. Apostrophes, plain and typographic, arrive unchanged (before 3
 apostrophe was written twice, so `aujourd'hui` arrived as `aujourd''hui`; correct such a greeting
 in Teams, or attach the schedule again).
 
+### Opening hours, caller ID and the agent delay
+
+Three points from a customer's report after a Guided Setup. They apply to the desktop app and to
+the server.
+
+- **Opening hours go to the call queue.** `autoAttendantTemplate.defaultAction` has the value
+  `TransferToCallQueue` in a new configuration: during opening hours the auto attendant sends the
+  calls to the call queue of the same configuration. An empty value means the same. Before 3.38.0
+  an empty value made the auto attendant hang up. `Disconnect` is still there for an auto
+  attendant that must hang up; `TransferToTarget` takes the UPN of another resource account. When
+  the call queue resource account does not exist, the step stops with an error and builds
+  nothing.
+- **Outbound caller ID.** With `callQueueTemplate.useAutoAttendantNumberAsCallerId` set to `true`,
+  Guided Setup step 8 also sets the auto attendant resource account as caller ID of the call
+  queue, so the agents can call out with the main number. It is step 8 and not the call queue
+  step because the account and its number exist only from step 6 on. The configuration document
+  shows the value only when it is `true`; `configuration_options` lists it under `switches`.
+- **Agents from the group wait for calls.** Microsoft documents that new users of a group can
+  wait up to eight hours for their first call. The call queue step says so; pass it on to the
+  user. It is not an error of the setup.
+
 ### Checks the desktop app does with its controls
 
 The desktop app keeps many values right through its controls: a dropdown offers only valid

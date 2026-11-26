@@ -52,6 +52,7 @@ namespace PhoneDesk.Services
         public string GetValidateCallQueueResourceAccountCommand(string racqUpn) => _callQueueBuilder.GetValidateCallQueueResourceAccountCommand(racqUpn);
         public string GetCreateCallTargetCommand(string racqUpn) => _callQueueBuilder.GetCreateCallTargetCommand(racqUpn);
         public string GetRemoveCallQueueCommand(string callQueueName) => _callQueueBuilder.GetRemoveCallQueueCommand(callQueueName);
+        public string GetSetCallQueueCallerIdCommand(string callQueueName, string resourceAccountUpn) => _callQueueBuilder.GetSetCallQueueCallerIdCommand(callQueueName, resourceAccountUpn);
         public string GetRemoveResourceAccountCommand(string upn) => _callQueueBuilder.GetRemoveResourceAccountCommand(upn);
 
         public string GetRetrieveAutoAttendantsCommand() => _autoAttendantBuilder.GetRetrieveAutoAttendantsCommand();

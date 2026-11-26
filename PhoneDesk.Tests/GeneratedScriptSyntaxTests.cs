@@ -75,6 +75,7 @@ namespace PhoneDesk.Tests
                 yield return new object[] { $"{label}: AA phone number", commands.GetAssignPhoneNumberToAutoAttendantCommand(vars.RaaaUPN, vars.RaaAnr, vars.PhoneNumberType) };
                 yield return new object[] { $"{label}: auto attendant", commands.GetCreateAutoAttendantCommand(vars) };
                 yield return new object[] { $"{label}: AA association", commands.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName) };
+                yield return new object[] { $"{label}: caller ID", commands.GetSetCallQueueCallerIdCommand(vars.CqDisplayName, vars.RaaaUPN) };
             }
         }
 
@@ -152,6 +153,68 @@ namespace PhoneDesk.Tests
             Assert.DoesNotContain("Set-CsPhoneNumberAssignment", script, StringComparison.Ordinal);
             Assert.Contains("New-CsAutoAttendant ", script, StringComparison.Ordinal);
             Assert.Contains("13:30", script, StringComparison.Ordinal);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("TransferToCallQueue")]
+        public void AutoAttendantStep_SendsOpeningHoursCallsToTheCallQueue(string? defaultAction)
+        {
+            // Field report: a Guided Setup with default values built an auto attendant that hung up
+            // during opening hours, although the same run created the call queue.
+            var vars = MinimalVariables();
+            vars.AaDefaultAction = defaultAction;
+            var script = CreateCommands().GetCreateAutoAttendantCommand(vars);
+            AssertParses("auto attendant to call queue", script);
+
+            Assert.Contains("$defaultCallQueueAccount = Get-CsOnlineUser \"racq-ewp-hauptnummer@elektroweberpartner.onmicrosoft.com\"", script, StringComparison.Ordinal);
+            Assert.Contains("$defaultCallTarget = New-CsAutoAttendantCallableEntity -Identity $defaultCallQueueAccount.Identity -Type ApplicationEndpoint", script, StringComparison.Ordinal);
+            Assert.Contains("$defaultMenuOption = New-CsAutoAttendantMenuOption -Action TransferCallToTarget", script, StringComparison.Ordinal);
+            Assert.Contains("Create the call queue first", script, StringComparison.Ordinal);
+            // Outside opening hours nothing changes: no action still means the call ends.
+            Assert.Contains("$afterhoursMenuOption = New-CsAutoAttendantMenuOption -Action DisconnectCall", script, StringComparison.Ordinal);
+            Assert.DoesNotContain("$afterhoursCallQueueAccount", script, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AutoAttendantStep_HangsUpInOpeningHoursOnlyWhenDisconnectIsSelected()
+        {
+            var vars = MinimalVariables();
+            vars.AaDefaultAction = "Disconnect";
+            var script = CreateCommands().GetCreateAutoAttendantCommand(vars);
+
+            Assert.Contains("$defaultMenuOption = New-CsAutoAttendantMenuOption -Action DisconnectCall", script, StringComparison.Ordinal);
+            Assert.DoesNotContain("CallQueueAccount", script, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void NewConfiguration_SendsOpeningHoursCallsToTheCallQueue()
+        {
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.TransferToCallQueue, new PhoneManagerVariables().AaDefaultAction);
+        }
+
+        [Fact]
+        public void LastStep_SetsTheCallerIdOfTheCallQueueOnlyWhenSelected()
+        {
+            var commands = CreateCommands();
+            var factory = new PhoneDesk.Operations.GuidedSetupScriptFactory(commands);
+            var vars = MinimalVariables();
+            var lastStep = PhoneDesk.Operations.GuidedSetupScriptFactory.LastProvisioningStep;
+
+            var plain = factory.GetProvisioningScript(lastStep, vars);
+            Assert.Equal(commands.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName), plain);
+            Assert.DoesNotContain("OboResourceAccountIds", plain, StringComparison.Ordinal);
+
+            vars.CqUseAutoAttendantNumberAsCallerId = true;
+            var withCallerId = factory.GetProvisioningScript(lastStep, vars);
+            AssertParses("last step and caller ID", withCallerId);
+            Assert.StartsWith(plain, withCallerId, StringComparison.Ordinal);
+            Assert.Contains("Get-CsOnlineUser \"raaa-ewp-haupt-hauptnummer@elektroweberpartner.onmicrosoft.com\"", withCallerId, StringComparison.Ordinal);
+            Assert.Contains("Set-CsCallQueue -Identity $cqCallerIdQueue.Identity -OboResourceAccountIds @($cqCallerIdAccount.Identity) -ErrorAction Stop", withCallerId, StringComparison.Ordinal);
+            Assert.Contains("cq-ewp-hauptnummer", withCallerId, StringComparison.Ordinal);
+            // The call queue step itself stays as it was: the account does not exist yet at that point.
+            Assert.DoesNotContain("OboResourceAccountIds", commands.GetCreateCallQueueCommand(vars), StringComparison.Ordinal);
         }
 
         [Fact]

@@ -220,7 +220,8 @@ internal sealed class ProvisioningTools
             return await _changes.PlanOrApplyAsync(
                 Creating(TenantObjectType.CallQueue, name, "CreateCallQueue",
                     AgentGroupCheck.InFrontOf(_commands.GetCreateCallQueueCommand(variables), variables.M365Group),
-                    $"Create call queue '{name}' with agent group '{variables.M365Group}' and resource account '{variables.RacqUPN}'."),
+                    $"Create call queue '{name}' with agent group '{variables.M365Group}' and resource account '{variables.RacqUPN}'. " +
+                    "Members of the group can wait up to eight hours for their first call (a delay in Teams)."),
                 planId,
                 cancellationToken);
         });

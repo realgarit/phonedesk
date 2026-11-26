@@ -66,7 +66,7 @@ namespace PhoneDesk.Models
         private string? _aaDefaultGreetingTextToSpeechPrompt;
 
         [ObservableProperty]
-        private string? _aaDefaultAction; // "Disconnect", "TransferToTarget", "TransferToVoicemail"
+        private string? _aaDefaultAction = PhoneDesk.Operations.ConfigurationChecks.TransferToCallQueue; // "TransferToCallQueue", "Disconnect", "TransferToTarget", "TransferToVoicemail"
 
         [ObservableProperty]
         private string? _aaDefaultActionTarget;
@@ -224,6 +224,9 @@ namespace PhoneDesk.Models
 
         [ObservableProperty]
         private bool _cqNoAgentApplyToNewCallsOnly;
+
+        [ObservableProperty]
+        private bool _cqUseAutoAttendantNumberAsCallerId;
 
         public string M365Group => ResourceNames.M365Group(Customer, CustomerGroupName);
         public string RacqUPN => ResourceAccountUpn.Build(RacqDisplayName, MsFallbackDomain);

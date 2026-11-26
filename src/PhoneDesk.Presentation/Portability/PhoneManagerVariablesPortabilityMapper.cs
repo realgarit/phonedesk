@@ -68,7 +68,8 @@ public static class PhoneManagerVariablesPortabilityMapper
                     variables.CqNoAgentActionAudioFileId,
                     variables.CqNoAgentActionTextToSpeechPrompt,
                     variables.CqNoAgentDisconnectAction,
-                    variables.CqNoAgentApplyToNewCallsOnly),
+                    variables.CqNoAgentApplyToNewCallsOnly,
+                    variables.CqUseAutoAttendantNumberAsCallerId),
                 new BusinessHoursTemplate(
                     TimeOnly.FromTimeSpan(variables.OpeningHours1Start),
                     TimeOnly.FromTimeSpan(variables.OpeningHours1End),
@@ -187,6 +188,7 @@ public static class PhoneManagerVariablesPortabilityMapper
             CqNoAgentActionTextToSpeechPrompt = callQueue.NoAgentActionTextToSpeechPrompt,
             CqNoAgentDisconnectAction = callQueue.NoAgentDisconnectAction,
             CqNoAgentApplyToNewCallsOnly = callQueue.NoAgentApplyToNewCallsOnly,
+            CqUseAutoAttendantNumberAsCallerId = callQueue.UseAutoAttendantNumberAsCallerId,
         };
     }
 }

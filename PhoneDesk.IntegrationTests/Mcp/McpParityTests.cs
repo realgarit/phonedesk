@@ -22,6 +22,45 @@ public sealed class McpParityTests
             [path] = McpTestHost.Json(value)
         }));
 
+    [Fact]
+    public async Task OpeningHours_GoToTheCallQueueAndTheCallerIdIsASwitchOfTheLastStep()
+    {
+        using var host = new McpTestHost().Configured().Connected();
+        var configuration = host.Tool<ConfigurationTools>();
+
+        // A new configuration routes opening hours to its call queue; the value needs no target.
+        Assert.Equal("TransferToCallQueue", host.Get<ConfigurationStore>().Variables.AaDefaultAction);
+        Assert.Empty(host.Get<ConfigurationStore>().Problems());
+        var options = McpTestHost.Parse(configuration.Options());
+        Assert.Equal(
+            "callQueueTemplate.useAutoAttendantNumberAsCallerId",
+            options.GetProperty("switches")[0].GetProperty("path").GetString());
+
+        var progress = host.Get<GuidedSetupProgress>();
+        foreach (var step in Enumerable.Range(1, 7))
+        {
+            progress.Get(step).Status = GuidedStepStatus.Skipped;
+        }
+
+        var tools = host.Tool<GuidedSetupTools>();
+        var before = McpTestHost.Parse(await tools.RunStep(8, cancellationToken: Cancellation)).GetProperty("script").GetString()!;
+        Assert.DoesNotContain("OboResourceAccountIds", before);
+
+        // The document does not show the switch while it is off, but it can be set.
+        var changed = Update(host, "callQueueTemplate.useAutoAttendantNumberAsCallerId", true);
+        Assert.True(changed.GetProperty("applied").GetBoolean(), changed.ToString());
+        Assert.True(host.Get<ConfigurationStore>().Variables.CqUseAutoAttendantNumberAsCallerId);
+
+        var after = McpTestHost.Parse(await tools.RunStep(8, cancellationToken: Cancellation)).GetProperty("script").GetString()!;
+        Assert.Contains("-OboResourceAccountIds @($cqCallerIdAccount.Identity)", after);
+        Assert.Contains("raaa-contoso-main-reception@contoso.onmicrosoft.com", after);
+        Parser.ParseInput(after, out _, out var errors);
+        Assert.Empty(errors);
+
+        var step7 = McpTestHost.Parse(await tools.RunStep(7, cancellationToken: Cancellation)).GetProperty("script").GetString()!;
+        Assert.Contains("$defaultCallQueueAccount = Get-CsOnlineUser \"racq-contoso-reception@contoso.onmicrosoft.com\"", step7);
+    }
+
     [Theory]
     [InlineData("autoAttendantTemplate.defaultAction", "transferToTarget", "TransferToTarget")]
     [InlineData("autoAttendantTemplate.afterHoursAction", "TransferToCallQueue", "TransferToVoicemail")]

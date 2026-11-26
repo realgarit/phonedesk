@@ -91,5 +91,12 @@ namespace PhoneDesk.Models
         string? CqNoAgentActionAudioFileId { get; }
         string? CqNoAgentActionTextToSpeechPrompt { get; }
         bool CqNoAgentApplyToNewCallsOnly { get; }
+
+        // Call Queue — outbound caller ID
+        /// <summary>
+        /// True when agents of the call queue can call out with the number of the auto attendant:
+        /// the auto attendant resource account is set as caller ID resource account of the call queue.
+        /// </summary>
+        bool CqUseAutoAttendantNumberAsCallerId { get; }
     }
 }

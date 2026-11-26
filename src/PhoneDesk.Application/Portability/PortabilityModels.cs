@@ -81,7 +81,10 @@ public sealed record CallQueueTemplate(
     string? NoAgentActionAudioFileId,
     string? NoAgentActionTextToSpeechPrompt,
     string? NoAgentDisconnectAction,
-    bool NoAgentApplyToNewCallsOnly);
+    bool NoAgentApplyToNewCallsOnly,
+    // Written only when true, so a document without it stays readable by an earlier version.
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool UseAutoAttendantNumberAsCallerId = false);
 
 public sealed record BusinessHoursTemplate(
     TimeOnly OpeningHours1Start,

@@ -297,6 +297,15 @@ public sealed class TenantAsCodeService : ITenantAsCodeService
                 importedObject.TryGetPropertyValue(property.Key, out var importedValue);
                 CompareJsonNodes($"{path}.{property.Key}", property.Value, importedValue, changes);
             }
+
+            // A value that only the imported document has: one that is left out while it has its default.
+            foreach (var property in importedObject)
+            {
+                if (!currentObject.ContainsKey(property.Key))
+                {
+                    CompareJsonNodes($"{path}.{property.Key}", null, property.Value, changes);
+                }
+            }
             return;
         }
 

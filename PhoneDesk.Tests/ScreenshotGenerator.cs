@@ -204,6 +204,14 @@ namespace PhoneDesk.Tests
             new("Wizard", true, "setup-wizard-progress-de.png", "ready-progress-de"),
             new("Wizard", true, "setup-wizard-plan.png", "ready-plan"),
             new("Wizard", true, "setup-wizard-plan-de.png", "ready-plan-de"),
+            new("Wizard", true, "setup-wizard-callqueue-step.png", "ready-callqueue-step"),
+            new("Wizard", true, "setup-wizard-callqueue-step-de.png", "ready-callqueue-step-de"),
+            new("Wizard", true, "setup-wizard-last-step.png", "ready-last-step"),
+            new("Wizard", true, "setup-wizard-last-step-de.png", "ready-last-step-de"),
+            new("Variables", true, "config-callqueue-callerid-en.png", "ready-callerid-en"),
+            new("Variables", true, "config-callqueue-callerid-de.png", "ready-callerid-de"),
+            new("Variables", true, "config-autoattendant-routing-en.png", "ready-routing-en"),
+            new("Variables", true, "config-autoattendant-routing-de.png", "ready-routing-de"),
             new("BulkOperations", true, "bulk-operations.png"),
             new("BulkOperations", true, "task5-bulk-operations-error-en.png", "task5-bulk-error-en"),
             new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
@@ -666,6 +674,19 @@ namespace PhoneDesk.Tests
                     return;
                 }
 
+                if (scenario.StartsWith("ready-callqueue-step", StringComparison.Ordinal) || scenario.StartsWith("ready-last-step", StringComparison.Ordinal))
+                {
+                    // The step that explains the agent delay, and the step that sets the caller ID.
+                    var shown = scenario.StartsWith("ready-callqueue-step", StringComparison.Ordinal) ? 4 : 8;
+                    for (var index = 0; index < shown; index++)
+                    {
+                        progressWizard.Steps[index].IsCompleted = true;
+                        progressWizard.Steps[index].ConfigurationFingerprint = progressWizard.ComputeStepFingerprint(index);
+                    }
+                    progressWizard.CurrentStep = shown;
+                    return;
+                }
+
                 if (scenario.StartsWith("ready-plan", StringComparison.Ordinal))
                 {
                     progressWizard.Steps[0].IsCompleted = true;
@@ -797,6 +818,18 @@ namespace PhoneDesk.Tests
                         holidaysVariables.ApplyPredefinedHolidaysCommand.Execute(null);
                         holidaysVariables.OpenHolidaySeriesManagerCommand.Execute(null);
                     }
+                    break;
+
+                case VariablesViewModel callerId when scenario.StartsWith("ready-callerid", StringComparison.Ordinal):
+                    callerId.Variables.CqUseAutoAttendantNumberAsCallerId = true;
+                    callerId.OpenCallQueueConfigurationDialogCommand.Execute(null);
+                    PumpRender();
+                    window.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Name == "CallQueueCallerIdToggle")
+                        .GetVisualAncestors().OfType<ScrollViewer>().First().ScrollToEnd();
+                    break;
+
+                case VariablesViewModel routing when scenario.StartsWith("ready-routing", StringComparison.Ordinal):
+                    routing.OpenAutoAttendantConfigurationDialogCommand.Execute(null);
                     break;
 
                 case VariablesViewModel variables when scenario.StartsWith("issue71-config-import", StringComparison.Ordinal):

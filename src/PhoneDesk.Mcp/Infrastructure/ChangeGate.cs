@@ -38,6 +38,12 @@ internal sealed record ChangeRequest(string Operation, string Target, string Scr
 
     /// <summary>Runs after a failed change, for work that must read the tenant.</summary>
     public Func<OperationResult<string>, CancellationToken, Task>? OnFailureAsync { get; init; }
+
+    /// <summary>
+    /// Writes a backup of only the objects this change touches. It is used when the full tenant
+    /// backup cannot be taken: the change then runs when this backup is complete, and not otherwise.
+    /// </summary>
+    public Func<CancellationToken, Task<ScopedBackupInfo>>? ScopedBackupAsync { get; init; }
 }
 
 /// <summary>
@@ -83,10 +89,28 @@ internal sealed class ChangeGate
         TakePlan(planId, request.Operation, fingerprint, stateFingerprint);
         _tenant.RequireReady();
 
-        BackupInfo? backup;
+        BackupInfo? backup = null;
+        ScopedBackupInfo? scopedBackup = null;
+        string? fullBackupError = null;
         try
         {
             backup = await _tenant.EnsureBackupAsync(cancellationToken);
+        }
+        catch (InvalidDataException ex) when (request.ScopedBackupAsync is not null)
+        {
+            // One query of the full snapshot failed or warned. The change may still run when everything
+            // it touches can be backed up; when that fails too, nothing runs.
+            fullBackupError = ex.Message;
+            try
+            {
+                scopedBackup = await request.ScopedBackupAsync(cancellationToken);
+            }
+            catch (Exception scoped) when (scoped is InvalidDataException or InvalidOperationException or IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidOperationException(
+                    "The change did not run. The tenant backup failed: " + ex.Message +
+                    " The backup of the objects this change touches failed too: " + scoped.Message);
+            }
         }
         catch (InvalidDataException ex)
         {
@@ -143,8 +167,14 @@ internal sealed class ChangeGate
             errorCategory = success ? (OperationErrorCategory?)null : result.Category,
             retryHint = success ? null : RetryHint(result.ErrorMessage + "\n" + result.RawOutput),
             output = McpJson.Truncate(result.RawOutput),
-            backupFile = backup?.File,
-            backupNote = backup is null ? "The automatic backup is switched off." : null
+            backupFile = backup?.File ?? scopedBackup?.File,
+            fullBackup = backup is not null ? "written" : fullBackupError is not null ? "failed: " + fullBackupError : "switched off",
+            scopedBackup,
+            backupNote = backup is not null
+                ? null
+                : scopedBackup is not null
+                    ? "The full tenant backup could not be taken. A backup of the auto attendants and schedules this change touches was written instead; it does not hold the rest of the tenant."
+                    : "The automatic backup is switched off."
         };
     }
 

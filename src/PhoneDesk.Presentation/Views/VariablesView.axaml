@@ -1163,7 +1163,6 @@
                                                 <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.CqGreetingAudioFileId}"
                                                          Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                         IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
                                             <Button Command="{Binding SelectGreetingAudioFileCommand}"
@@ -1205,7 +1204,6 @@
                                                 <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.CqMusicOnHoldAudioFileId}"
                                                          Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                         IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
                                             <Button Command="{Binding SelectMusicOnHoldAudioFileCommand}"
@@ -1277,7 +1275,6 @@
                                                     <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqOverflowActionAudioFileId}"
                                                              Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                             IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
                                                 <Button Command="{Binding SelectOverflowVoicemailAudioFileCommand}"
@@ -1351,7 +1348,6 @@
                                                     <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqTimeoutActionAudioFileId}"
                                                              Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                             IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
                                                 <Button Command="{Binding SelectTimeoutVoicemailAudioFileCommand}"
@@ -1420,7 +1416,6 @@
                                                     <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <TextBox Text="{Binding Variables.CqNoAgentActionAudioFileId}"
                                                              Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                             IsReadOnly="True"
                                                              HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
                                                 <Button Command="{Binding SelectNoAgentVoicemailAudioFileCommand}"
@@ -1533,7 +1528,6 @@
                                                 <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.AaDefaultGreetingAudioFileId}"
                                                          Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                         IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
                                             <Button Command="{Binding SelectAaDefaultGreetingAudioFileCommand}"
@@ -1603,7 +1597,6 @@
                                                 <TextBlock Text="{loc:Translate Key=CommonAudioFile}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 <TextBox Text="{Binding Variables.AaAfterHoursGreetingAudioFileId}"
                                                          Watermark="{loc:Translate Key=CommonNoFileSelected}"
-                                                         IsReadOnly="True"
                                                          HorizontalAlignment="Stretch"/>
                                             </StackPanel>
                                             <Button Command="{Binding SelectAaAfterHoursGreetingAudioFileCommand}"

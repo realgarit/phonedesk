@@ -48,7 +48,24 @@ namespace PhoneDesk.Tests
                     });
         }
 
-        private static HolidayManagerViewModel CreateViewModel(ViewModelTestHarness harness)
+        private sealed class BackupStore : IHolidayBackupStore
+        {
+            public List<HolidayBackupDocument> Written { get; } = new();
+            public bool Fails { get; set; }
+
+            public string Write(HolidayBackupDocument document)
+            {
+                if (Fails)
+                {
+                    throw new IOException("The disk is full.");
+                }
+
+                Written.Add(document);
+                return "backup-1.json";
+            }
+        }
+
+        private static HolidayManagerViewModel CreateViewModel(ViewModelTestHarness harness, IHolidayBackupStore? backups = null)
             => new HolidayManagerViewModel(
                 harness.PowerShellContextService.Object,
                 harness.PowerShellCommandService.Object,
@@ -60,7 +77,8 @@ namespace PhoneDesk.Tests
                 harness.SharedStateService.Object,
                 harness.DialogService.Object,
                 translationService: harness.TranslationService,
-                timeProvider: new FixedClock(new DateTimeOffset(2026, 11, 26, 10, 0, 0, TimeSpan.Zero)));
+                timeProvider: new FixedClock(new DateTimeOffset(2026, 11, 26, 10, 0, 0, TimeSpan.Zero)),
+                backupStore: backups);
 
         private sealed class FixedClock : TimeProvider
         {
@@ -177,6 +195,32 @@ namespace PhoneDesk.Tests
             Assert.Empty(tenant.Changes);
             Assert.True(vm.ShowOperationDialog);
             Assert.StartsWith("The tenant changed after the check.", vm.StatusMessage);
+        }
+
+        [Fact]
+        public async Task Apply_WritesABackupOfWhatTheChangeTouchesAndRunsNothingWithoutIt()
+        {
+            var harness = new ViewModelTestHarness();
+            var tenant = new Tenant { State = Before() };
+            tenant.Attach(harness);
+            var backups = new BackupStore { Fails = true };
+            var vm = CreateViewModel(harness, backups);
+            await vm.LoadCommand.ExecuteAsync(null);
+            vm.SelectedSchedule = vm.Schedules.Single(row => row.Id == Y2020);
+            vm.OpenRetireCommand.Execute(null);
+            await vm.CheckOperationCommand.ExecuteAsync(null);
+
+            await vm.ApplyOperationCommand.ExecuteAsync(null);
+            Assert.Empty(tenant.Changes);
+            Assert.StartsWith("Nothing was changed: the backup", vm.StatusMessage);
+
+            backups.Fails = false;
+            await vm.ApplyOperationCommand.ExecuteAsync(null);
+            Assert.Single(tenant.Changes);
+            var document = Assert.Single(backups.Written);
+            Assert.Equal("Main AA", Assert.Single(document.AutoAttendants).Name);
+            Assert.Contains(document.Schedules, schedule => schedule.Id == Y2020);
+            Assert.EndsWith("Backup of the state before the change: backup-1.json", vm.StatusMessage);
         }
 
         [Fact]

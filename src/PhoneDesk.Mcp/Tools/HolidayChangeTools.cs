@@ -33,9 +33,11 @@ internal sealed class HolidayChangeTools
     private readonly TenantGateway _tenant;
     private readonly ChangeGate _changes;
     private readonly TimeProvider _time;
+    private readonly HolidayBackupWriter _backups;
 
-    public HolidayChangeTools(HolidayCallHandlingReader reader, TenantGateway tenant, ChangeGate changes, TimeProvider time)
+    public HolidayChangeTools(HolidayCallHandlingReader reader, TenantGateway tenant, ChangeGate changes, TimeProvider time, HolidayBackupWriter backups)
     {
+        _backups = backups;
         _reader = reader;
         _tenant = tenant;
         _changes = changes;
@@ -89,6 +91,7 @@ internal sealed class HolidayChangeTools
                     $"It applies to {assessment.AffectedAutoAttendants.Count} auto attendant(s).")
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(assessment),
+                    ScopedBackupAsync = _backups.For(assessment.AffectedAutoAttendants.Select(attendant => attendant.Id), new[] { id }),
                     OnSuccess = _ => applied = true,
                     ChangeWasMadeDespiteError = async (_, token) =>
                         HoldsDates(await _reader.ReadAsync(null, false, false, token), id, assessment.NewWindows)
@@ -163,6 +166,7 @@ internal sealed class HolidayChangeTools
                     (change.AudioFileId is null ? $"text \"{change.Text}\"." : $"audio file {change.AudioFileId}."))
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(assessment),
+                    ScopedBackupAsync = _backups.For(ids, new[] { change.ScheduleId }),
                     OnSuccess = _ => applied = true,
                     ChangeWasMadeDespiteError = async (_, token) => GreetingSaved(await _reader.ReadAsync(ids, true, false, token), change)
                 },
@@ -250,6 +254,9 @@ internal sealed class HolidayChangeTools
                     $"Retire {assessment.Remaining.Count} holiday schedule(s): {names}. {links} auto attendant link(s) are removed, then the schedules are deleted. This cannot be undone.")
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(assessment),
+                    ScopedBackupAsync = _backups.For(
+                        assessment.Remaining.SelectMany(item => item.References).Select(reference => reference.AutoAttendantId),
+                        assessment.Remaining.Select(item => item.ScheduleId)),
                     OnSuccess = _ => applied = true,
                     ChangeWasMadeDespiteError = async (_, token) =>
                     {
@@ -333,6 +340,7 @@ internal sealed class HolidayChangeTools
                     $"{planned.Count(result => result.Outcome == RolloutOutcome.Verified)} have it already; {planned.Count(result => result.Outcome == RolloutOutcome.Blocked)} are blocked and left out.")
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(target, planned),
+                    ScopedBackupAsync = _backups.For(ids, wanted.Select(item => item.SourceScheduleId).Append(target)),
                     // One auto attendant can fail while the others are saved: the tenant decides, per item.
                     IsSuccess = result => result.Succeeded,
                     ChangeWasMadeDespiteError = async (_, token) =>
@@ -360,6 +368,24 @@ internal sealed class HolidayChangeTools
                     ? "Call the tool again with the same items: verified auto attendants are skipped."
                     : null
             });
+        });
+
+    [McpServerTool(Name = "backup_holiday_call_handling", ReadOnly = true, Idempotent = true, OpenWorld = true)]
+    [Description("Writes a backup of the holiday call handling to a file on this computer: the call flows of the auto attendants, their links to schedules, and the schedules with their dates. It reads only these objects, so it works when backup_tenant fails because another part of the tenant (for example a call queue without agents) makes Teams print a warning. Give the auto attendants a change will touch, or none for all. The result says how many auto attendants, schedules, call flows and links were captured. The call fails when an auto attendant that was named is not in what the tenant returned. Only reads from the tenant. A holiday change takes this backup by itself when the full backup cannot be taken.")]
+    public Task<string> BackupHolidayCallHandling(
+        [Description("IDs of the auto attendants to back up. Omit to back up every auto attendant.")] string[]? autoAttendantIds = null,
+        CancellationToken cancellationToken = default)
+        => McpJson.RunAsync(async () =>
+        {
+            var ids = (autoAttendantIds ?? Array.Empty<string>()).Select(id => HolidayCallHandling.RequireId(id, "an auto attendant")).ToList();
+            var backup = await _backups.WriteAsync(ids, Array.Empty<string>(), cancellationToken);
+            return new
+            {
+                success = true,
+                backup,
+                scope = ids.Count == 0 ? "every auto attendant and the schedules they use" : "the named auto attendants and the schedules they use",
+                note = "This backup holds holiday call handling only. backup_tenant writes the whole phone system."
+            };
         });
 
     private static object ItemView(RolloutItemResult result, TenantTopology topology)

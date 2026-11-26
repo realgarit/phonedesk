@@ -19,6 +19,7 @@ public interface IPowerShellCommandService
     string GetDisconnectTeamsCommand();
     string GetDisconnectGraphCommand();
     string GetImportAudioFileCommand(string filePath);
+    string GetImportAudioFileCommand(string filePath, string applicationId);
     string GetAssignLicenseCommand(string userId, string skuId);
 
     // M365 Groups

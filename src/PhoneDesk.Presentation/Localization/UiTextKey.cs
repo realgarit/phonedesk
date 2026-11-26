@@ -1284,4 +1284,6 @@ public enum UiTextKey
     HolidayManagerOutcomeBlocked,
     HolidayManagerOutcomeFailed,
     HolidayManagerNone,
+    HolidayManagerBackupFailedStatus,
+    HolidayManagerBackupNote,
 }

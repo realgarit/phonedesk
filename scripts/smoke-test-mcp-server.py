@@ -19,6 +19,7 @@ EXPECTED_TOOLS = {
     "backup_tenant", "compare_with_backup", "guided_setup_status", "guided_setup_run_step",
     "create_call_queue", "create_auto_attendant", "delete_call_queue", "bulk_setup", "audit_history",
     "list_holiday_schedules", "holiday_call_handling", "copy_holiday_call_handling",
+    "backup_holiday_call_handling", "list_audio_files",
     "edit_holiday_schedule_dates", "replace_holiday_greeting", "retire_holiday_schedules", "rollout_holiday_call_handling",
 }
 

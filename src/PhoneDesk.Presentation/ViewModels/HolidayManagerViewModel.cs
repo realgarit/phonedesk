@@ -74,6 +74,9 @@ namespace PhoneDesk.ViewModels
         private string? _approvedState;
         private string? _pendingScript;
         private Func<HolidayCallHandlingState, string>? _verify;
+        private readonly IHolidayBackupStore? _backupStore;
+        private IReadOnlyList<string> _scopeAttendants = Array.Empty<string>();
+        private IReadOnlyList<string> _scopeSchedules = Array.Empty<string>();
 
         public ObservableCollection<HolidayScheduleRow> Schedules { get; } = new();
         public ObservableCollection<HolidayAttendantRow> AutoAttendants { get; } = new();
@@ -141,11 +144,13 @@ namespace PhoneDesk.ViewModels
             IDialogService dialogService,
             IAuditLog? auditLog = null,
             ITranslationService? translationService = null,
-            TimeProvider? timeProvider = null)
+            TimeProvider? timeProvider = null,
+            IHolidayBackupStore? backupStore = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _time = timeProvider ?? TimeProvider.System;
+            _backupStore = backupStore;
         }
 
         public bool ShowEmptyState => !IsLoaded;
@@ -188,6 +193,8 @@ namespace PhoneDesk.ViewModels
             _approvedState = null;
             _pendingScript = null;
             _verify = null;
+            _scopeAttendants = Array.Empty<string>();
+            _scopeSchedules = Array.Empty<string>();
         }
 
         [RelayCommand]
@@ -348,6 +355,31 @@ namespace PhoneDesk.ViewModels
                 var script = _pendingScript;
                 var verify = _verify;
                 var title = OperationTitle;
+
+                // What the change touches is written to a file first. Without that file nothing runs.
+                string? backupFile = null;
+                if (_backupStore is not null)
+                {
+                    var backup = HolidayBackup.Create(state, _scopeAttendants, _scopeSchedules, _time.GetUtcNow());
+                    try
+                    {
+                        if (!backup.IsComplete)
+                        {
+                            throw new System.IO.InvalidDataException(backup.MissingText);
+                        }
+
+                        backupFile = _backupStore.Write(backup.Document);
+                    }
+                    catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.IO.InvalidDataException)
+                    {
+                        StatusMessage = GetText(
+                            UiTextKey.HolidayManagerBackupFailedStatus,
+                            "Nothing was changed: the backup of the objects this change touches could not be written. {details}",
+                            new Dictionary<string, object?> { ["details"] = ex.Message });
+                        return;
+                    }
+                }
+
                 Operation = HolidayOperationKind.None;
                 var result = await PreviewAndExecuteAsync(script, title);
                 if (result is null)
@@ -365,12 +397,18 @@ namespace PhoneDesk.ViewModels
 
                 ShowState(after);
                 var problem = verify?.Invoke(after);
-                StatusMessage = string.IsNullOrEmpty(problem)
+                var outcome = string.IsNullOrEmpty(problem)
                     ? GetText(UiTextKey.HolidayManagerVerifiedStatus, "Saved. The tenant was read again and shows the change.")
                     : GetText(
                         UiTextKey.HolidayManagerNotVerifiedStatus,
                         "The tenant does not show the whole change: {details}",
                         new Dictionary<string, object?> { ["details"] = result.Succeeded ? problem : problem + " " + result.ErrorMessage });
+                StatusMessage = backupFile is null
+                    ? outcome
+                    : outcome + " " + GetText(
+                        UiTextKey.HolidayManagerBackupNote,
+                        "Backup of the state before the change: {file}",
+                        new Dictionary<string, object?> { ["file"] = backupFile });
             }, nameof(ApplyOperationAsync));
         }
 
@@ -568,6 +606,8 @@ namespace PhoneDesk.ViewModels
             lines.Add(Line(UiTextKey.HolidayManagerPreviewAffected, "Applies to: {value}", ListOf(assessment.AffectedAutoAttendants.Select(attendant => attendant.Name))));
             if (assessment.CanSave)
             {
+                _scopeAttendants = assessment.AffectedAutoAttendants.Select(attendant => attendant.Id).ToList();
+                _scopeSchedules = new[] { id };
                 _pendingScript = HolidayScheduleOperations.GetSetDatesCommand(id, assessment.Schedule!.Windows, assessment.NewWindows);
                 _approvedState = HolidayScheduleOperations.ApprovedState(assessment);
                 var expected = assessment.NewWindows;
@@ -602,6 +642,8 @@ namespace PhoneDesk.ViewModels
 
             if (assessment.CanSave)
             {
+                _scopeAttendants = new[] { change.AutoAttendantId };
+                _scopeSchedules = new[] { change.ScheduleId };
                 _pendingScript = HolidayScheduleOperations.GetSetGreetingCommand(change);
                 _approvedState = HolidayScheduleOperations.ApprovedState(assessment);
                 _verify = after =>
@@ -647,6 +689,8 @@ namespace PhoneDesk.ViewModels
             var toSave = planned.Count(result => result.Outcome == RolloutOutcome.Planned);
             if (toSave > 0)
             {
+                _scopeAttendants = items.Select(item => item.AutoAttendantId).ToList();
+                _scopeSchedules = new[] { source, target };
                 _pendingScript = HolidayScheduleOperations.GetRolloutCommand(target, planned, AcceptOverlaps);
                 _approvedState = HolidayScheduleOperations.ApprovedState(target, planned);
                 _verify = after => string.Join("; ", HolidayScheduleOperations.VerifyRollout(after, target, planned)
@@ -681,6 +725,8 @@ namespace PhoneDesk.ViewModels
 
             if (assessment.CanSave)
             {
+                _scopeAttendants = assessment.Remaining.SelectMany(item => item.References).Select(reference => reference.AutoAttendantId).ToList();
+                _scopeSchedules = assessment.Remaining.Select(item => item.ScheduleId).ToList();
                 _pendingScript = HolidayScheduleOperations.GetRetireCommand(assessment);
                 _approvedState = HolidayScheduleOperations.ApprovedState(assessment);
                 _verify = after =>

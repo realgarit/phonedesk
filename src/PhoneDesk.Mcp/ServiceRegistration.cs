@@ -62,6 +62,8 @@ internal static class ServiceRegistration
         services.AddSingleton<ChangeGate>();
         services.AddSingleton<CreatedObjectGuard>();
         services.AddSingleton<HolidayCallHandlingReader>();
+        services.AddSingleton<HolidayBackupWriter>();
+        services.AddSingleton<AudioUploadLog>();
 
         return services;
     }

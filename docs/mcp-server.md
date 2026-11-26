@@ -131,6 +131,40 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### Audio files and the application they belong to
+
+Teams keeps an audio file for one application, and only that application finds it:
+`OrgAutoAttendant` for a greeting of an auto attendant, `HuntGroup` for a greeting, the music on
+hold or a shared voicemail greeting of a call queue. Before 3.39.0 the desktop app and the server
+uploaded every file for call queues, so an audio greeting of an auto attendant was not found when
+the auto attendant was created.
+
+- `import_audio_file` needs the application (`autoAttendant` or `callQueue`). Its plan shows the
+  application, the file, its size and the SHA-256 of its content.
+- The same content for the same application is not uploaded twice: the call returns the ID of the
+  earlier upload. A file with the same name and other content is a new upload.
+- `list_audio_files` lists the files of one application with their IDs, also when two have the
+  same name. Use an ID to take a file that exists.
+- Teams converts an upload. A file cannot be recognised by downloading and comparing it; the ID
+  identifies it. After a change, `replace_holiday_greeting` reads the call flow again and reports
+  whether it has the audio file ID that was sent.
+- In the desktop app the greeting of an auto attendant is uploaded for auto attendants, and the
+  audio file fields take an ID that is typed in.
+
+### A backup of only what a holiday change touches
+
+The full backup reads the whole phone system and stops when one query warns, for example about a
+call queue without agents. A holiday change then no longer stops:
+
+- When the full backup fails, the server writes a backup of the auto attendants and schedules the
+  change touches (call flows, links, dates) and runs the change. The result names the file, says
+  that the full backup failed and why (`fullBackup`), and that the rest of the tenant is not in it.
+- When that backup misses an object the change touches, nothing runs.
+- Other changes (creating objects, deleting them) still need the full backup.
+- `backup_holiday_call_handling` writes such a backup on request and reports what it captured.
+- The desktop app writes the same backup before every change of the Holiday Manager page, to
+  `backups` in its local data folder, and runs nothing when the file cannot be written.
+
 ### Opening hours, caller ID and the agent delay
 
 Three points from a customer's report after a Guided Setup. They apply to the desktop app and to

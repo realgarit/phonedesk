@@ -231,7 +231,16 @@ catch {
         }
 
         public string GetImportAudioFileCommand(string filePath)
+            => GetImportAudioFileCommand(filePath, PhoneDesk.Operations.AudioFiles.CallQueue);
+
+        /// <summary>
+        /// Uploads an audio file for one Teams application. A file can be used only by the application
+        /// it was uploaded for: HuntGroup for call queues, OrgAutoAttendant for auto attendants.
+        /// </summary>
+        public string GetImportAudioFileCommand(string filePath, string applicationId)
         {
+            var application = PhoneDesk.Operations.AudioFiles.NormalizeApplication(applicationId);
+            var purpose = application == PhoneDesk.Operations.AudioFiles.CallQueue ? "Call Queues" : "Auto Attendants";
             // Escape single quotes for PowerShell (use single quotes to avoid issues with spaces and special chars)
             var escapedPath = filePath.Replace("'", "''");
             // Extract just the filename from the path
@@ -252,8 +261,8 @@ try {{
         exit
     }}
 
-    # Import the audio file (using HuntGroup ApplicationId for Call Queues)
-    $audioFile = Import-CsOnlineAudioFile -ApplicationId HuntGroup -FileName '{fileName}' -Content $fileContent
+    # Import the audio file (using {application} ApplicationId for {purpose})
+    $audioFile = Import-CsOnlineAudioFile -ApplicationId {application} -FileName '{fileName}' -Content $fileContent
     if ($audioFile) {{
         Write-Host ""SUCCESS: Audio file imported successfully""
         Write-Host ""AUDIOFILEID: $($audioFile.Id)""

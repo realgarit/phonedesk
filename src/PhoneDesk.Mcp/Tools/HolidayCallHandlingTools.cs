@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using PhoneDesk.Operations;
@@ -152,6 +153,9 @@ internal sealed class HolidayCallHandlingTools
                     HolidayCallHandling.GetCopyCommand(request, assessment.AuthorizedUsersToRemove),
                     summary)
                 {
+                    // The script holds IDs only and reads the call flow when it runs. The plan is
+                    // therefore also bound to what the preview showed.
+                    ApprovedState = ApprovedState(assessment),
                     OnSuccess = _ => applied = true,
                     // Teams can report an error after it saved. The tenant decides what happened.
                     ChangeWasMadeDespiteError = async (_, token) =>
@@ -176,6 +180,26 @@ internal sealed class HolidayCallHandlingTools
             var saved = await _reader.ReadAsync(new[] { request.AutoAttendantId }, true, false, cancellationToken);
             return McpJson.With(outcome, "verification", Verify(saved, request, assessment.SourceCallFlow));
         });
+
+    /// <summary>
+    /// What the user agrees to in the plan and the script does not hold: the call flow that is
+    /// copied, its link to the source schedule, and the names and dates of the schedules.
+    /// </summary>
+    internal static string ApprovedState(CopyAssessment assessment)
+    {
+        var source = assessment.SourceSchedule;
+        return JsonSerializer.Serialize(new
+        {
+            callFlow = assessment.SourceCallFlow,
+            link = source is null ? null : assessment.AutoAttendant?.HolidayLinkFor(source.Id),
+            source = ScheduleState(source),
+            target = ScheduleState(assessment.TargetSchedule),
+            replaced = ScheduleState(assessment.ReplacedSchedule)
+        });
+    }
+
+    private static object? ScheduleState(ScheduleInfo? schedule)
+        => schedule is null ? null : new { schedule.Id, schedule.Name, schedule.Windows };
 
     /// <summary>
     /// Compares what the tenant holds now with what was asked for. The script prints SUCCESS on its

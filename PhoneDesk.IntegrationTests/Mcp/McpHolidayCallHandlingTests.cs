@@ -305,6 +305,39 @@ public sealed class McpHolidayCallHandlingTests
     }
 
     [Fact]
+    public async Task Copy_RefusesThePlanWhenTheSourceCallFlowChangedAfterThePreview()
+    {
+        using var host = HostWith(BeforeCopy());
+        var copyScript = HolidayCallHandling.GetCopyCommand(new CopyRequest(AaId, Source, Target), []);
+        host.PowerShell.Respond(copyScript, $"SUCCESS: Schedule {Target} is attached");
+        var tools = host.Tool<HolidayCallHandlingTools>();
+
+        var planned = McpTestHost.Parse(await tools.CopyHolidayCallHandling(AaId, Source, Target, cancellationToken: Cancellation));
+        var planId = planned.GetProperty("plan").GetProperty("planId").GetString();
+
+        // Someone changes the greeting of the source in Teams between the preview and the apply call.
+        RespondState(host, State(
+            [Flow(SourceFlow, "Another greeting")],
+            [Link(Source, SourceFlow)],
+            [
+                Schedule(Source, "Feiertage 2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00", AaId),
+                Schedule(Target, "Feiertage 2099", "2099-12-25T00:00:00", "2099-12-26T00:00:00")
+            ]));
+        var refused = McpTestHost.Parse(await tools.CopyHolidayCallHandling(AaId, Source, Target, planId: planId, cancellationToken: Cancellation));
+
+        Assert.False(refused.GetProperty("success").GetBoolean());
+        Assert.Contains("The tenant changed after this plan was made", refused.GetProperty("error").GetString());
+        Assert.DoesNotContain(copyScript, host.PowerShell.Executed);
+
+        // The plan is used up. A new preview shows the new greeting and can be applied.
+        var again = McpTestHost.Parse(await tools.CopyHolidayCallHandling(AaId, Source, Target, cancellationToken: Cancellation));
+        Assert.Contains("Another greeting", again.GetProperty("plan").GetProperty("summary").GetString());
+        var applied = McpTestHost.Parse(await tools.CopyHolidayCallHandling(
+            AaId, Source, Target, planId: again.GetProperty("plan").GetProperty("planId").GetString(), cancellationToken: Cancellation));
+        Assert.Equal("applied", applied.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Copy_ReportsADifferenceWhenTeamsHoldsAnotherGreeting()
     {
         using var host = HostWith(BeforeCopy());

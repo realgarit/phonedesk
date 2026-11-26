@@ -82,6 +82,11 @@ not save it. The result names the cause and changes nothing:
   one. The result names the user IDs; `removeMissingAuthorizedUsers: true` takes these entries
   off in the same save.
 
+The copy script holds IDs only and reads the call flow when it runs. The plan is therefore also
+bound to what the preview showed: the source call flow, and the names and dates of the
+schedules. When one of these changes in Teams between the preview and the apply call, the plan
+is refused, nothing is changed, and a new preview is needed.
+
 After the save the server reads the auto attendant again. `verification` says whether the
 schedule is attached and whether the call flow is the same as the source, compared value by
 value; a greeting text is compared character by character. When Teams reports an error but the

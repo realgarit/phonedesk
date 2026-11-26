@@ -9,6 +9,14 @@ internal sealed record ChangeRequest(string Operation, string Target, string Scr
 {
     public Dictionary<string, string>? EnvironmentVariables { get; init; }
 
+    /// <summary>
+    /// What the tenant held when the plan was shown, for a script that reads its input from the
+    /// tenant when it runs. Such a script stays the same when the tenant changes, so the script
+    /// alone cannot tell that the user agreed to something else. The plan runs only while this
+    /// text is the same as at the time of the plan.
+    /// </summary>
+    public string? ApprovedState { get; init; }
+
     /// <summary>Decides whether the script result counts as success. Default: a SUCCESS line and no error.</summary>
     public Func<OperationResult<string>, bool> IsSuccess { get; init; } = result => result.Succeeded;
 
@@ -64,12 +72,15 @@ internal sealed class ChangeGate
         }
 
         var fingerprint = GuidedSetupScriptFactory.ComputeFingerprint(request.Script);
+        var stateFingerprint = request.ApprovedState is null
+            ? null
+            : GuidedSetupScriptFactory.ComputeFingerprint(request.ApprovedState);
         if (string.IsNullOrWhiteSpace(planId))
         {
-            return Plan(request, fingerprint);
+            return Plan(request, fingerprint, stateFingerprint);
         }
 
-        TakePlan(planId, request.Operation, fingerprint);
+        TakePlan(planId, request.Operation, fingerprint, stateFingerprint);
         _tenant.RequireReady();
 
         BackupInfo? backup;
@@ -156,7 +167,7 @@ internal sealed class ChangeGate
             : null;
     }
 
-    private object Plan(ChangeRequest request, string fingerprint)
+    private object Plan(ChangeRequest request, string fingerprint, string? stateFingerprint)
     {
         var id = Convert.ToHexString(RandomNumberGenerator.GetBytes(4)).ToLowerInvariant();
         var expires = _time.GetUtcNow() + PlanLifetime;
@@ -167,7 +178,7 @@ internal sealed class ChangeGate
                 _plans.Remove(expired);
             }
 
-            _plans[id] = new StoredPlan(request.Operation, fingerprint, expires);
+            _plans[id] = new StoredPlan(request.Operation, fingerprint, stateFingerprint, expires);
         }
 
         return new
@@ -184,7 +195,7 @@ internal sealed class ChangeGate
         };
     }
 
-    private void TakePlan(string planId, string operation, string fingerprint)
+    private void TakePlan(string planId, string operation, string fingerprint, string? stateFingerprint)
     {
         lock (_gate)
         {
@@ -206,8 +217,15 @@ internal sealed class ChangeGate
                     "The arguments or the configuration changed after this plan was made, so the script is different. " +
                     "Call the tool without planId to review the new plan.");
             }
+
+            if (!string.Equals(plan.StateFingerprint, stateFingerprint, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The tenant changed after this plan was made: what the plan showed is not what the change would save now. " +
+                    "Nothing was changed. Call the tool without planId to review the new plan.");
+            }
         }
     }
 
-    private sealed record StoredPlan(string Operation, string Fingerprint, DateTimeOffset ExpiresUtc);
+    private sealed record StoredPlan(string Operation, string Fingerprint, string? StateFingerprint, DateTimeOffset ExpiresUtc);
 }

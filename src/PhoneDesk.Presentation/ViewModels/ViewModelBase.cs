@@ -214,6 +214,14 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         protected async Task<OperationResult<string>> ExecutePowerShellCommandAsync(string command, Dictionary<string, string>? environmentVariables, string context, bool allowThrottleRetry)
         {
+            // Connected to another tenant than expected, or to two tenants: every page sends nothing.
+            // Only what the operator needs to correct the connections still runs.
+            if (!IdentityRecoveryContexts.Contains(context) && IdentityProblem() is { } identityProblem)
+            {
+                StatusMessage = identityProblem;
+                return PowerShellOperationResultMapper.Failure(OperationErrorCategory.AuthSession, identityProblem, string.Empty);
+            }
+
             using var cts = new CancellationTokenSource();
             _operationCts = cts;
             IsCancellable = true;
@@ -286,6 +294,20 @@ namespace PhoneDesk.ViewModels
             }
         }
 
+        /// <summary>The operations that run with an identity problem: the sign-ins, the sign-outs and the reads that show the problem.</summary>
+        private static readonly HashSet<string> IdentityRecoveryContexts = new(StringComparer.Ordinal)
+        {
+            "CheckModules", "ConnectTeams", "ConnectGraph", "DisconnectTeams", "DisconnectGraph", "ReadConnectionIdentity"
+        };
+
+        /// <summary>The message for the operator when the connections are not the expected ones, or null.</summary>
+        private string? IdentityProblem()
+        {
+            var issue = _validationService?.ValidatePrerequisites()?.Issues
+                .FirstOrDefault(item => item.Code == ValidationErrorCode.TenantIdentityMismatch);
+            return issue is null ? null : GetValidationErrorMessage(issue);
+        }
+
         /// <summary>Best-effort identifier of the object(s) an operation acted on, from the current variables.</summary>
         private static string? BuildAuditTarget(Models.PhoneManagerVariables? variables)
         {
@@ -322,6 +344,9 @@ namespace PhoneDesk.ViewModels
                 ValidationErrorCode.GraphNotConnected => GetText(
                     UiTextKey.ValidationGraphNotConnected,
                     "Not connected to Microsoft Graph. Please connect to Graph first."),
+                ValidationErrorCode.TenantIdentityMismatch => GetText(
+                    UiTextKey.ValidationTenantIdentityMismatch,
+                    "The connections are not the expected ones. Nothing is sent to the tenant. Open Readiness Check for the details."),
                 ValidationErrorCode.CustomerNameRequired => GetText(
                     UiTextKey.ValidationCustomerNameRequired,
                     "Customer name is required."),

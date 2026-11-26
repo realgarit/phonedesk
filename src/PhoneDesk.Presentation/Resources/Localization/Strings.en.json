@@ -1321,5 +1321,16 @@
   "PhoneNumbersPreviewUnassign": "Ready. The number is taken off the account and stays in the inventory.",
   "PhoneNumbersPreviewAssign": "Ready. Apply shows the script before it runs.",
   "PhoneNumbersPreviewBlocked": "Cannot be done: {details}",
-  "PhoneNumbersUnverifiedStatus": "The change was sent, but the number could not be read again, so the result is not confirmed. Read the list and check the number. {details}"
+  "PhoneNumbersUnverifiedStatus": "The change was sent, but the number could not be read again, so the result is not confirmed. Read the list and check the number. {details}",
+  "GetStartedExpectedTenantWatermark": "Expected organization (optional): domain, name or tenant ID",
+  "GetStartedExpectedTenantHint": "When you work for several customers, enter the organization you mean. If a sign-in reaches another organization, PhoneDesk says so and sends no change.",
+  "GetStartedIdentityTeams": "Microsoft Teams: {name} ({id})",
+  "GetStartedIdentityGraph": "Microsoft Graph: {account} ({id})",
+  "GetStartedRestartGraphSignInAction": "Start sign-in again",
+  "GetStartedGraphSignInRestarted": "The Microsoft Graph sign-in was given up. Select Connect again to open a new sign-in window, and ignore the old one.",
+  "ValidationTenantIdentityMismatch": "The connections are not the expected ones. Nothing is sent to the tenant. Open Readiness Check for the details.",
+  "GetStartedSetupGuidanceIdentity": "The sign-ins worked, but they are not the expected ones. Sign out, then sign in again with the right account.",
+  "GetStartedIdentityTenantsDiffer": "Microsoft Teams is connected to {teams}, but Microsoft Graph is signed in to another organization as {account}.",
+  "GetStartedIdentityUnexpectedTenant": "You expected {expected}, but the sign-in reached {actual}.",
+  "GetStartedIdentityUnexpectedAccount": "You expected the account {expected}, but Microsoft Graph is signed in as {actual}."
 }

@@ -967,12 +967,12 @@ public sealed class McpToolTests
             "SUCCESS: Connected to Microsoft Teams\nConnected to tenant: Contoso (tenant-1)\n");
         var tools = host.Tool<SessionTools>();
 
-        var teamsTooEarly = McpTestHost.Parse(await tools.ConnectTeams(Cancellation));
+        var teamsTooEarly = McpTestHost.Parse(await tools.ConnectTeams(cancellationToken: Cancellation));
         Assert.False(teamsTooEarly.GetProperty("success").GetBoolean());
 
         Assert.True(McpTestHost.Parse(await tools.CheckModules(Cancellation)).GetProperty("success").GetBoolean());
-        Assert.True(McpTestHost.Parse(await tools.ConnectTeams(Cancellation)).GetProperty("success").GetBoolean());
-        var graph = McpTestHost.Parse(await tools.ConnectGraph(Cancellation));
+        Assert.True(McpTestHost.Parse(await tools.ConnectTeams(cancellationToken: Cancellation)).GetProperty("success").GetBoolean());
+        var graph = McpTestHost.Parse(await tools.ConnectGraph(cancellationToken: Cancellation));
 
         Assert.True(graph.GetProperty("success").GetBoolean());
         Assert.Equal("tenant-1", graph.GetProperty("status").GetProperty("tenantId").GetString());

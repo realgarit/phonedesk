@@ -87,6 +87,7 @@ class Program
 
         // Transient services (new instance per request)
         services.AddTransient<IPowerShellCommandService, PowerShellCommandService>();
+        services.AddSingleton<PhoneDesk.Operations.TenantIdentityGuard>();
         services.AddTransient<IValidationService, ValidationService>();
         services.AddTransient<IErrorHandlingService, ErrorHandlingService>();
         services.AddTransient<IPowerShellSanitizationService, PowerShellSanitizationService>();

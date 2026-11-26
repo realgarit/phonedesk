@@ -79,6 +79,9 @@ internal sealed class TenantGateway
             throw new InvalidOperationException(
                 "Not connected. Run check_modules, connect_teams and connect_graph first.");
         }
+
+        // Connected to another tenant than expected, or to two tenants: no read and no change.
+        _connection.Identity.RequireMatch();
     }
 
     public async Task<OperationResult<string>> ReadAsync(string command, string operation, CancellationToken cancellationToken)

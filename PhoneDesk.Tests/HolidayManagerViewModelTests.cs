@@ -224,6 +224,28 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public async Task NothingIsSentWhileTheConnectionsAreNotTheExpectedOnes()
+        {
+            // The Readiness Check found the wrong tenant: this page must not read or change it.
+            var harness = new ViewModelTestHarness();
+            var tenant = new Tenant { State = Before() };
+            tenant.Attach(harness);
+            var wrongTenant = new ValidationResult();
+            wrongTenant.AddError(ValidationErrorCode.TenantIdentityMismatch, "Expected the tenant 'fabrikam.com'.");
+            harness.ValidationService.Setup(v => v.ValidatePrerequisites()).Returns(wrongTenant);
+            var vm = CreateViewModel(harness);
+
+            await vm.LoadCommand.ExecuteAsync(null);
+
+            Assert.False(vm.IsLoaded);
+            Assert.Empty(tenant.Changes);
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync(
+                    It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task Retire_RefusesAScheduleWithAFutureDateUntilTheOperatorAllowsIt()
         {
             var harness = new ViewModelTestHarness();

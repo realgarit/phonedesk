@@ -148,6 +148,10 @@ namespace PhoneDesk.Tests
             new("GetStarted", true, "get-started-connections-en.png", "ready-connections-en"),
             new("GetStarted", true, "get-started-connections-de.png", "ready-connections-de"),
             new("GetStarted", true, "get-started-ready-de.png", "ready-de"),
+            new("GetStarted", true, "get-started-identity-en.png", "ready-identity-en"),
+            new("GetStarted", true, "get-started-identity-de.png", "ready-identity-de"),
+            new("GetStarted", true, "get-started-identity-mismatch-en.png", "ready-identitymismatch-en"),
+            new("GetStarted", true, "get-started-identity-mismatch-de.png", "ready-identitymismatch-de"),
             new("Variables", true, "holiday-audit-empty-en.png", "holiday-audit-empty-en"),
             new("Variables", true, "holiday-audit-empty-de.png", "holiday-audit-empty-de"),
             new("Variables", true, "holiday-audit-fr-required-en.png", "holiday-audit-fr-required-en"),
@@ -538,6 +542,24 @@ namespace PhoneDesk.Tests
                     Assert.True(help.Flyout!.IsOpen);
                     Assert.False(ToolTip.GetIsOpen(help));
                 }
+            }
+
+            if (scenario.StartsWith("ready-identity", StringComparison.Ordinal) && mainWindowViewModel.CurrentViewModel is GetStartedViewModel identityPage)
+            {
+                // The page shows who the connections are, and a tenant that is not the expected one.
+                var mismatch = scenario.StartsWith("ready-identitymismatch", StringComparison.Ordinal);
+                var guard = provider.GetRequiredService<TenantIdentityGuard>();
+                guard.Update(new TenantIdentityInfo
+                {
+                    TeamsTenantId = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43",
+                    TeamsTenantName = "Contoso AG",
+                    TeamsDomains = new[] { "contoso.com" },
+                    GraphTenantId = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43",
+                    GraphAccount = "admin@contoso.com"
+                });
+                identityPage.ExpectedTenant = mismatch ? "fabrikam.com" : "contoso.com";
+                PumpRender();
+                return;
             }
 
             if (scenario.StartsWith("ready-connections", StringComparison.Ordinal))

@@ -52,6 +52,7 @@ internal static class ServiceRegistration
         services.AddTransient<TenantSnapshotCollector>();
 
         // Headless operations and server state.
+        services.AddSingleton<TenantIdentityGuard>();
         services.AddSingleton<TenantConnectionService>();
         services.AddSingleton<TenantHealthCheckService>();
         services.AddSingleton<ConfigurationStore>();

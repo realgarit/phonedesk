@@ -5,6 +5,7 @@ namespace PhoneDesk.Services
         Unknown,
         ModulesNotChecked,
         TeamsNotConnected,
+        TenantIdentityMismatch,
         GraphNotConnected,
         CustomerNameRequired,
         CustomerGroupNameRequired,

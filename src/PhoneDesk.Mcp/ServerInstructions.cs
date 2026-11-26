@@ -15,7 +15,7 @@ internal static class ServerInstructions
         Changes:
         - Every tool that changes the tenant works in two calls. The first call (no planId) returns the exact script and a planId and changes nothing. Show the user what will happen and get their agreement. The second call, with the same arguments and the planId, runs it.
         - Before the first change of a session the server writes a full backup snapshot of the tenant's phone system to this computer. Report the backup file to the user. The snapshot is a record for comparison (compare_with_backup) and manual restore; it is not an automatic restore.
-        - Delete tools accept only objects this server created (created_objects). Do not look for another way to delete an object the server refuses.
+        - Delete tools accept only objects this server created (created_objects). The one exception is retire_holiday_schedules: it deletes holiday schedules that exist, by ID, after it showed every link that comes off; use it only for the schedules the user named. Do not look for another way to delete an object the server refuses.
         - Never invent names, phone numbers, domains or license IDs. Ask the user.
 
         The configuration is local to this computer and is kept between sessions. Sign-ins are not kept: each new session signs in again.

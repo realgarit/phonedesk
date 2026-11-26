@@ -101,6 +101,36 @@ and the backtick. Apostrophes, plain and typographic, arrive unchanged (before 3
 apostrophe was written twice, so `aujourd'hui` arrived as `aujourd''hui`; correct such a greeting
 in Teams, or attach the schedule again).
 
+### Changes to holiday schedules that exist
+
+The desktop app has these on the **Holiday Manager** page; the server has one tool for each. Both
+use the same checks, scripts and read-back (`HolidayScheduleOperations`).
+
+| Change | Tool | What the check shows |
+|---|---|---|
+| Other dates (add, remove, half day, across a year) | `edit_holiday_schedule_dates` | Added, removed and kept ranges; every auto attendant that uses the schedule; overlaps of a new date |
+| Another greeting (text or audio file by ID) | `replace_holiday_greeting` | The old greeting with its audio file ID; other schedules on the same call flow |
+| One schedule for several auto attendants | `rollout_holiday_call_handling` | Each auto attendant as verified, planned or blocked |
+| Retire a schedule (take it off and delete it) | `retire_holiday_schedules` | Every link that comes off; whether its call flow goes too |
+
+Rules that hold for all four:
+
+- The first call (or **Check** in the app) reads the tenant and sends nothing.
+- An approval is bound to what the check showed. When the tenant changed before the second call
+  (or before **Apply**), nothing runs and the new check is shown.
+- After the change the tenant is read again. The result is taken from that read, not from the
+  last line of the script: a script can print a success line and a Teams error together.
+- A rollout that stopped in the middle is continued by running it again. Auto attendants that
+  have the schedule are skipped, so no call flow or link is made twice.
+- `retire_holiday_schedules` deletes schedules the server did not create. It needs the IDs, shows
+  every link first, refuses a schedule with a date that has not passed (unless
+  `allowNotExpired`), and never touches a schedule that is not named.
+- An authorized user is removed only when the lookup confirmed that the user is missing or
+  disabled. A lookup that failed (no permission, or another error) proves nothing, so that user
+  stays (`uncheckedAuthorizedUsers` with its `kind`).
+- When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
+  goes only when no other link of the auto attendant uses it.
+
 ### Opening hours, caller ID and the agent delay
 
 Three points from a customer's report after a Guided Setup. They apply to the desktop app and to

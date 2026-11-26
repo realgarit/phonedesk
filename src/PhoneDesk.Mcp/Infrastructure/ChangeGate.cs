@@ -210,19 +210,21 @@ internal sealed class ChangeGate
                 throw new InvalidOperationException("This plan has expired. Call the tool without planId to get a new plan.");
             }
 
+            // First the tenant: a script that holds values read from the tenant changes with it too.
+            if (string.Equals(plan.Operation, operation, StringComparison.Ordinal) &&
+                !string.Equals(plan.StateFingerprint, stateFingerprint, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The tenant changed after this plan was made, or the arguments are not the same: what the plan showed is not what the change would save now. " +
+                    "Nothing was changed. Call the tool without planId to review the new plan.");
+            }
+
             if (!string.Equals(plan.Operation, operation, StringComparison.Ordinal) ||
                 !string.Equals(plan.Fingerprint, fingerprint, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
                     "The arguments or the configuration changed after this plan was made, so the script is different. " +
                     "Call the tool without planId to review the new plan.");
-            }
-
-            if (!string.Equals(plan.StateFingerprint, stateFingerprint, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    "The tenant changed after this plan was made: what the plan showed is not what the change would save now. " +
-                    "Nothing was changed. Call the tool without planId to review the new plan.");
             }
         }
     }

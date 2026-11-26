@@ -28,6 +28,7 @@ using PhoneDesk.Services.Interfaces;
 using PhoneDesk.ViewModels;
 using PhoneDesk.Portability;
 using PhoneDesk.HealthChecks;
+using PhoneDesk.Operations;
 
 namespace PhoneDesk.Tests
 {
@@ -172,6 +173,18 @@ namespace PhoneDesk.Tests
             new("Variables", true, "config-import-preview-en.png", "issue71-config-import-en"),
             new("Variables", true, "config-import-preview-de.png", "issue71-config-import-de"),
             new("Dashboard", true, "dashboard-de.png", "ready-de"),
+            new("HolidayManager", true, "holiday-manager-empty-en.png", "holidaymanager-empty-en"),
+            new("HolidayManager", true, "holiday-manager-empty-de.png", "holidaymanager-empty-de"),
+            new("HolidayManager", true, "holiday-manager-loaded-en.png", "holidaymanager-loaded-en"),
+            new("HolidayManager", true, "holiday-manager-loaded-de.png", "holidaymanager-loaded-de"),
+            new("HolidayManager", true, "holiday-manager-dates-en.png", "holidaymanager-dates-en"),
+            new("HolidayManager", true, "holiday-manager-dates-de.png", "holidaymanager-dates-de"),
+            new("HolidayManager", true, "holiday-manager-greeting-en.png", "holidaymanager-greeting-en"),
+            new("HolidayManager", true, "holiday-manager-greeting-de.png", "holidaymanager-greeting-de"),
+            new("HolidayManager", true, "holiday-manager-attach-en.png", "holidaymanager-attach-en"),
+            new("HolidayManager", true, "holiday-manager-attach-de.png", "holidaymanager-attach-de"),
+            new("HolidayManager", true, "holiday-manager-retire-en.png", "holidaymanager-retire-en"),
+            new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
             new("HealthCheck", true, "health-check-empty-en.png", "issue78-health-empty-en"),
             new("HealthCheck", true, "health-check-empty-de.png", "issue78-health-empty-de"),
             new("HealthCheck", true, "health-check-findings-en.png", "issue78-health-findings-en"),
@@ -872,6 +885,39 @@ namespace PhoneDesk.Tests
                         });
                     break;
 
+                case HolidayManagerViewModel holidayManager when scenario.StartsWith("holidaymanager-", StringComparison.Ordinal) && !scenario.Contains("-empty-", StringComparison.Ordinal):
+                    holidayManager.ShowStateForDisplay(HolidayManagerSampleState());
+                    holidayManager.SelectedSchedule = holidayManager.Schedules.First(row => row.Name == "hd-contoso-2027");
+                    holidayManager.SelectedHoliday = holidayManager.Holidays.First(row => !row.IsExpired);
+                    if (scenario.Contains("-dates-", StringComparison.Ordinal))
+                    {
+                        holidayManager.OpenEditDatesCommand.Execute(null);
+                        holidayManager.OperationText = "2027-12-24 12:00 to 2027-12-25 00:00\n2027-12-25 to 2027-12-26\n2027-12-31 to 2028-01-02";
+                        holidayManager.CheckForDisplay();
+                    }
+                    else if (scenario.Contains("-greeting-", StringComparison.Ordinal))
+                    {
+                        holidayManager.OpenReplaceGreetingCommand.Execute(null);
+                        holidayManager.OperationText = "Unsere Büros sind über die Festtage geschlossen. Ab dem 3. Januar sind wir wieder für Sie da.";
+                        holidayManager.CheckForDisplay();
+                    }
+                    else if (scenario.Contains("-attach-", StringComparison.Ordinal))
+                    {
+                        holidayManager.OpenAttachCommand.Execute(null);
+                        foreach (var choice in holidayManager.AttendantChoices)
+                        {
+                            choice.IsSelected = true;
+                        }
+                        holidayManager.CheckForDisplay();
+                    }
+                    else if (scenario.Contains("-retire-", StringComparison.Ordinal))
+                    {
+                        holidayManager.SelectedSchedule = holidayManager.Schedules.First(row => row.IsExpired);
+                        holidayManager.OpenRetireCommand.Execute(null);
+                        holidayManager.CheckForDisplay();
+                    }
+                    break;
+
                 case HealthCheckViewModel healthCheck when scenario.StartsWith("issue78-health-findings", StringComparison.Ordinal):
                     healthCheck.SetResultsForDisplay(
                         TenantHealthEvaluationServiceTests.CreateContext(),
@@ -1222,6 +1268,84 @@ namespace PhoneDesk.Tests
         /// is 2x (retina) crisp. The headless window impl exposes RenderScaling only via a getter;
         /// we set its backing field and raise ScalingChanged so the TopLevel relayouts/resizes.
         /// </summary>
+        /// <summary>Two main numbers with holidays of three years, for the Holiday Manager renders.</summary>
+        private static string HolidayManagerSampleState()
+        {
+            static object Flow(string id, string greeting, string action, string targetType, string target) => new
+            {
+                id,
+                name = "flow",
+                greetings = greeting.Length == 0 ? Array.Empty<object>() : new object[] { new { type = "TextToSpeech", text = greeting, audioFile = (object?)null } },
+                menuName = "menu",
+                menuPrompts = Array.Empty<object>(),
+                options = new[]
+                {
+                    new
+                    {
+                        action,
+                        key = "Automatic",
+                        voiceResponses = Array.Empty<string>(),
+                        target = action == "DisconnectCall" ? null : new { id = target, type = targetType, enableTranscription = (bool?)null, suppressSystemPrompt = (bool?)null, callPriority = 0 },
+                        prompt = (object?)null
+                    }
+                },
+                forceListenMenu = false,
+                dialByName = false
+            };
+            static object Link(string schedule, string flow) => new { type = "Holiday", scheduleId = schedule, callFlowId = flow, enabled = true, priority = 0 };
+            static object Schedule(string id, string name, string[][] windows, params string[] usedBy) => new
+            {
+                id,
+                name,
+                type = "Fixed",
+                windows = windows.Select(window => new { start = window[0], end = window[1] }),
+                usedBy
+            };
+            const string main = "aaaaaaaa-0000-0000-0000-000000000001";
+            const string branch = "aaaaaaaa-0000-0000-0000-000000000002";
+            const string y2024 = "33333333-0000-0000-0000-000000000003";
+            const string y2026 = "11111111-0000-0000-0000-000000000001";
+            const string y2027 = "22222222-0000-0000-0000-000000000002";
+            const string closure = "44444444-0000-0000-0000-000000000004";
+            return HolidayCallHandling.JsonMarker + System.Text.Json.JsonSerializer.Serialize(new
+            {
+                autoAttendants = new object[]
+                {
+                    new
+                    {
+                        id = main,
+                        name = "aa-contoso-main-reception",
+                        authorizedUsers = Array.Empty<string>(),
+                        callFlows = new[]
+                        {
+                            Flow("f1", "Wir sind heute wegen eines Feiertags nicht erreichbar. Bitte rufen Sie am nächsten Werktag wieder an.", "DisconnectCall", "", ""),
+                            Flow("f2", "Our office is closed.", "DisconnectCall", "", ""),
+                            Flow("f3", "", "TransferCallToTarget", "ExternalPstn", "tel:+41441112233")
+                        },
+                        associations = new[] { Link(y2026, "f1"), Link(y2024, "f2"), Link(closure, "f3") }
+                    },
+                    new
+                    {
+                        id = branch,
+                        name = "aa-contoso-branch-zurich",
+                        authorizedUsers = Array.Empty<string>(),
+                        callFlows = new[] { Flow("f4", "Bitte hinterlassen Sie eine Nachricht.", "TransferCallToTarget", "SharedVoicemail", "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43") },
+                        associations = new[] { Link(y2026, "f4") }
+                    }
+                },
+                schedules = new[]
+                {
+                    Schedule(y2024, "hd-contoso-2024", new[] { new[] { "2024-12-25T00:00:00", "2024-12-27T00:00:00" } }, main),
+                    Schedule(y2026, "hd-contoso-2026", new[] { new[] { "2026-12-25T00:00:00", "2026-12-27T00:00:00" }, new[] { "2027-01-01T00:00:00", "2027-01-03T00:00:00" } }, main, branch),
+                    Schedule(closure, "hd-contoso-betriebsferien-2027", new[] { new[] { "2027-07-19T00:00:00", "2027-08-02T00:00:00" } }, main),
+                    Schedule(y2027, "hd-contoso-2027", new[] { new[] { "2027-12-25T00:00:00", "2027-12-27T00:00:00" } })
+                },
+                missingAuthorizedUsers = Array.Empty<object>(),
+                uncheckedAuthorizedUsers = Array.Empty<object>(),
+                disabledAuthorizedUsers = Array.Empty<object>()
+            });
+        }
+
         private static void ForceRenderScaling(MainWindow window, double scaling)
         {
             var implProperty = typeof(TopLevel).GetProperty(

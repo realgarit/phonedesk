@@ -689,8 +689,7 @@ namespace PhoneDesk.ViewModels
             var toSave = planned.Count(result => result.Outcome == RolloutOutcome.Planned);
             if (toSave > 0)
             {
-                _scopeAttendants = items.Select(item => item.AutoAttendantId).ToList();
-                _scopeSchedules = new[] { source, target };
+                (_scopeAttendants, _scopeSchedules) = HolidayScheduleOperations.RolloutBackupScope(target, planned);
                 _pendingScript = HolidayScheduleOperations.GetRolloutCommand(target, planned, AcceptOverlaps);
                 _approvedState = HolidayScheduleOperations.ApprovedState(target, planned);
                 _verify = after => string.Join("; ", HolidayScheduleOperations.VerifyRollout(after, target, planned)

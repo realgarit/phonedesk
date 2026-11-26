@@ -412,6 +412,34 @@ public sealed class HolidayScheduleOperationsTests
     }
 
     [Fact]
+    public void Rollout_BacksUpOnlyTheItemsItSaves()
+    {
+        // One auto attendant can be saved; the other names a source schedule that does not exist.
+        const string missingSource = "99999999-0000-0000-0000-000000000099";
+        var state = Read(State(
+            new[]
+            {
+                Attendant(AaId, "Main AA", new[] { Link(Y2026, Flow2026) }, new[] { Flow(Flow2026, "a") }),
+                Attendant(SecondAa, "Branch AA", Array.Empty<object>(), Array.Empty<object>())
+            },
+            new[]
+            {
+                Schedule(Y2026, "Feiertage 2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00", AaId),
+                Schedule(Y2027, "Feiertage 2027", "2027-12-25T00:00:00", "2027-12-26T00:00:00")
+            }));
+        var planned = HolidayScheduleOperations.AssessRollout(
+            state, Y2027, new[] { new RolloutItem(AaId, Y2026), new RolloutItem(SecondAa, missingSource) }, false, false, _ => Now);
+        Assert.Equal(new[] { RolloutOutcome.Planned, RolloutOutcome.Blocked }, planned.Select(result => result.Outcome));
+
+        var scope = HolidayScheduleOperations.RolloutBackupScope(Y2027, planned);
+        Assert.Equal(new[] { AaId }, scope.AutoAttendants);
+        Assert.Equal(new[] { Y2026, Y2027 }, scope.Schedules.OrderBy(id => id));
+
+        // The backup of that scope is complete, although the blocked item names a schedule that is not there.
+        Assert.True(HolidayBackup.Create(state, scope.AutoAttendants, scope.Schedules, DateTimeOffset.UnixEpoch).IsComplete);
+    }
+
+    [Fact]
     public void Rollout_DoesNotCallAnItemVerifiedWhenThereIsNoSourceToCompareWith()
     {
         // The target is attached, but the named source schedule is not: nothing proves the call handling.

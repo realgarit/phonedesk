@@ -340,7 +340,9 @@ internal sealed class HolidayChangeTools
                     $"{planned.Count(result => result.Outcome == RolloutOutcome.Verified)} have it already; {planned.Count(result => result.Outcome == RolloutOutcome.Blocked)} are blocked and left out.")
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(target, planned),
-                    ScopedBackupAsync = _backups.For(ids, wanted.Select(item => item.SourceScheduleId).Append(target)),
+                    ScopedBackupAsync = _backups.For(
+                        HolidayScheduleOperations.RolloutBackupScope(target, planned).AutoAttendants,
+                        HolidayScheduleOperations.RolloutBackupScope(target, planned).Schedules),
                     // One auto attendant can fail while the others are saved: the tenant decides, per item.
                     IsSuccess = result => result.Succeeded,
                     ChangeWasMadeDespiteError = async (_, token) =>

@@ -661,6 +661,11 @@ namespace PhoneDesk.ViewModels
         private IReadOnlyList<string> PrepareRetire(HolidayCallHandlingState state, List<string> lines)
         {
             var assessment = HolidayScheduleOperations.AssessRetire(state, new[] { SelectedSchedule?.Id ?? string.Empty }, Now, AllowNotExpired);
+            if (assessment.NothingLeft)
+            {
+                return new[] { GetText(UiTextKey.HolidayManagerPreviewNoChange, "The tenant has this already. There is nothing to save.") };
+            }
+
             foreach (var item in assessment.Schedules.Where(item => item.Schedule is not null))
             {
                 lines.Add(GetText(

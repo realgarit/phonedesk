@@ -212,6 +212,7 @@ internal sealed class HolidayChangeTools
                     name = item.Schedule?.Name,
                     dateRanges = item.Schedule?.Windows.OrderBy(window => window.Start).Select(HolidayScheduleOperations.Format).ToList(),
                     expired = item.Expired,
+                    alreadyGone = item.AlreadyGone,
                     removedLinks = item.References.Select(reference => new
                     {
                         autoAttendantId = reference.AutoAttendantId,
@@ -227,15 +228,26 @@ internal sealed class HolidayChangeTools
                 return Blocked(assessment.Blockers, preview);
             }
 
-            var names = string.Join(", ", assessment.Schedules.Select(item => $"'{item.Schedule!.Name}' ({item.ScheduleId})"));
-            var links = assessment.Schedules.Sum(item => item.References.Count);
+            if (assessment.NothingLeft)
+            {
+                return new
+                {
+                    status = "alreadyRetired",
+                    success = true,
+                    note = "The tenant has none of these schedules any more. Nothing was changed.",
+                    preview
+                };
+            }
+
+            var names = string.Join(", ", assessment.Remaining.Select(item => $"'{item.Schedule!.Name}' ({item.ScheduleId})"));
+            var links = assessment.Remaining.Sum(item => item.References.Count);
             var applied = false;
             var outcome = await _changes.PlanOrApplyAsync(
                 new ChangeRequest(
                     "RetireHolidaySchedules",
-                    string.Join(", ", assessment.Schedules.Select(item => item.Schedule!.Name)),
+                    string.Join(", ", assessment.Remaining.Select(item => item.Schedule!.Name)),
                     HolidayScheduleOperations.GetRetireCommand(assessment),
-                    $"Retire {assessment.Schedules.Count} holiday schedule(s): {names}. {links} auto attendant link(s) are removed, then the schedules are deleted. This cannot be undone.")
+                    $"Retire {assessment.Remaining.Count} holiday schedule(s): {names}. {links} auto attendant link(s) are removed, then the schedules are deleted. This cannot be undone.")
                 {
                     ApprovedState = HolidayScheduleOperations.ApprovedState(assessment),
                     OnSuccess = _ => applied = true,
@@ -361,7 +373,7 @@ internal sealed class HolidayChangeTools
             copiedCallHandling = HolidayCallHandling.Describe(result.Assessment.SourceCallFlow),
             callHandlingInTeams = result.CallFlow is null ? null : HolidayCallHandling.Describe(result.CallFlow),
             differences = result.Differences,
-            blockers = result.Outcome == RolloutOutcome.Blocked ? result.Assessment.Blockers : Array.Empty<CopyBlocker>(),
+            blockers = result.Outcome is RolloutOutcome.Blocked or RolloutOutcome.Different ? result.Assessment.Blockers : Array.Empty<CopyBlocker>(),
             replacedSchedule = result.Assessment.ReplacedSchedule?.Name,
             authorizedUsersToRemove = result.Assessment.AuthorizedUsersToRemove
         };

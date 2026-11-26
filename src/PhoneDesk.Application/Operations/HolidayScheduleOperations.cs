@@ -66,6 +66,9 @@ public sealed class RetireScheduleItem
     public bool Expired { get; init; }
 
     public IReadOnlyList<ScheduleReference> References { get; init; } = Array.Empty<ScheduleReference>();
+
+    /// <summary>The tenant has no schedule with this ID: it was retired before, for example by a run that stopped later.</summary>
+    public bool AlreadyGone => Schedule is null;
 }
 
 /// <summary>What retiring holiday schedules would do: which links come off which auto attendant, and which schedules are deleted.</summary>
@@ -75,7 +78,13 @@ public sealed class RetireAssessment
 
     public IReadOnlyList<HolidayBlocker> Blockers { get; init; } = Array.Empty<HolidayBlocker>();
 
-    public bool CanSave => Blockers.Count == 0 && Schedules.Count > 0;
+    /// <summary>The schedules that are still there. Only these are sent.</summary>
+    public IReadOnlyList<RetireScheduleItem> Remaining => Schedules.Where(item => !item.AlreadyGone).ToList();
+
+    /// <summary>Every named schedule is gone already: there is nothing to do.</summary>
+    public bool NothingLeft => Blockers.Count == 0 && Schedules.Count > 0 && Remaining.Count == 0;
+
+    public bool CanSave => Blockers.Count == 0 && Remaining.Count > 0;
 }
 
 /// <summary>One auto attendant of a rollout: the schedule whose call handling it copies, and an expired schedule to take off.</summary>
@@ -384,7 +393,7 @@ public static class HolidayScheduleOperations
             var schedule = state.FindSchedule(id);
             if (schedule is null)
             {
-                blockers.Add(new("scheduleNotFound", $"No schedule has the ID {id}."));
+                // Not a blocker: a second run after a partial failure names schedules that are gone.
                 items.Add(new RetireScheduleItem { ScheduleId = id });
                 continue;
             }
@@ -446,13 +455,13 @@ public static class HolidayScheduleOperations
     public static string GetRetireCommand(RetireAssessment assessment)
     {
         ArgumentNullException.ThrowIfNull(assessment);
-        var ids = assessment.Schedules.Select(item => HolidayCallHandling.RequireId(item.ScheduleId, "a schedule")).ToList();
+        var ids = assessment.Remaining.Select(item => HolidayCallHandling.RequireId(item.ScheduleId, "a schedule")).ToList();
         if (ids.Count == 0)
         {
-            throw new ArgumentException("No schedule was given.");
+            throw new ArgumentException("No schedule is left to retire.");
         }
 
-        var attendants = assessment.Schedules
+        var attendants = assessment.Remaining
             .SelectMany(item => item.References)
             .Select(reference => HolidayCallHandling.RequireId(reference.AutoAttendantId, "an auto attendant"))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -545,9 +554,12 @@ public static class HolidayScheduleOperations
         var flow = link is null ? null : attendant!.FindCallFlow(link.CallFlowId);
         if (link is not null)
         {
-            var differences = assessment.SourceCallFlow is null || flow is null
-                ? Array.Empty<string>()
-                : HolidayCallHandling.Differences(assessment.SourceCallFlow, flow);
+            // Without both call flows nothing can be compared, and that is not "the same".
+            IReadOnlyList<string> differences = assessment.SourceCallFlow is null
+                ? new[] { "The source schedule has no call handling on this auto attendant, so the attached call handling could not be compared." }
+                : flow is null
+                    ? new[] { $"The call flow {link.CallFlowId} of the attached schedule was not found on the auto attendant." }
+                    : HolidayCallHandling.Differences(assessment.SourceCallFlow, flow);
             return new RolloutItemResult
             {
                 Item = item,
@@ -587,7 +599,7 @@ public static class HolidayScheduleOperations
         });
 
     public static string ApprovedState(RetireAssessment assessment)
-        => JsonSerializer.Serialize(assessment.Schedules.Select(item => new
+        => JsonSerializer.Serialize(assessment.Remaining.Select(item => new
         {
             item.ScheduleId,
             name = item.Schedule?.Name,

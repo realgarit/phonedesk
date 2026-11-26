@@ -375,11 +375,71 @@ public sealed class HolidayScheduleOperationsTests
         Assert.Equal(Y2020, verification.GetProperty("remainingSchedules")[0].GetString());
         Assert.Equal(0, verification.GetProperty("remainingLinks").GetArrayLength());
 
-        // The retry plans only what is left: no auto attendant is saved again.
+        // The retry plans only what is left: no auto attendant is named in the script.
         host.PowerShell.AfterRun = null;
         var retry = McpTestHost.Parse(await tools.RetireHolidaySchedules(new[] { Y2020 }, cancellationToken: Cancellation));
-        Assert.DoesNotContain("Get-CsAutoAttendant -Identity $pdAaId", retry.GetProperty("plan").GetProperty("script").GetString()!.Replace("foreach ($pdAaId in @()) {\n        $pdAa = Get-CsAutoAttendant -Identity $pdAaId", string.Empty).Replace("foreach ($pdAaId in @()) {\r\n        $pdAa = Get-CsAutoAttendant -Identity $pdAaId", string.Empty));
+        Assert.Contains("foreach ($pdAaId in @())", retry.GetProperty("plan").GetProperty("script").GetString()!);
         Assert.Equal(0, retry.GetProperty("preview").GetProperty("schedules")[0].GetProperty("removedLinks").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task RetireTool_ARetryThatNamesASchedulThatIsGoneRetiresOnlyTheRest()
+    {
+        // The first run deleted 2020 and failed at 2024: the second run names both again.
+        const string y2024 = "44444444-0000-0000-0000-000000000004";
+        var afterFirstRun = State(
+            new[] { Attendant(AaId, "Main AA", new[] { Link(Y2026, Flow2026) }, new[] { Flow(Flow2026, "b") }) },
+            new[]
+            {
+                Schedule(y2024, "Feiertage 2024", "2024-12-25T00:00:00", "2024-12-26T00:00:00"),
+                Schedule(Y2026, "Feiertage 2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00", AaId)
+            });
+        using var host = McpHolidayCallHandlingTests.HostWith(afterFirstRun);
+        RespondState(host, afterFirstRun);
+        var tools = host.Tool<HolidayChangeTools>();
+
+        var retry = McpTestHost.Parse(await tools.RetireHolidaySchedules(new[] { Y2020, y2024 }, cancellationToken: Cancellation));
+        Assert.Equal("planned", retry.GetProperty("plan").GetProperty("status").GetString());
+        var script = retry.GetProperty("plan").GetProperty("script").GetString()!;
+        Assert.Contains(y2024, script);
+        Assert.DoesNotContain(Y2020, script);
+        Assert.True(retry.GetProperty("preview").GetProperty("schedules")[0].GetProperty("alreadyGone").GetBoolean());
+
+        // When every named schedule is gone, the call succeeds and changes nothing.
+        var done = McpTestHost.Parse(await tools.RetireHolidaySchedules(new[] { Y2020 }, cancellationToken: Cancellation));
+        Assert.Equal("alreadyRetired", done.GetProperty("status").GetString());
+        Assert.True(done.GetProperty("success").GetBoolean());
+    }
+
+    [Fact]
+    public void Rollout_DoesNotCallAnItemVerifiedWhenThereIsNoSourceToCompareWith()
+    {
+        // The target is attached, but the named source schedule is not: nothing proves the call handling.
+        var state = Read(State(
+            new[] { Attendant(AaId, "Main AA", new[] { Link(Y2027, NewFlow) }, new[] { Flow(NewFlow, "a") }) },
+            new[]
+            {
+                Schedule(Y2026, "Feiertage 2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00"),
+                Schedule(Y2027, "Feiertage 2027", "2027-12-25T00:00:00", "2027-12-26T00:00:00", AaId)
+            }));
+
+        var result = Assert.Single(HolidayScheduleOperations.AssessRollout(
+            state, Y2027, new[] { new RolloutItem(AaId, Y2026) }, false, false, _ => Now));
+
+        Assert.Equal(RolloutOutcome.Different, result.Outcome);
+        Assert.Contains("could not be compared", Assert.Single(result.Differences));
+        Assert.Contains(result.Assessment.Blockers, blocker => blocker.Code == "sourceNotAttached");
+
+        // A link to a call flow that does not exist is not verified either.
+        var dangling = Read(State(
+            new[] { Attendant(AaId, "Main AA", new[] { Link(Y2026, Flow2026), Link(Y2027, NewFlow) }, new[] { Flow(Flow2026, "a") }) },
+            new[]
+            {
+                Schedule(Y2026, "Feiertage 2026", "2026-12-25T00:00:00", "2026-12-26T00:00:00", AaId),
+                Schedule(Y2027, "Feiertage 2027", "2027-12-25T00:00:00", "2027-12-26T00:00:00", AaId)
+            }));
+        Assert.Equal(RolloutOutcome.Different, Assert.Single(HolidayScheduleOperations.AssessRollout(
+            dangling, Y2027, new[] { new RolloutItem(AaId, Y2026) }, false, false, _ => Now)).Outcome);
     }
 
     [Fact]

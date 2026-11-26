@@ -185,7 +185,19 @@ catch {{
 
             // Action
             sb.AppendLine($"${prefix}MenuOption = $null");
-            if (action == "TransferToTarget" && !string.IsNullOrWhiteSpace(actionTarget))
+            // The default call flow sends calls to the call queue of the same configuration when
+            // this is selected, and also when no action was selected: an auto attendant that is
+            // built together with a call queue must not hang up during opening hours.
+            var toCallQueue = action == "TransferToCallQueue" || (flowName == "Default" && string.IsNullOrWhiteSpace(action));
+            if (toCallQueue && !string.IsNullOrWhiteSpace(variables.RacqUPN))
+            {
+                var sanitizedCallQueueAccount = _sanitizer.SanitizeString(variables.RacqUPN);
+                sb.AppendLine($"${prefix}CallQueueAccount = Get-CsOnlineUser \"{sanitizedCallQueueAccount}\" -ErrorAction SilentlyContinue");
+                sb.AppendLine($"if (-not ${prefix}CallQueueAccount) {{ throw \"The call queue resource account '{sanitizedCallQueueAccount}' was not found. Create the call queue first, or set the action of this call flow to Disconnect.\" }}");
+                sb.AppendLine($"${prefix}CallTarget = New-CsAutoAttendantCallableEntity -Identity ${prefix}CallQueueAccount.Identity -Type ApplicationEndpoint");
+                sb.AppendLine($"${prefix}MenuOption = New-CsAutoAttendantMenuOption -Action TransferCallToTarget -CallTarget ${prefix}CallTarget -DtmfResponse Automatic");
+            }
+            else if (action == "TransferToTarget" && !string.IsNullOrWhiteSpace(actionTarget))
             {
                 var sanitizedActionTarget = _sanitizer.SanitizeString(actionTarget);
                 // Check if target is a resource account to get Identity

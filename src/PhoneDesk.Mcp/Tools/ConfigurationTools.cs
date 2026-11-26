@@ -43,6 +43,16 @@ internal sealed class ConfigurationTools
             closed = option.Closed,
             values = option.Values
         }),
+        switches = new object[]
+        {
+            new
+            {
+                path = "callQueueTemplate.useAutoAttendantNumberAsCallerId",
+                type = "true or false",
+                usedWhenEmpty = false,
+                meaning = "True: agents of the call queue can call out with the number of the auto attendant. Guided Setup step 8 sets the auto attendant resource account as caller ID of the call queue. configuration_get shows this value only when it is true."
+            }
+        },
         limits = new object[]
         {
             new { path = "callQueueTemplate.timeoutThreshold", unit = "seconds", minimum = PhoneDesk.Services.ConstantsService.CallQueue.MinTimeoutThreshold, usedWhenEmpty = PhoneDesk.Services.ConstantsService.CallQueue.TimeoutThreshold },
@@ -50,6 +60,7 @@ internal sealed class ConfigurationTools
         },
         rules = new[]
         {
+            "autoAttendantTemplate.defaultAction TransferToCallQueue (also used when the value is empty) sends calls during opening hours to the call queue of this configuration; it needs no target. Use Disconnect only when the user wants the auto attendant to hang up.",
             "An action TransferToTarget or TransferToVoicemail needs its target (the same path with 'Target' added). Without a target the call would be disconnected, so the configuration is not valid until the target is set.",
             "TransferToVoicemail takes the object ID of a Microsoft 365 group (shared voicemail). Use lookup_m365_group_id to read it.",
             "A greeting type AudioFile needs the audio file ID (import_audio_file); TextToSpeech needs the prompt text.",

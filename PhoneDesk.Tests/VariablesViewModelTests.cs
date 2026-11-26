@@ -39,6 +39,7 @@ namespace PhoneDesk.Tests
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.VoicemailGreetingTypes, vm.VoicemailGreetingTypeOptions);
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.GreetingTypes, vm.AaGreetingTypeOptions);
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.AutoAttendantActions, vm.AaActionOptions);
+            Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.AutoAttendantDefaultActions, vm.AaDefaultActionOptions);
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.Languages, VariablesViewModel.LanguageOptions);
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.TimeZones, VariablesViewModel.TimeZoneOptions);
             Assert.Equal(PhoneDesk.Operations.ConfigurationChecks.UsageLocations, VariablesViewModel.UsageLocationOptions);

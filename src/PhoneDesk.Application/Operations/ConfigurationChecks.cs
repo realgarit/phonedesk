@@ -25,6 +25,12 @@ namespace PhoneDesk.Operations
         public const string Disconnect = "Disconnect";
         public const string TransferToTarget = "TransferToTarget";
         public const string TransferToVoicemail = "TransferToVoicemail";
+
+        /// <summary>
+        /// Default call flow of the auto attendant only: calls go to the call queue of the same
+        /// configuration (its resource account). An empty default action means the same.
+        /// </summary>
+        public const string TransferToCallQueue = "TransferToCallQueue";
         public const string AudioFile = "AudioFile";
         public const string TextToSpeech = "TextToSpeech";
 
@@ -34,6 +40,7 @@ namespace PhoneDesk.Operations
         public static readonly IReadOnlyList<string> NoAgentActions = new[] { "QueueCall", Disconnect, TransferToTarget, TransferToVoicemail };
         public static readonly IReadOnlyList<string> VoicemailGreetingTypes = new[] { AudioFile, TextToSpeech };
         public static readonly IReadOnlyList<string> AutoAttendantActions = new[] { Disconnect, TransferToTarget, TransferToVoicemail };
+        public static readonly IReadOnlyList<string> AutoAttendantDefaultActions = new[] { TransferToCallQueue, Disconnect, TransferToTarget, TransferToVoicemail };
 
         public static readonly IReadOnlyList<string> Languages = new[]
         {
@@ -125,7 +132,7 @@ namespace PhoneDesk.Operations
             new ConfigurationOption("callQueueTemplate.timeoutVoicemailGreetingType", VoicemailGreetingTypes, true, "Greeting of the shared voicemail for the timeout action."),
             new ConfigurationOption("callQueueTemplate.noAgentVoicemailGreetingType", VoicemailGreetingTypes, true, "Greeting of the shared voicemail for the no-agent action."),
             new ConfigurationOption("autoAttendantTemplate.defaultGreetingType", GreetingTypes, true, "Greeting during opening hours."),
-            new ConfigurationOption("autoAttendantTemplate.defaultAction", AutoAttendantActions, true, "What the auto attendant does during opening hours."),
+            new ConfigurationOption("autoAttendantTemplate.defaultAction", AutoAttendantDefaultActions, true, "What the auto attendant does during opening hours. TransferToCallQueue sends the calls to the call queue of this configuration and needs no target; an empty value means the same. TransferToTarget takes the UPN of another resource account."),
             new ConfigurationOption("autoAttendantTemplate.afterHoursGreetingType", GreetingTypes, true, "Greeting outside opening hours."),
             new ConfigurationOption("autoAttendantTemplate.afterHoursAction", AutoAttendantActions, true, "What the auto attendant does outside opening hours."),
             new ConfigurationOption("general.languageId", Languages, false, "Language of the auto attendant and call queue."),

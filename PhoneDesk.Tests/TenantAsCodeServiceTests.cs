@@ -31,6 +31,28 @@ public sealed class TenantAsCodeServiceTests
     }
 
     [Fact]
+    public void CallerIdSwitchIsWrittenOnlyWhenOnAndADocumentWithoutItStaysReadable()
+    {
+        var document = CreateConfigurationDocument();
+        var off = _service.SerializeConfiguration(document);
+        var on = _service.SerializeConfiguration(document with
+        {
+            Configuration = document.Configuration with
+            {
+                CallQueueTemplate = document.Configuration.CallQueueTemplate with { UseAutoAttendantNumberAsCallerId = true }
+            }
+        });
+
+        // A document of an earlier version has no such field, and one with the switch off looks the same.
+        Assert.DoesNotContain("useAutoAttendantNumberAsCallerId", off);
+        Assert.False(_service.DeserializeConfiguration(off).Configuration.CallQueueTemplate.UseAutoAttendantNumberAsCallerId);
+        Assert.Contains("\"useAutoAttendantNumberAsCallerId\": true", on);
+        Assert.True(_service.DeserializeConfiguration(on).Configuration.CallQueueTemplate.UseAutoAttendantNumberAsCallerId);
+        var change = Assert.Single(_service.CompareConfigurations(document, _service.DeserializeConfiguration(on)));
+        Assert.EndsWith("useAutoAttendantNumberAsCallerId", change.Path);
+    }
+
+    [Fact]
     public void ConfigurationParserRejectsUnknownFieldsWrongKindAndUnsupportedVersion()
     {
         var valid = _service.SerializeConfiguration(CreateConfigurationDocument());

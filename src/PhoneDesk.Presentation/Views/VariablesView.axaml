@@ -1444,6 +1444,15 @@
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
+                            <!-- Outbound Caller ID Section -->
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="{loc:Translate Key=VariablesOutboundCallerIdTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CallQueueCallerIdToggle"
+                                          IsChecked="{Binding Variables.CqUseAutoAttendantNumberAsCallerId}">
+                                    <TextBlock Text="{loc:Translate Key=VariablesUseAutoAttendantNumberAsCallerIdToggle}" TextWrapping="Wrap"/>
+                                </CheckBox>
+                                <TextBlock x:Name="CallQueueCallerIdHint" Text="{loc:Translate Key=VariablesOutboundCallerIdHint}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+                            </StackPanel>
                             <!-- Action Buttons -->
                             <StackPanel Orientation="Horizontal" 
                                       HorizontalAlignment="Right"
@@ -1548,7 +1557,7 @@
 
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{loc:Translate Key=CommonAction}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                        <ComboBox ItemsSource="{Binding AaActionOptions}"
+                                        <ComboBox ItemsSource="{Binding AaDefaultActionOptions}"
                                                   SelectedItem="{Binding Variables.AaDefaultAction}"
                                                   HorizontalAlignment="Left"
                                                   Width="200">
@@ -1558,6 +1567,11 @@
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
+                                        <TextBlock Text="{loc:Translate Key=VariablesDefaultActionCallQueueHint}"
+                                                   IsVisible="{Binding ShowAaDefaultCallQueueHint}"
+                                                   FontSize="11"
+                                                   Opacity="0.7"
+                                                   TextWrapping="Wrap"/>
                                     </StackPanel>
                                     <StackPanel IsVisible="{Binding ShowAaDefaultTarget}" Spacing="4">
                                         <TextBlock Text="{loc:Translate Key=CommonTarget}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>

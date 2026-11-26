@@ -128,6 +128,7 @@ public sealed class ConfigurationDocumentVariables : IPhoneManagerVariables
     public string? CqNoAgentActionAudioFileId => _callQueue.NoAgentActionAudioFileId;
     public string? CqNoAgentActionTextToSpeechPrompt => _callQueue.NoAgentActionTextToSpeechPrompt;
     public bool CqNoAgentApplyToNewCallsOnly => _callQueue.NoAgentApplyToNewCallsOnly;
+    public bool CqUseAutoAttendantNumberAsCallerId => _callQueue.UseAutoAttendantNumberAsCallerId;
 
     /// <summary>
     /// An empty configuration with the same defaults as a new configuration in the desktop app:
@@ -160,7 +161,7 @@ public sealed class ConfigurationDocumentVariables : IPhoneManagerVariables
                     RaaAnr: string.Empty,
                     PhoneNumberType: string.Empty,
                     M365GroupId: string.Empty),
-                new AutoAttendantTemplate(null, null, null, null, null, null, null, null, null, null, null, null),
+                new AutoAttendantTemplate(null, null, null, ConfigurationChecks.TransferToCallQueue, null, null, null, null, null, null, null, null),
                 new CallQueueTemplate(
                     null, null, null, null, null,
                     null, null, null, null, null, null, null,

@@ -218,6 +218,34 @@ catch {{
         }
 
         /// <summary>
+        /// Sets a resource account as the caller ID resource account of a call queue, so the agents
+        /// can call out with its phone number. Other settings of the call queue stay as they are.
+        /// Safe to run again.
+        /// </summary>
+        public string GetSetCallQueueCallerIdCommand(string callQueueName, string resourceAccountUpn)
+        {
+            var sanitizedName = _sanitizer.SanitizeString(callQueueName);
+            var sanitizedUpn = _sanitizer.SanitizeString(resourceAccountUpn);
+
+            return $@"
+try {{
+    $cqCallerIdAccount = Get-CsOnlineUser ""{sanitizedUpn}"" -ErrorAction Stop
+    if (-not $cqCallerIdAccount) {{
+        throw ""Resource account '{sanitizedUpn}' was not found.""
+    }}
+    $cqCallerIdQueue = Get-CsCallQueue -NameFilter ""{sanitizedName}"" -ErrorAction Stop | Where-Object {{ $_.Name -eq ""{sanitizedName}"" }} | Select-Object -First 1
+    if (-not $cqCallerIdQueue) {{
+        throw ""Call queue '{sanitizedName}' was not found.""
+    }}
+    Set-CsCallQueue -Identity $cqCallerIdQueue.Identity -OboResourceAccountIds @($cqCallerIdAccount.Identity) -ErrorAction Stop | Out-Null
+    Write-Host ""SUCCESS: Agents of call queue {sanitizedName} can call out with the number of {sanitizedUpn}""
+}}
+catch {{
+    Write-Host ""ERROR: Failed to set the outbound caller ID of call queue {sanitizedName}: $_""
+}}";
+        }
+
+        /// <summary>
         /// Removes a call queue by name.
         /// </summary>
         public string GetRemoveCallQueueCommand(string callQueueName)

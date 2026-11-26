@@ -35,6 +35,7 @@ public interface IPowerShellCommandService
     string GetValidateCallQueueResourceAccountCommand(string racqUpn);
     string GetCreateCallTargetCommand(string racqUpn);
     string GetRemoveCallQueueCommand(string callQueueName);
+    string GetSetCallQueueCallerIdCommand(string callQueueName, string resourceAccountUpn);
     string GetRemoveResourceAccountCommand(string upn);
 
     // Auto Attendant operations

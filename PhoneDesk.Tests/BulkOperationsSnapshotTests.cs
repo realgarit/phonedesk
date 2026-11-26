@@ -23,7 +23,7 @@ namespace PhoneDesk.Tests
         // after-hours schedule stopped creating an unused 00:00-00:00 time range, and running the call queue
         // and auto attendant steps again updates existing objects.
         private const string ExpectedBulkScriptHash =
-            "BA2287547EDE5365AC0D7A980B0604F777DC3024CBED2A9E400074ABC55B9A47";
+            "FCD9473BF5F207E49971358E5A75C4E9C481BE7AF37E78D5AB760ACDE9B85415";
 
         private static IPowerShellSanitizationService VerbatimSanitizer()
         {

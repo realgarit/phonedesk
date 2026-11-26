@@ -156,6 +156,12 @@ internal sealed class ConfigurationStore
         return Replace(_tenantAsCode.SerializeConfiguration(next));
     }
 
+    /// <summary>
+    /// Values the document leaves out while they have their default, so a document stays readable
+    /// by an earlier version. They can be set although the current document does not show them.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> OptionalKeys = new[] { "useAutoAttendantNumberAsCallerId" };
+
     private static string ResolveKey(JsonObject parent, string segment, string path)
     {
         foreach (var property in parent)
@@ -164,6 +170,12 @@ internal sealed class ConfigurationStore
             {
                 return property.Key;
             }
+        }
+
+        var optional = OptionalKeys.FirstOrDefault(key => string.Equals(key, segment, StringComparison.OrdinalIgnoreCase));
+        if (optional is not null && path.Contains("callQueueTemplate", StringComparison.OrdinalIgnoreCase))
+        {
+            return optional;
         }
 
         throw new ArgumentException(

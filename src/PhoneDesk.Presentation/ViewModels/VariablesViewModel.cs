@@ -1049,6 +1049,15 @@ namespace PhoneDesk.ViewModels
             "TransferToVoicemail"
         };
 
+        /// <summary>The default call flow can also send calls to the call queue of this configuration.</summary>
+        public ObservableCollection<string> AaDefaultActionOptions { get; } = new ObservableCollection<string>
+        {
+            "TransferToCallQueue",
+            "Disconnect",
+            "TransferToTarget",
+            "TransferToVoicemail"
+        };
+
         // Conditional visibility properties
         public bool ShowGreetingAudioFile => Variables.CqGreetingType == "AudioFile";
         public bool ShowGreetingTextToSpeech => Variables.CqGreetingType == "TextToSpeech";
@@ -1080,6 +1089,7 @@ namespace PhoneDesk.ViewModels
         public bool ShowAaDefaultGreetingAudioFile => Variables.AaDefaultGreetingType == "AudioFile";
         public bool ShowAaDefaultGreetingTextToSpeech => Variables.AaDefaultGreetingType == "TextToSpeech";
         public bool ShowAaDefaultTarget => Variables.AaDefaultAction == "TransferToTarget" || Variables.AaDefaultAction == "TransferToVoicemail";
+        public bool ShowAaDefaultCallQueueHint => string.IsNullOrWhiteSpace(Variables.AaDefaultAction) || Variables.AaDefaultAction == "TransferToCallQueue";
 
         public bool ShowAaAfterHoursGreetingAudioFile => Variables.AaAfterHoursGreetingType == "AudioFile";
         public bool ShowAaAfterHoursGreetingTextToSpeech => Variables.AaAfterHoursGreetingType == "TextToSpeech";
@@ -1110,6 +1120,7 @@ namespace PhoneDesk.ViewModels
             OnPropertyChanged(nameof(ShowAaDefaultGreetingAudioFile));
             OnPropertyChanged(nameof(ShowAaDefaultGreetingTextToSpeech));
             OnPropertyChanged(nameof(ShowAaDefaultTarget));
+            OnPropertyChanged(nameof(ShowAaDefaultCallQueueHint));
             OnPropertyChanged(nameof(ShowAaAfterHoursGreetingAudioFile));
             OnPropertyChanged(nameof(ShowAaAfterHoursGreetingTextToSpeech));
             OnPropertyChanged(nameof(ShowAaAfterHoursTarget));

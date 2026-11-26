@@ -72,8 +72,7 @@ public sealed class GuidedSetupScriptFactory
                 _commands.GetCreateAutoAttendantResourceAccountCommand(variables),
             GuidedSetupStep.LicenseAutoAttendantResourceAccount => BuildLicenseAutoAttendantScript(variables, comments),
             GuidedSetupStep.CreateAutoAttendant => _commands.GetCreateAutoAttendantCommand(variables),
-            GuidedSetupStep.AssociateAutoAttendantResourceAccount =>
-                _commands.GetAssociateResourceAccountWithAutoAttendantCommand(variables.RaaaUPN, variables.AaDisplayName),
+            GuidedSetupStep.AssociateAutoAttendantResourceAccount => BuildAssociateAutoAttendantScript(variables),
             _ => string.Empty
         };
     }
@@ -92,6 +91,25 @@ public sealed class GuidedSetupScriptFactory
             .Where(line => line.Length > 0 && !line.StartsWith('#'));
         var bytes = Encoding.UTF8.GetBytes(string.Join("\n", lines));
         return Convert.ToHexString(SHA256.HashData(bytes));
+    }
+
+    /// <summary>
+    /// The last step. The caller ID of the call queue is set here and not in the call queue step:
+    /// the auto attendant resource account and its phone number exist only from step 6 on.
+    /// </summary>
+    private string BuildAssociateAutoAttendantScript(IPhoneManagerVariables variables)
+    {
+        var associate = _commands.GetAssociateResourceAccountWithAutoAttendantCommand(variables.RaaaUPN, variables.AaDisplayName);
+        if (!variables.CqUseAutoAttendantNumberAsCallerId)
+        {
+            return associate;
+        }
+
+        var script = new StringBuilder();
+        script.AppendLine(associate);
+        script.AppendLine();
+        script.AppendLine(_commands.GetSetCallQueueCallerIdCommand(variables.CqDisplayName, variables.RaaaUPN));
+        return script.ToString();
     }
 
     private string BuildLicenseCallQueueScript(IPhoneManagerVariables variables, GuidedSetupScriptComments comments)

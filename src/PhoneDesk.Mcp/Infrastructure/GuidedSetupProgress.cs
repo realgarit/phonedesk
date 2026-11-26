@@ -37,11 +37,11 @@ internal sealed class GuidedSetupProgress
         (1, "Create M365 group", "Create the Microsoft 365 group for the call queue agents."),
         (2, "Create call queue resource account", "Create the resource account for the call queue."),
         (3, "License call queue resource account", "Set the usage location and assign the Teams Phone resource account license."),
-        (4, "Create call queue", "Create the call queue and associate it with its resource account."),
+        (4, "Create call queue", "Create the call queue and associate it with its resource account. Members of the agent group can wait up to eight hours for their first call (a delay in Teams); tell the user."),
         (5, "Create auto attendant resource account", "Create the resource account for the auto attendant."),
         (6, "License auto attendant resource account", "Set the usage location, assign the license and assign the phone number."),
-        (7, "Create auto attendant", "Create the call flows, the after-hours schedule and the auto attendant."),
-        (8, "Associate auto attendant resource account", "Associate the resource account with the auto attendant.")
+        (7, "Create auto attendant", "Create the call flows, the after-hours schedule and the auto attendant. During opening hours calls go to the call queue of this configuration unless autoAttendantTemplate.defaultAction says otherwise."),
+        (8, "Associate auto attendant resource account", "Associate the resource account with the auto attendant. When callQueueTemplate.useAutoAttendantNumberAsCallerId is true, also set this resource account as outbound caller ID of the call queue.")
     };
 
     public GuidedStepState Get(int step)

@@ -200,7 +200,7 @@ namespace PhoneDesk.Tests
             var commands = CreateCommands();
             var factory = new PhoneDesk.Operations.GuidedSetupScriptFactory(commands);
             var vars = MinimalVariables();
-            const int lastStep = (int)PhoneDesk.Operations.GuidedSetupStep.AssociateAutoAttendantResourceAccount;
+            var lastStep = PhoneDesk.Operations.GuidedSetupScriptFactory.LastProvisioningStep;
 
             var without = factory.GetProvisioningScript(lastStep, vars);
             Assert.Equal(commands.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName), without);

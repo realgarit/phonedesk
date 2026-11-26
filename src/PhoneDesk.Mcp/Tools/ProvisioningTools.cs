@@ -175,7 +175,7 @@ internal sealed class ProvisioningTools
         });
 
     [McpServerTool(Name = "assign_phone_number", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Assigns a phone number to an auto attendant resource account. The account needs its license first. The UPN must be a resource account: the one of the configuration, one this server created, or one that list_resource_accounts shows." + ChangeNote)]
+    [Description("Assigns the phone number of the configuration to the auto attendant resource account of the configuration; it is the number step of a setup. The account needs its license first. The UPN must be a resource account: the one of the configuration, one this server created, or one that list_resource_accounts shows. For any other number work use set_phone_number_assignment (an employee, a move from one account to another, with a check of both accounts and a read-back), remove_phone_number_assignment and list_phone_numbers." + ChangeNote)]
     public Task<string> AssignPhoneNumber(
         [Description("User principal name. Omit to use the auto attendant resource account from the configuration.")] string? upn = null,
         [Description("Phone number in E.164 format, for example +41441234567. Omit to use the configuration.")] string? phoneNumber = null,

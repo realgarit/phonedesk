@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
+             xmlns:controls="clr-namespace:PhoneDesk.Controls"
+             x:Class="PhoneDesk.Views.PhoneNumbersView"
+             mc:Ignorable="d"
+             d:DesignWidth="1100" d:DesignHeight="760">
+    <Grid>
+        <Border Classes="card" Margin="0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Row="0" Margin="24,24,24,16" Spacing="14">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <Border Classes="icon-badge" VerticalAlignment="Top">
+                            <fi:SymbolIcon Symbol="NumberSymbol"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Key=PhoneNumbersTitle}" Classes="page-title" Margin="0"/>
+                            <controls:InfoButton Name="PageHelp" HelpTitle="{loc:Translate Key=PhoneNumbersTitle}" HelpText="{loc:Translate Key=PhoneNumbersSubtitle}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <WrapPanel Orientation="Horizontal" IsEnabled="{Binding !IsBusy}">
+                        <TextBox Text="{Binding SearchText}" Width="240" Margin="0,0,12,8"
+                                 Watermark="{loc:Translate Key=PhoneNumbersSearchWatermark}"/>
+                        <CheckBox IsChecked="{Binding UnassignedOnly}" Margin="0,0,16,8" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Key=PhoneNumbersFreeOnlyOption}"/>
+                        </CheckBox>
+                        <Button Command="{Binding LoadCommand}" Classes="accent IconText" Margin="0,0,12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowSync"/>
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersLoadAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding OpenAssignCommand}" Classes="IconText" Margin="0,0,12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="PersonAdd"/>
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersAssignAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding OpenUnassignCommand}" Classes="IconText" Margin="0,0,12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="PersonDelete"/>
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersUnassignAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}"/>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <Border Grid.Row="1" Classes="sunken" Margin="24,0,24,8" Padding="24" IsVisible="{Binding ShowEmptyState}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <fi:SymbolIcon Symbol="NumberSymbol" FontSize="30" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{loc:Translate Key=PhoneNumbersEmptyTitle}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{loc:Translate Key=PhoneNumbersEmptyDescription}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="520"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Classes="sunken" Margin="24,0,24,8" Padding="16" IsVisible="{Binding IsLoaded}">
+                    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                        <TextBlock Grid.Row="0" Text="{Binding Summary}" FontSize="12"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <Grid Grid.Row="1" ColumnDefinitions="190,150,110,*" ColumnSpacing="12" Margin="12,4,12,0">
+                            <TextBlock Grid.Column="0" Text="{loc:Translate Key=PhoneNumbersColumnNumber}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="{loc:Translate Key=PhoneNumbersColumnType}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="2" Text="{loc:Translate Key=PhoneNumbersColumnStatus}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="3" Text="{loc:Translate Key=PhoneNumbersColumnAssignedTo}" FontSize="12" FontWeight="SemiBold"/>
+                        </Grid>
+                        <ListBox Grid.Row="2" x:Name="NumberList" ItemsSource="{Binding Numbers}" SelectedItem="{Binding SelectedNumber}"
+                                 Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="190,150,110,*" ColumnSpacing="12">
+                                        <TextBlock Grid.Column="0" Text="{Binding Number}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Type}"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Status}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding AssignedTo}" TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" Background="{DynamicResource SurfaceSunkenBrush}"
+                        CornerRadius="0,0,12,12" Padding="24,12" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <fi:SymbolIcon Symbol="Info" FontSize="14"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{loc:Translate Key=PhoneNumbersFooter}" FontSize="12"
+                                   TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border IsVisible="{Binding ShowDialog}" Background="#80000000" ZIndex="1000">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Classes="dialog" Width="720" MaxHeight="640" Margin="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{loc:Translate Key=PhoneNumbersAssignAction}" Classes="dialog-title" Margin="0" IsVisible="{Binding ShowAssignDialog}"/>
+                        <TextBlock Text="{loc:Translate Key=PhoneNumbersUnassignAction}" Classes="dialog-title" Margin="0" IsVisible="{Binding ShowUnassignDialog}"/>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=PhoneNumbersNumberLabel}" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding DialogNumber}" IsReadOnly="{Binding ShowUnassignDialog}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="10" IsVisible="{Binding ShowAssignDialog}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersTargetLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBox Text="{Binding DialogTarget}" Watermark="{loc:Translate Key=PhoneNumbersTargetWatermark}"/>
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersTypeLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <ComboBox ItemsSource="{Binding TypeChoices}" SelectedItem="{Binding DialogType}" Width="220" HorizontalAlignment="Left"/>
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersTypeHint}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <CheckBox IsChecked="{Binding AllowReassign}">
+                                <TextBlock Text="{loc:Translate Key=PhoneNumbersAllowMoveOption}" TextWrapping="Wrap"/>
+                            </CheckBox>
+                        </StackPanel>
+
+                        <TextBlock Text="{loc:Translate Key=PhoneNumbersUnassignWarning}" TextWrapping="Wrap" IsVisible="{Binding ShowUnassignDialog}"/>
+
+                        <Border Classes="sunken" Padding="12" IsVisible="{Binding HasDialogPreview}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="{loc:Translate Key=HolidayManagerPreviewTitle}" FontWeight="SemiBold"/>
+                                <SelectableTextBlock Text="{Binding DialogPreview}" TextWrapping="Wrap" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" IsEnabled="{Binding !IsBusy}">
+                            <Button Command="{Binding CloseDialogCommand}" Classes="IconText">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Dismiss"/>
+                                    <TextBlock Text="{loc:Translate Key=CommonCancel}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CheckCommand}" Classes="IconText">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Search"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidayManagerCheckAction}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ApplyCommand}" Classes="accent IconText" IsEnabled="{Binding CanApply}">
+                                <StackPanel Orientation="Horizontal">
+                                    <fi:SymbolIcon Symbol="Checkmark"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidayManagerApplyAction}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

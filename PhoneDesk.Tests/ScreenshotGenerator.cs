@@ -185,6 +185,14 @@ namespace PhoneDesk.Tests
             new("HolidayManager", true, "holiday-manager-attach-de.png", "holidaymanager-attach-de"),
             new("HolidayManager", true, "holiday-manager-retire-en.png", "holidaymanager-retire-en"),
             new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
+            new("PhoneNumbers", true, "phone-numbers-empty-en.png", "phonenumbers-empty-en"),
+            new("PhoneNumbers", true, "phone-numbers-empty-de.png", "phonenumbers-empty-de"),
+            new("PhoneNumbers", true, "phone-numbers-loaded-en.png", "phonenumbers-loaded-en"),
+            new("PhoneNumbers", true, "phone-numbers-loaded-de.png", "phonenumbers-loaded-de"),
+            new("PhoneNumbers", true, "phone-numbers-move-en.png", "phonenumbers-move-en"),
+            new("PhoneNumbers", true, "phone-numbers-move-de.png", "phonenumbers-move-de"),
+            new("PhoneNumbers", true, "phone-numbers-unassign-en.png", "phonenumbers-unassign-en"),
+            new("PhoneNumbers", true, "phone-numbers-unassign-de.png", "phonenumbers-unassign-de"),
             new("HealthCheck", true, "health-check-empty-en.png", "issue78-health-empty-en"),
             new("HealthCheck", true, "health-check-empty-de.png", "issue78-health-empty-de"),
             new("HealthCheck", true, "health-check-findings-en.png", "issue78-health-findings-en"),
@@ -924,6 +932,49 @@ namespace PhoneDesk.Tests
                         holidayManager.CheckForDisplay();
                     }
                     break;
+
+                case PhoneNumbersViewModel phoneNumbers when scenario.StartsWith("phonenumbers-", StringComparison.Ordinal) && !scenario.Contains("-empty-", StringComparison.Ordinal):
+                    {
+                    static object NumberOwner(string id, string upn, string name, string account, string number) => new
+                    {
+                        id,
+                        userPrincipalName = upn,
+                        displayName = name,
+                        accountType = account,
+                        phoneNumber = number,
+                        featureTypes = new[] { account == "User" ? "PhoneSystem" : "VoiceApp" }
+                    };
+                    var anna = NumberOwner("11111111-aaaa-0000-0000-000000000001", "anna.muster@contoso.com", "Anna Muster", "User", "+41441110001");
+                    var ben = NumberOwner("22222222-bbbb-0000-0000-000000000002", "ben.beispiel@contoso.com", "Ben Beispiel", "User", "");
+                    var reception = NumberOwner("33333333-cccc-0000-0000-000000000003", "raaa-contoso-main-reception@contoso.onmicrosoft.com", "raaa-contoso-main-reception", "ResourceAccount", "+41441110000");
+                    phoneNumbers.ShowRowsForDisplay(PhoneNumbers.ListMarker + System.Text.Json.JsonSerializer.Serialize(new object[]
+                    {
+                        new { number = "+41441110000", type = "OperatorConnect", status = "VoiceApplicationAssigned", assignedToId = "33333333-cccc-0000-0000-000000000003", city = "Zürich", capabilities = new[] { "VoiceApplicationAssignment" }, owner = reception },
+                        new { number = "+41441110001", type = "CallingPlan", status = "UserAssigned", assignedToId = "11111111-aaaa-0000-0000-000000000001", city = "Zürich", capabilities = new[] { "UserAssignment" }, owner = anna },
+                        new { number = "+41441110002", type = "CallingPlan", status = "Unassigned", assignedToId = "", city = "Zürich", capabilities = new[] { "UserAssignment" }, owner = (object?)null },
+                        new { number = "+41441110003", type = "DirectRouting", status = "Unassigned", assignedToId = "", city = "", capabilities = new[] { "UserAssignment", "VoiceApplicationAssignment" }, owner = (object?)null }
+                    }));
+                    phoneNumbers.SelectedNumber = phoneNumbers.Numbers[1];
+                    var checkState = PhoneNumbers.CheckMarker + System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        number = new { number = "+41441110001", type = "CallingPlan", status = "UserAssigned", assignedToId = "11111111-aaaa-0000-0000-000000000001", city = "Zürich", capabilities = new[] { "UserAssignment" }, owner = anna },
+                        target = scenario.Contains("-move-", StringComparison.Ordinal) ? ben : null,
+                        targetError = (string?)null
+                    });
+                    if (scenario.Contains("-move-", StringComparison.Ordinal))
+                    {
+                        phoneNumbers.OpenAssignCommand.Execute(null);
+                        phoneNumbers.DialogTarget = "ben.beispiel@contoso.com";
+                        phoneNumbers.AllowReassign = true;
+                        phoneNumbers.CheckForDisplay(checkState);
+                    }
+                    else if (scenario.Contains("-unassign-", StringComparison.Ordinal))
+                    {
+                        phoneNumbers.OpenUnassignCommand.Execute(null);
+                        phoneNumbers.CheckForDisplay(checkState);
+                    }
+                    break;
+                    }
 
                 case HealthCheckViewModel healthCheck when scenario.StartsWith("issue78-health-findings", StringComparison.Ordinal):
                     healthCheck.SetResultsForDisplay(

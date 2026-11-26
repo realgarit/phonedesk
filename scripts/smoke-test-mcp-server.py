@@ -20,6 +20,7 @@ EXPECTED_TOOLS = {
     "create_call_queue", "create_auto_attendant", "delete_call_queue", "bulk_setup", "audit_history",
     "list_holiday_schedules", "holiday_call_handling", "copy_holiday_call_handling",
     "backup_holiday_call_handling", "list_audio_files",
+    "list_phone_numbers", "set_phone_number_assignment", "remove_phone_number_assignment",
     "edit_holiday_schedule_dates", "replace_holiday_greeting", "retire_holiday_schedules", "rollout_holiday_call_handling",
 }
 

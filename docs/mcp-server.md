@@ -131,6 +131,33 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### Phone numbers
+
+The desktop app has these on the **Phone Numbers** page; the server has one tool for each. Both
+use the same read scripts, checks and change scripts (`PhoneNumbers`).
+
+| Task | Tool |
+|---|---|
+| See the inventory: number, type, free or assigned, who has it | `list_phone_numbers` |
+| Give a number to an employee or a resource account, or move it | `set_phone_number_assignment` |
+| Take a number off an account (it stays in the inventory) | `remove_phone_number_assignment` |
+
+- The target is a user principal name or an object ID. The server also takes the ID or exact name
+  of an auto attendant and uses its one resource account.
+- The check shows the number with its type and owner, the account that gets it with the number it
+  has now, and what stops the change: a number that is not in the inventory (only a Direct Routing
+  number can be new), a number that cannot be used for this kind of account (`UserAssignment` for
+  an employee, `VoiceApplicationAssignment` for a resource account), or a number another account
+  has.
+- A number another account has is moved only after a confirmation (`reassign=true`, or the
+  checkbox in the app). The check then shows both accounts.
+- A move takes the number off the old account and gives it to the new one. When the new account
+  does not take it, the script gives it back to the old account and says so; when that fails too,
+  it says that the number has no account now.
+- After a change the number is read again, and the result says who has it.
+- Nothing here releases a number from the inventory. `release_phone_number` is the separate,
+  destructive tool for an unassigned Direct Routing number.
+
 ### Audio files and the application they belong to
 
 Teams keeps an audio file for one application, and only that application finds it:

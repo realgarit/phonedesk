@@ -14,6 +14,7 @@ namespace PhoneDesk.Tests
         {
             _mockSanitizer = new Mock<IPowerShellSanitizationService>();
             _mockSanitizer.Setup(s => s.SanitizeString(It.IsAny<string>())).Returns<string>(s => s);
+            _mockSanitizer.Setup(s => s.SanitizeSpokenText(It.IsAny<string>())).Returns<string>(s => s);
             _mockSanitizer.Setup(s => s.SanitizeIdentifier(It.IsAny<string>())).Returns<string>(s => s);
         }
 

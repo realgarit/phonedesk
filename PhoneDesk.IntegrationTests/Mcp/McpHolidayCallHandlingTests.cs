@@ -477,7 +477,7 @@ public sealed class McpHolidayCallHandlingTests
         {
             if (executed == script)
             {
-                // Teams holds the greeting with a doubled plain apostrophe.
+                // Teams holds another text than the one that was sent.
                 RespondState(host, State(
                     [Flow(SourceFlow, "Betriebsferien"), Flow(NewFlow, "Nous sommes fermés aujourd''hui.", targetId: null)],
                     [Link(Source, SourceFlow), Link(Target, NewFlow)],
@@ -500,6 +500,44 @@ public sealed class McpHolidayCallHandlingTests
         var retry = McpTestHost.Parse(await tools.AttachHolidaySchedule(name, "Main AA", Greeting, cancellationToken: Cancellation));
         Assert.Equal("alreadyAttached", retry.GetProperty("status").GetString());
         Assert.Single(host.PowerShell.Executed, executed => executed == script);
+    }
+
+    [Theory]
+    [InlineData("Nous sommes fermés aujourd'hui.")]
+    [InlineData("Nous sommes fermés aujourd\u2019hui.")]
+    [InlineData("L\u2018été, c'est \u201Afermé\u201B; Müller & Söhne <info>")]
+    public void SpokenTexts_ArriveInPowerShellAsTheyWereWritten(string greeting)
+    {
+        var commands = new PhoneDesk.Services.ScriptBuilders.AutoAttendantScriptBuilder(new PhoneDesk.Services.PowerShellSanitizationService());
+        var script = commands.GetAttachHolidayToAutoAttendantCommand("hd-contoso-2027", "Main AA", greeting);
+
+        // The stand-in prints the text the prompt cmdlet receives; the rest of the script may fail.
+        var output = RunPowerShell(
+            "function New-CsAutoAttendantPrompt { param($TextToSpeechPrompt) Write-Host \"PROMPT:$TextToSpeechPrompt\" }\n" +
+            "function Get-CsOnlineSchedule { [pscustomobject]@{ Name = 'hd-contoso-2027'; Id = 's1' } }\n" +
+            "function New-CsAutoAttendantMenuOption { }\nfunction New-CsAutoAttendantMenu { }\n",
+            script);
+
+        Assert.Contains("PROMPT:" + greeting, output);
+    }
+
+    [Fact]
+    public void SpokenTexts_CannotEndTheStringOrRunACommand()
+    {
+        var commands = new PhoneDesk.Services.ScriptBuilders.AutoAttendantScriptBuilder(new PhoneDesk.Services.PowerShellSanitizationService());
+        var script = commands.GetAttachHolidayToAutoAttendantCommand(
+            "hd-contoso-2027", "Main AA", "a\" ; Write-Host INJECTED ; \"b $(Write-Host INJECTED) \u201C; Write-Host INJECTED; \u201D `\"");
+
+        Parser.ParseInput(script, out _, out var errors);
+        Assert.Empty(errors);
+        var output = RunPowerShell(
+            "function New-CsAutoAttendantPrompt { param($TextToSpeechPrompt) Write-Host \"PROMPT:$TextToSpeechPrompt\" }\n" +
+            "function Get-CsOnlineSchedule { [pscustomobject]@{ Name = 'hd-contoso-2027'; Id = 's1' } }\n" +
+            "function New-CsAutoAttendantMenuOption { }\nfunction New-CsAutoAttendantMenu { }\n",
+            script);
+
+        Assert.DoesNotContain("\nINJECTED", "\n" + output.Replace("\r", string.Empty));
+        Assert.Contains("PROMPT:a ; Write-Host INJECTED ; b (Write-Host INJECTED) ; Write-Host INJECTED;", output);
     }
 
     [Fact]

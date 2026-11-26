@@ -51,6 +51,25 @@ public partial class PowerShellSanitizationService : IPowerShellSanitizationServ
     }
 
     /// <summary>
+    /// Sanitizes a text that is spoken to callers for use inside a double-quoted PowerShell string.
+    /// Only three characters can end or expand such a string: the double quote (with its
+    /// typographic forms, which PowerShell reads as a double quote), the dollar sign and the
+    /// backtick. They are removed. Apostrophes, plain and typographic, are plain text between
+    /// double quotes and stay unchanged, so the text arrives in Teams as it was written.
+    /// </summary>
+    public string SanitizeSpokenText(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return string.Empty;
+
+        var sanitized = RemoveControlCharacters(input).Normalize(NormalizationForm.FormC);
+        sanitized = ReplaceUnicodeHomoglyphs(sanitized, keepSingleQuotes: true);
+        return sanitized.Replace("`", "")
+                        .Replace("$", "")
+                        .Replace("\"", "");
+    }
+
+    /// <summary>
     /// Validates and sanitizes an identifier (e.g., UPN, display name).
     /// Only allows alphanumeric characters, hyphens, underscores, @ and dots.
     /// Handles Unicode properly for international characters.
@@ -99,7 +118,7 @@ public partial class PowerShellSanitizationService : IPowerShellSanitizationServ
     /// Replaces Unicode characters that look like ASCII punctuation used in PowerShell injection.
     /// These homoglyphs could be used to bypass string-based filters.
     /// </summary>
-    private static string ReplaceUnicodeHomoglyphs(string input)
+    private static string ReplaceUnicodeHomoglyphs(string input, bool keepSingleQuotes = false)
     {
         var sb = new StringBuilder(input.Length);
         foreach (var c in input)
@@ -107,6 +126,7 @@ public partial class PowerShellSanitizationService : IPowerShellSanitizationServ
             var replacement = c switch
             {
                 // Unicode apostrophes and quotes that could bypass filters
+                '\u2019' or '\u2018' or '\u201B' or '\u201A' when keepSingleQuotes => c,
                 '\u2019' or '\u2018' or '\u201B' or '\u201A' => '\'',  // Various single quote variants
                 '\u201C' or '\u201D' or '\u201E' or '\u201F' => '"',   // Various double quote variants
                 

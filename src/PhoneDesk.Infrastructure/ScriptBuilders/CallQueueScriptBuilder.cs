@@ -294,7 +294,7 @@ catch {{
             }
             else if (variables.CqGreetingType == "TextToSpeech" && !string.IsNullOrWhiteSpace(variables.CqGreetingTextToSpeechPrompt))
             {
-                parameters.AppendLine($"-WelcomeTextToSpeechPrompt \"{_sanitizer.SanitizeString(variables.CqGreetingTextToSpeechPrompt)}\" `");
+                parameters.AppendLine($"-WelcomeTextToSpeechPrompt \"{_sanitizer.SanitizeSpokenText(variables.CqGreetingTextToSpeechPrompt)}\" `");
             }
         }
 
@@ -439,7 +439,7 @@ catch {{
         {
             if (greetingType == "TextToSpeech" && !string.IsNullOrWhiteSpace(ttsPrompt))
             {
-                parameters.AppendLine($"-{prefix}SharedVoicemailTextToSpeechPrompt \"{_sanitizer.SanitizeString(ttsPrompt)}\" `");
+                parameters.AppendLine($"-{prefix}SharedVoicemailTextToSpeechPrompt \"{_sanitizer.SanitizeSpokenText(ttsPrompt)}\" `");
             }
             else if (greetingType == "AudioFile" && !string.IsNullOrWhiteSpace(audioFileId))
             {

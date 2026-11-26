@@ -202,17 +202,17 @@ namespace PhoneDesk.Tests
             var vars = MinimalVariables();
             var lastStep = PhoneDesk.Operations.GuidedSetupScriptFactory.LastProvisioningStep;
 
-            var without = factory.GetProvisioningScript(lastStep, vars);
-            Assert.Equal(commands.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName), without);
-            Assert.DoesNotContain("OboResourceAccountIds", without, StringComparison.Ordinal);
+            var plain = factory.GetProvisioningScript(lastStep, vars);
+            Assert.Equal(commands.GetAssociateResourceAccountWithAutoAttendantCommand(vars.RaaaUPN, vars.AaDisplayName), plain);
+            Assert.DoesNotContain("OboResourceAccountIds", plain, StringComparison.Ordinal);
 
             vars.CqUseAutoAttendantNumberAsCallerId = true;
-            var with = factory.GetProvisioningScript(lastStep, vars);
-            AssertParses("last step with caller ID", with);
-            Assert.StartsWith(without, with, StringComparison.Ordinal);
-            Assert.Contains("Get-CsOnlineUser \"raaa-ewp-haupt-hauptnummer@elektroweberpartner.onmicrosoft.com\"", with, StringComparison.Ordinal);
-            Assert.Contains("Set-CsCallQueue -Identity $cqCallerIdQueue.Identity -OboResourceAccountIds @($cqCallerIdAccount.Identity) -ErrorAction Stop", with, StringComparison.Ordinal);
-            Assert.Contains("cq-ewp-hauptnummer", with, StringComparison.Ordinal);
+            var withCallerId = factory.GetProvisioningScript(lastStep, vars);
+            AssertParses("last step and caller ID", withCallerId);
+            Assert.StartsWith(plain, withCallerId, StringComparison.Ordinal);
+            Assert.Contains("Get-CsOnlineUser \"raaa-ewp-haupt-hauptnummer@elektroweberpartner.onmicrosoft.com\"", withCallerId, StringComparison.Ordinal);
+            Assert.Contains("Set-CsCallQueue -Identity $cqCallerIdQueue.Identity -OboResourceAccountIds @($cqCallerIdAccount.Identity) -ErrorAction Stop", withCallerId, StringComparison.Ordinal);
+            Assert.Contains("cq-ewp-hauptnummer", withCallerId, StringComparison.Ordinal);
             // The call queue step itself stays as it was: the account does not exist yet at that point.
             Assert.DoesNotContain("OboResourceAccountIds", commands.GetCreateCallQueueCommand(vars), StringComparison.Ordinal);
         }

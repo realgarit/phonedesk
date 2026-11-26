@@ -240,6 +240,15 @@ public sealed class TenantConnectionService
 
         lock (_gate)
         {
+            // This attempt was given up while the call waited (restart_sign_in), or a newer attempt
+            // took its place: its result must not connect anything, and the newer attempt stays.
+            if (!ReferenceEquals(_pendingGraphSignIn, signIn))
+            {
+                return Fail(
+                    "This Microsoft Graph sign-in was given up while the call waited. Nothing was connected by it. Call connect_graph again.",
+                    null);
+            }
+
             _pendingGraphSignIn = null;
         }
 

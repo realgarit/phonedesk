@@ -182,6 +182,40 @@ public sealed class TenantIdentityTests
     }
 
     [Fact]
+    public async Task RestartSignIn_WhileAConnectCallWaits_TheOldWindowConnectsNothing()
+    {
+        using var host = new McpTestHost();
+        var session = host.Get<ISessionManager>();
+        session.UpdateModulesChecked(true);
+        var connection = new TenantConnectionService(
+            host.Get<ITenantCommandRunner>(),
+            host.Get<IPowerShellCommandService>(),
+            host.GraphAuthentication,
+            session,
+            host.Get<ITenantTopologyCache>(),
+            host.Get<ITenantHealthCheckCache>(),
+            host.Get<TenantIdentityGuard>())
+        {
+            SignInWait = TimeSpan.FromSeconds(30)
+        };
+
+        // A connect call is still waiting when the sign-in is given up.
+        var hanging = host.GraphAuthentication.Hold();
+        var waitingCall = connection.ConnectGraphAsync(Cancellation);
+        Assert.True(connection.GraphSignInOpen);
+        Assert.True(connection.AbandonGraphSignIn());
+
+        // The user finishes the old window after all: the waiting call must not connect with it.
+        hanging.SetResult((true, "old-token", "someone@fabrikam.com", null));
+        var outcome = await waitingCall;
+
+        Assert.False(outcome.Success);
+        Assert.Contains("was given up", outcome.Message);
+        Assert.False(connection.GetStatus().GraphConnected);
+        Assert.DoesNotContain(host.PowerShell.Executed, script => script.Contains("Connect-MgGraph", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RestartSignInTool_SaysThatATeamsSignInCannotBeGivenUp()
     {
         using var host = new McpTestHost().Connected();

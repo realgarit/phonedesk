@@ -23,6 +23,6 @@ public class BeginnerNavigationTests
         Assert.Equal(3, groups.Count);
         Assert.Equal(new[] { "Welcome", "GetStarted", "Variables", "Wizard" }, groups[0]);
         Assert.Equal(new[] { "M365Groups", "CallQueues", "AutoAttendants", "Holidays" }, groups[1]);
-        Assert.Equal(new[] { "Dashboard", "HealthCheck", "BulkOperations", "Documentation", "History" }, groups[2]);
+        Assert.Equal(new[] { "Dashboard", "HealthCheck", "HolidayManager", "BulkOperations", "Documentation", "History" }, groups[2]);
     }
 }

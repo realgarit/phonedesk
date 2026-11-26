@@ -12,8 +12,15 @@ public sealed class HolidayCallHandlingState
     /// <summary>Authorized users of an auto attendant that no longer exist in the directory.</summary>
     public IReadOnlyList<AuthorizedUserProblem> MissingAuthorizedUsers { get; init; } = Array.Empty<AuthorizedUserProblem>();
 
-    /// <summary>Authorized users that could not be checked, with the error text.</summary>
+    /// <summary>
+    /// Authorized users that could not be checked, with the error text. <see cref="AuthorizedUserProblem.Kind"/>
+    /// is "permission" when the signed-in account may not read users, and "transient" for any other failure.
+    /// Such a user is never removed: the lookup proves nothing.
+    /// </summary>
     public IReadOnlyList<AuthorizedUserProblem> UncheckedAuthorizedUsers { get; init; } = Array.Empty<AuthorizedUserProblem>();
+
+    /// <summary>Authorized users that exist but whose account is disabled. Teams can refuse them too.</summary>
+    public IReadOnlyList<AuthorizedUserProblem> DisabledAuthorizedUsers { get; init; } = Array.Empty<AuthorizedUserProblem>();
 
     public ScheduleInfo? FindSchedule(string? id)
         => Schedules.FirstOrDefault(schedule => HolidayCallHandling.SameId(schedule.Id, id));
@@ -149,7 +156,7 @@ public sealed record ScheduleWindow(DateTime Start, DateTime End)
     public bool Overlaps(ScheduleWindow other) => Start < other.End && other.Start < End;
 }
 
-public sealed record AuthorizedUserProblem(string AutoAttendantId, string UserId, string? Error = null);
+public sealed record AuthorizedUserProblem(string AutoAttendantId, string UserId, string? Error = null, string? Kind = null);
 
 /// <summary>Two holiday schedules of one auto attendant that apply at the same time.</summary>
 public sealed record HolidayOverlap(
@@ -172,7 +179,9 @@ public sealed record CopyRequest(
     string TargetScheduleId,
     string? ReplaceScheduleId = null,
     bool AcceptOverlaps = false,
-    bool RemoveMissingAuthorizedUsers = false);
+    bool RemoveMissingAuthorizedUsers = false,
+    // Single authorized users to take off in the same save. Each must be confirmed missing or disabled.
+    IReadOnlyList<string>? RemoveAuthorizedUserIds = null);
 
 /// <summary>The result of checking a copy against the tenant before anything is saved.</summary>
 public sealed class CopyAssessment
@@ -188,6 +197,9 @@ public sealed class CopyAssessment
     public ScheduleInfo? ReplacedSchedule { get; init; }
 
     public CallFlowInfo? ReplacedCallFlow { get; init; }
+
+    /// <summary>Another link of the auto attendant uses the call flow of the replaced schedule, so the call flow stays.</summary>
+    public bool ReplacedCallFlowIsShared { get; init; }
 
     /// <summary>The target schedule is attached to the auto attendant already: nothing is left to save.</summary>
     public bool AlreadyAttached { get; init; }
@@ -327,11 +339,14 @@ public static class HolidayCallHandling
 
         ScheduleInfo? replaced = null;
         CallFlowInfo? replacedFlow = null;
+        var replacedFlowIsShared = false;
         if (!string.IsNullOrWhiteSpace(request.ReplaceScheduleId))
         {
             var replacedLink = attendant.HolidayLinkFor(request.ReplaceScheduleId);
             replaced = state.FindSchedule(request.ReplaceScheduleId);
             replacedFlow = replacedLink is null ? null : attendant.FindCallFlow(replacedLink.CallFlowId);
+            replacedFlowIsShared = replacedLink is not null &&
+                attendant.Associations.Count(link => SameId(link.CallFlowId, replacedLink.CallFlowId)) > 1;
             if (SameId(request.ReplaceScheduleId, request.SourceScheduleId) || SameId(request.ReplaceScheduleId, request.TargetScheduleId))
             {
                 blockers.Add(new("replaceIsSourceOrTarget", "The schedule to replace must be another schedule than the source and the target."));
@@ -350,12 +365,33 @@ public static class HolidayCallHandling
 
         var overlaps = target is null || alreadyAttached
             ? new List<HolidayOverlap>()
-            : SaveChecks(state, attendant, target, request.ReplaceScheduleId, replacedFlow is not null, request.AcceptOverlaps, expired, blockers);
+            : SaveChecks(state, attendant, target, request.ReplaceScheduleId, replacedFlow is not null && !replacedFlowIsShared, request.AcceptOverlaps, expired, blockers);
         var missing = MissingAuthorizedUsers(state, attendant);
-        if (missing.Count > 0 && !request.RemoveMissingAuthorizedUsers && !alreadyAttached)
+        var disabled = state.DisabledAuthorizedUsers
+            .Where(user => SameId(user.AutoAttendantId, attendant.Id))
+            .Select(user => user.UserId)
+            .ToList();
+        var toRemove = request.RemoveMissingAuthorizedUsers ? new List<string>(missing) : new List<string>();
+        foreach (var id in request.RemoveAuthorizedUserIds ?? Array.Empty<string>())
+        {
+            var known = missing.Concat(disabled).FirstOrDefault(user => SameId(user, id));
+            if (known is null)
+            {
+                // A user that could not be looked up is not proven to be gone.
+                blockers.Add(new("userNotRemovable",
+                    $"'{id}' is not a confirmed missing or disabled authorized user of auto attendant '{attendant.Name}'. It is not removed."));
+            }
+            else if (!toRemove.Contains(known, StringComparer.OrdinalIgnoreCase))
+            {
+                toRemove.Add(known);
+            }
+        }
+
+        var stillMissing = missing.Where(user => !toRemove.Contains(user, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (stillMissing.Count > 0 && !alreadyAttached)
         {
             blockers.Add(new("missingAuthorizedUsers",
-                $"Auto attendant '{attendant.Name}' lists authorized users that no longer exist ({string.Join(", ", missing)}). Teams refuses to save it. " +
+                $"Auto attendant '{attendant.Name}' lists authorized users that no longer exist ({string.Join(", ", stillMissing)}). Teams refuses to save it. " +
                 "Set removeMissingAuthorizedUsers=true to take these entries off in the same save."));
         }
 
@@ -367,11 +403,12 @@ public static class HolidayCallHandling
             TargetSchedule = target,
             ReplacedSchedule = replaced,
             ReplacedCallFlow = replacedFlow,
+            ReplacedCallFlowIsShared = replacedFlowIsShared,
             AlreadyAttached = alreadyAttached,
             Overlaps = overlaps,
             Blockers = blockers,
             ExpiredSchedules = expired,
-            AuthorizedUsersToRemove = request.RemoveMissingAuthorizedUsers ? missing : new List<string>()
+            AuthorizedUsersToRemove = alreadyAttached ? new List<string>() : toRemove.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList()
         };
     }
 
@@ -681,6 +718,7 @@ public static class HolidayCallHandling
 
             $pdMissing = @()
             $pdUnchecked = @()
+            $pdDisabled = @()
             $pdAttendantRows = @()
             foreach ($pdAa in $pdAttendants) {
                 if (-not $pdAa) { continue }
@@ -703,14 +741,20 @@ public static class HolidayCallHandling
                 if (__CHECK_USERS__) {
                     foreach ($pdUser in $pdUsers) {
                         try {
-                            Get-MgUser -UserId $pdUser -Property Id -ErrorAction Stop | Out-Null
+                            $pdUserObject = Get-MgUser -UserId $pdUser -Property 'Id,AccountEnabled,UserPrincipalName' -ErrorAction Stop
+                            if ($pdUserObject -and $pdUserObject.AccountEnabled -eq $false) {
+                                $pdDisabled += @([ordered]@{ autoAttendantId = [string]$pdAa.Identity; userId = $pdUser; error = [string]$pdUserObject.UserPrincipalName })
+                            }
                         }
                         catch {
                             if ("$_" -match 'does not exist|ResourceNotFound') {
                                 $pdMissing += @([ordered]@{ autoAttendantId = [string]$pdAa.Identity; userId = $pdUser })
                             }
+                            elseif ("$_" -match 'Authorization_RequestDenied|Insufficient privileges|Forbidden|Access is denied') {
+                                $pdUnchecked += @([ordered]@{ autoAttendantId = [string]$pdAa.Identity; userId = $pdUser; error = "$_"; kind = 'permission' })
+                            }
                             else {
-                                $pdUnchecked += @([ordered]@{ autoAttendantId = [string]$pdAa.Identity; userId = $pdUser; error = "$_" })
+                                $pdUnchecked += @([ordered]@{ autoAttendantId = [string]$pdAa.Identity; userId = $pdUser; error = "$_"; kind = 'transient' })
                             }
                         }
                     }
@@ -752,6 +796,7 @@ public static class HolidayCallHandling
                 schedules = @($pdScheduleRows)
                 missingAuthorizedUsers = @($pdMissing)
                 uncheckedAuthorizedUsers = @($pdUnchecked)
+                disabledAuthorizedUsers = @($pdDisabled)
             }
             Write-Host ("PDHOLIDAY_JSON: " + (ConvertTo-Json -InputObject $pdDocument -Depth 12 -Compress))
             Write-Host "SUCCESS: Holiday call handling retrieved"
@@ -829,7 +874,10 @@ public static class HolidayCallHandling
                     throw "Schedule __REPLACE__ is not attached to auto attendant '$($pdAa.Name)' as a holiday."
                 }
                 $pdAa.CallHandlingAssociations = @($pdAa.CallHandlingAssociations | Where-Object { -not ("$($_.Type)" -eq 'Holiday' -and $_.ScheduleId -eq '__REPLACE__') })
-                $pdAa.CallFlows = @($pdAa.CallFlows | Where-Object { $_.Id -ne $pdOldLink.CallFlowId })
+                # The call flow goes only when no link that stays uses it.
+                if (@($pdAa.CallHandlingAssociations | Where-Object { $_.CallFlowId -eq $pdOldLink.CallFlowId }).Count -eq 0) {
+                    $pdAa.CallFlows = @($pdAa.CallFlows | Where-Object { $_.Id -ne $pdOldLink.CallFlowId })
+                }
         """;
 
     private const string UsersTemplate = """

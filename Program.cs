@@ -122,6 +122,7 @@ class Program
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<HealthCheckViewModel>();
+        services.AddTransient<HolidayManagerViewModel>();
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<GetStartedViewModel>();
         services.AddTransient<VariablesViewModel>();

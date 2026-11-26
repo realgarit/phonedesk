@@ -573,7 +573,7 @@ public sealed class McpHolidayCallHandlingTests
                 Schedule(Target, "Feiertage 2099", "2099-12-25T00:00:00", "2099-12-26T00:00:00", AaId)
             ]);
 
-    private static McpTestHost HostWith(string state)
+    internal static McpTestHost HostWith(string state)
     {
         var host = new McpTestHost().Connected();
         host.PowerShell.Respond(
@@ -657,7 +657,7 @@ public sealed class McpHolidayCallHandlingTests
     private static object Schedule(string id, string name, string start, string end, params string[] usedBy)
         => new { id, name, type = "Fixed", windows = new[] { new { start, end } }, usedBy };
 
-    private static string RunPowerShell(params string[] scripts)
+    internal static string RunPowerShell(params string[] scripts)
     {
         using var shell = PowerShell.Create();
         return string.Join("\n", scripts.Select(script => Run(shell, script)));
@@ -678,7 +678,7 @@ public sealed class McpHolidayCallHandlingTests
     /// Stand-ins for the Teams and Graph cmdlets the two scripts call. One auto attendant has last
     /// year's holiday schedule and an expired one attached; the new year's schedule exists unattached.
     /// </summary>
-    private const string FakeTeams = """
+    internal const string FakeTeams = """
         $global:pdFakeSaves = 0
         $pdFakeTarget = [pscustomobject]@{ Id = 'tel:+41441112233'; Type = 'ExternalPstn'; EnableTranscription = $null; EnableSharedVoicemailSystemPromptSuppression = $null; CallPriority = 0 }
         $pdFakeOption = [pscustomobject]@{ Action = 'TransferCallToTarget'; DtmfResponse = 'Automatic'; VoiceResponses = $null; CallTarget = $pdFakeTarget; Prompt = $null }

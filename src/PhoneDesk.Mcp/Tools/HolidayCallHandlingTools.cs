@@ -95,6 +95,7 @@ internal sealed class HolidayCallHandlingTools
         [Description("ID of an expired holiday schedule of this auto attendant to take off in the same save, when the auto attendant is at the call flow limit. Its call flow on this auto attendant is removed; the schedule itself stays in the tenant. Only a schedule whose dates have all passed is accepted.")] string? replaceScheduleId = null,
         [Description("True when the user accepts that the target schedule overlaps a holiday that is attached already. Two holidays that start at the same time are refused in every case.")] bool acceptOverlaps = false,
         [Description("True to take authorized users that no longer exist off the auto attendant in the same save. The plan names them.")] bool removeMissingAuthorizedUsers = false,
+        [Description("IDs of single authorized users to take off the auto attendant in the same save. Each must be shown by the first call as missing or disabled; a user that could not be looked up (uncheckedAuthorizedUsers) is refused, because the lookup proves nothing.")] string[]? removeAuthorizedUserIds = null,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
@@ -105,7 +106,8 @@ internal sealed class HolidayCallHandlingTools
                 HolidayCallHandling.RequireId(targetScheduleId, "the target schedule"),
                 string.IsNullOrWhiteSpace(replaceScheduleId) ? null : HolidayCallHandling.RequireId(replaceScheduleId, "the schedule to replace"),
                 acceptOverlaps,
-                removeMissingAuthorizedUsers);
+                removeMissingAuthorizedUsers,
+                (removeAuthorizedUserIds ?? Array.Empty<string>()).Select(id => HolidayCallHandling.RequireId(id, "an authorized user")).ToList());
 
             var topology = await _tenant.GetTopologyAsync(false, cancellationToken);
             var names = AttendantNames(topology);
@@ -223,6 +225,9 @@ internal sealed class HolidayCallHandlingTools
             differences,
             callHandling = HolidayCallHandling.Describe(flow),
             callFlow = flow,
+            // The authorized users the auto attendant has after the save.
+            authorizedUsers = attendant?.AuthorizedUsers,
+            unrelatedHolidays = attendant?.HolidayLinks.Count(other => !HolidayCallHandling.SameId(other.ScheduleId, request.TargetScheduleId)),
             replacedScheduleTakenOff = replacedGone,
             replacedScheduleStillExists = request.ReplaceScheduleId is null
                 ? (bool?)null
@@ -292,7 +297,9 @@ internal sealed class HolidayCallHandlingTools
                 ? new List<string>()
                 : state.MissingAuthorizedUsers.Where(user => HolidayCallHandling.SameId(user.AutoAttendantId, attendant.Id)).Select(user => user.UserId).ToList(),
             authorizedUsersToRemove = assessment.AuthorizedUsersToRemove,
-            uncheckedAuthorizedUsers = state.UncheckedAuthorizedUsers
+            disabledAuthorizedUsers = state.DisabledAuthorizedUsers,
+            uncheckedAuthorizedUsers = state.UncheckedAuthorizedUsers,
+            replacedCallFlowStays = assessment.ReplacedSchedule is null ? (bool?)null : assessment.ReplacedCallFlowIsShared
         };
     }
 

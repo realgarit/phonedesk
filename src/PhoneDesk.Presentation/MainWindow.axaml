@@ -171,6 +171,13 @@
                                 </StackPanel>
                             </ListBoxItem>
 
+                            <ListBoxItem Tag="HolidayManager" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationHolidayManager}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                                    <fi:SymbolIcon Symbol="CalendarEdit"/>
+                                    <TextBlock Text="{loc:Translate Key=MainNavigationHolidayManager}" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ListBoxItem>
+
                             <ListBoxItem Tag="BulkOperations" Classes="nav" AutomationProperties.Name="{loc:Translate Key=MainNavigationBulkOperations}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                                     <fi:SymbolIcon Symbol="TableMultiple"/>

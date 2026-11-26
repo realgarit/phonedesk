@@ -225,6 +225,7 @@ namespace PhoneDesk.Tests
             new("Variables", true, "config-callqueue-callerid-de.png", "ready-callerid-de"),
             new("Variables", true, "config-autoattendant-routing-en.png", "ready-routing-en"),
             new("Variables", true, "config-autoattendant-routing-de.png", "ready-routing-de"),
+            new("Variables", true, "config-autoattendant-audio-de.png", "ready-routing-audio-de"),
             new("BulkOperations", true, "bulk-operations.png"),
             new("BulkOperations", true, "task5-bulk-operations-error-en.png", "task5-bulk-error-en"),
             new("BulkOperations", true, "task5-bulk-operations-error-de.png", "task5-bulk-error-de"),
@@ -842,6 +843,12 @@ namespace PhoneDesk.Tests
                     break;
 
                 case VariablesViewModel routing when scenario.StartsWith("ready-routing", StringComparison.Ordinal):
+                    if (scenario.StartsWith("ready-routing-audio", StringComparison.Ordinal))
+                    {
+                        // The audio file ID can be typed, to use a file that was uploaded before.
+                        routing.Variables.AaDefaultGreetingType = "AudioFile";
+                        routing.Variables.AaDefaultGreetingAudioFileId = "a0a0a0a0-0000-0000-0000-00000000000a";
+                    }
                     routing.OpenAutoAttendantConfigurationDialogCommand.Execute(null);
                     break;
 

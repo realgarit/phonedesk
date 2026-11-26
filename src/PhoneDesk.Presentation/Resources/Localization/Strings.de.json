@@ -68,7 +68,7 @@
   "CommonAction": "Aktion",
   "CommonTarget": "Ziel",
   "CommonNoFileSelected": "Keine Datei ausgewählt",
-  "CommonWavFileHint": "Wählen Sie eine WAV-Datei aus (maximal 5 MB). Sie wird automatisch hochgeladen.",
+  "CommonWavFileHint": "Wählen Sie eine WAV-Datei aus (maximal 5 MB). Sie wird automatisch hochgeladen. Sie können auch die ID einer Datei eingeben, die bereits für dieselbe Objektart hochgeladen wurde.",
   "CommonResourceAccountTargetWatermark": "Ressourcenkonto-UPN oder M365-Gruppen-ID",
   "CommonEnterGreetingMessage": "Ansagetext eingeben",
   "CommonEnterVoicemailGreetingMessage": "Voicemail-Ansagetext eingeben",
@@ -1279,5 +1279,7 @@
   "HolidayManagerOutcomePlanned": "wird angefügt",
   "HolidayManagerOutcomeBlocked": "ausgelassen",
   "HolidayManagerOutcomeFailed": "nicht angefügt",
-  "HolidayManagerNone": "keine"
+  "HolidayManagerNone": "keine",
+  "HolidayManagerBackupFailedStatus": "Es wurde nichts geändert: Die Sicherung der Objekte, die diese Änderung betrifft, konnte nicht geschrieben werden. {details}",
+  "HolidayManagerBackupNote": "Sicherung des Zustands vor der Änderung: {file}"
 }

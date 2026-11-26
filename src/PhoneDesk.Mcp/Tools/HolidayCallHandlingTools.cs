@@ -19,9 +19,11 @@ internal sealed class HolidayCallHandlingTools
     private readonly TenantGateway _tenant;
     private readonly ChangeGate _changes;
     private readonly TimeProvider _time;
+    private readonly HolidayBackupWriter _backups;
 
-    public HolidayCallHandlingTools(HolidayCallHandlingReader reader, TenantGateway tenant, ChangeGate changes, TimeProvider time)
+    public HolidayCallHandlingTools(HolidayCallHandlingReader reader, TenantGateway tenant, ChangeGate changes, TimeProvider time, HolidayBackupWriter backups)
     {
+        _backups = backups;
         _reader = reader;
         _tenant = tenant;
         _changes = changes;
@@ -158,6 +160,9 @@ internal sealed class HolidayCallHandlingTools
                     // The script holds IDs only and reads the call flow when it runs. The plan is
                     // therefore also bound to what the preview showed.
                     ApprovedState = ApprovedState(assessment),
+                    ScopedBackupAsync = _backups.For(
+                        new[] { request.AutoAttendantId },
+                        new[] { request.SourceScheduleId, request.TargetScheduleId, request.ReplaceScheduleId }),
                     OnSuccess = _ => applied = true,
                     // Teams can report an error after it saved. The tenant decides what happened.
                     ChangeWasMadeDespiteError = async (_, token) =>

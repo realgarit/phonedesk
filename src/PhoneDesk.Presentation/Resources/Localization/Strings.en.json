@@ -68,7 +68,7 @@
   "CommonAction": "Action",
   "CommonTarget": "Target",
   "CommonNoFileSelected": "No file selected",
-  "CommonWavFileHint": "Select a WAV file (max 5MB). It will be uploaded automatically.",
+  "CommonWavFileHint": "Select a WAV file (max 5MB). It will be uploaded automatically. You can also enter the ID of a file that was uploaded before for the same kind of object.",
   "CommonResourceAccountTargetWatermark": "Resource Account UPN or M365 Group ID",
   "CommonEnterGreetingMessage": "Enter greeting message",
   "CommonEnterVoicemailGreetingMessage": "Enter voicemail greeting message",
@@ -1279,5 +1279,7 @@
   "HolidayManagerOutcomePlanned": "will be attached",
   "HolidayManagerOutcomeBlocked": "left out",
   "HolidayManagerOutcomeFailed": "not attached",
-  "HolidayManagerNone": "none"
+  "HolidayManagerNone": "none",
+  "HolidayManagerBackupFailedStatus": "Nothing was changed: the backup of the objects this change touches could not be written. {details}",
+  "HolidayManagerBackupNote": "Backup of the state before the change: {file}"
 }

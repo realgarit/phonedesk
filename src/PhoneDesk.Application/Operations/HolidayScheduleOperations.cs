@@ -546,6 +546,26 @@ public static class HolidayScheduleOperations
         return script.ToString().TrimEnd('\r', '\n');
     }
 
+    /// <summary>
+    /// The objects a rollout changes: the auto attendants of the items that will be saved, with
+    /// their source and replaced schedules, and the target. Items that are left out are not part
+    /// of it, so an item that cannot be saved does not stop the backup of the others.
+    /// </summary>
+    public static (IReadOnlyList<string> AutoAttendants, IReadOnlyList<string> Schedules) RolloutBackupScope(
+        string targetScheduleId, IReadOnlyList<RolloutItemResult> planned)
+    {
+        ArgumentNullException.ThrowIfNull(planned);
+        var saved = planned.Where(result => result.Outcome == RolloutOutcome.Planned).ToList();
+        var schedules = saved
+            .SelectMany(result => new[] { result.Item.SourceScheduleId, result.Item.ReplaceScheduleId })
+            .Append(targetScheduleId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return (saved.Select(result => result.Item.AutoAttendantId).ToList(), schedules);
+    }
+
     private static RolloutItemResult Judge(
         HolidayCallHandlingState state, string targetScheduleId, RolloutItem item, CopyAssessment assessment, bool sent)
     {

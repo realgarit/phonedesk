@@ -25,6 +25,8 @@ internal sealed class ProvisioningTools
     private readonly CreatedObjectLedger _ledger;
     private readonly HolidayCallHandlingReader _holidays;
     private readonly TimeProvider _time;
+    private readonly HolidayBackupWriter _backups;
+    private readonly AudioUploadLog _uploads;
 
     public ProvisioningTools(
         ConfigurationStore store,
@@ -34,8 +36,12 @@ internal sealed class ProvisioningTools
         CreatedObjectGuard guard,
         CreatedObjectLedger ledger,
         HolidayCallHandlingReader holidays,
-        TimeProvider time)
+        TimeProvider time,
+        HolidayBackupWriter backups,
+        AudioUploadLog uploads)
     {
+        _backups = backups;
+        _uploads = uploads;
         _holidays = holidays;
         _time = time;
         _store = store;
@@ -386,6 +392,7 @@ internal sealed class ProvisioningTools
                     _commands.GetAttachHolidayToAutoAttendantCommand(schedule, attendant, prompt),
                     $"Attach holiday schedule '{schedule}' to auto attendant '{attendant}'.")
                 {
+                    ScopedBackupAsync = _backups.For(new[] { attendantId }, new[] { scheduleId }),
                     OnSuccess = _ => applied = true,
                     // The schedule was not attached before this call, so finding it attached proves the save.
                     ChangeWasMadeDespiteError = async (_, token) =>
@@ -426,14 +433,44 @@ internal sealed class ProvisioningTools
         };
     }
 
+    [McpServerTool(Name = "list_audio_files", ReadOnly = true, Idempotent = true, OpenWorld = true)]
+    [Description("Lists the audio files Teams holds for one application, with their IDs. A file is uploaded for one application and works only there: 'autoAttendant' (Teams name OrgAutoAttendant) for a greeting of an auto attendant, 'callQueue' (Teams name HuntGroup) for a greeting or the music on hold of a call queue. Use it to take a file that was uploaded before by its ID instead of uploading it again. Two files can have the same name; the ID tells them apart. Read-only.")]
+    public Task<string> ListAudioFiles(
+        [Description("'autoAttendant' or 'callQueue'.")] string application,
+        [Description("Only files whose name or ID contains this text.")] string? search = null,
+        CancellationToken cancellationToken = default)
+        => McpJson.RunAsync(async () =>
+        {
+            var app = AudioFiles.NormalizeApplication(application);
+            var result = await _tenant.ReadAsync(AudioFiles.GetListCommand(app), "ListAudioFiles", cancellationToken);
+            var wanted = search?.Trim();
+            var files = AudioFiles.Parse(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput)
+                .Where(file => string.IsNullOrEmpty(wanted) ||
+                               file.FileName.Contains(wanted, StringComparison.OrdinalIgnoreCase) ||
+                               file.Id.Contains(wanted, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(file => file.FileName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return new
+            {
+                application = app,
+                usedFor = AudioFiles.Describe(app),
+                total = files.Count,
+                sameNameMoreThanOnce = files.GroupBy(file => file.FileName, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1).Select(group => group.Key).ToList(),
+                files
+            };
+        });
+
     [McpServerTool(Name = "import_audio_file", ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = true)]
-    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams and returns its audio file ID, which the configuration uses for greetings and music on hold. Teams removes an uploaded file by itself after 48 to 72 hours when no call queue or auto attendant uses it; it cannot be removed earlier." + ChangeNote)]
+    [Description("Uploads an audio file (WAV, MP3 or WMA) from this computer to Teams for ONE application and returns its audio file ID. Name the application: 'autoAttendant' for a greeting of an auto attendant (configuration paths autoAttendantTemplate.*AudioFileId, replace_holiday_greeting), 'callQueue' for a greeting, the music on hold or a shared voicemail greeting of a call queue (callQueueTemplate.*AudioFileId). A file that was uploaded for the other application is not found when it is used. The plan shows the application, the file with its size and the SHA-256 of its content. When this server uploaded the same content for the same application before, the call returns that audio file ID and uploads nothing, unless forceNewUpload is true; a file with the same name but other content is a new upload. Teams converts an upload, so two uploads cannot be compared by downloading them: the ID is what identifies a file. Teams removes an uploaded file by itself after 48 to 72 hours when nothing uses it; it cannot be removed earlier." + ChangeNote)]
     public Task<string> ImportAudioFile(
         [Description("Full path of the audio file on this computer.")] string path,
+        [Description("'autoAttendant' or 'callQueue': the application that will play the file.")] string application,
+        [Description("True to upload again although this server uploaded the same content for this application before.")] bool forceNewUpload = false,
         [Description(PlanIdDescription)] string? planId = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
+            var app = AudioFiles.NormalizeApplication(application);
             var fullPath = Path.GetFullPath(path);
             if (!AudioExtensions.Contains(Path.GetExtension(fullPath), StringComparer.OrdinalIgnoreCase))
             {
@@ -445,16 +482,48 @@ internal sealed class ProvisioningTools
                 throw new InvalidOperationException($"'{fullPath}' does not exist.");
             }
 
+            var fileName = Path.GetFileName(fullPath);
+            var size = new FileInfo(fullPath).Length;
+            var hash = AudioUploadLog.Hash(fullPath);
+            var file = new { name = fileName, path = fullPath, sizeBytes = size, sha256 = hash };
+            var earlier = _uploads.Find(hash, app, _tenant.TenantId);
+            if (earlier.Count > 0 && !forceNewUpload)
+            {
+                return new
+                {
+                    status = "alreadyUploaded",
+                    success = true,
+                    audioFileId = earlier[0].AudioFileId,
+                    application = app,
+                    file,
+                    uploadedUtc = earlier[0].UploadedUtc,
+                    note = "This server uploaded the same content for this application before. Use this audio file ID; nothing was uploaded. " +
+                           "list_audio_files shows whether Teams still has the file. Set forceNewUpload=true to upload it again."
+                };
+            }
+
             string? audioFileId = null;
             var outcome = await _changes.PlanOrApplyAsync(
-                new ChangeRequest("ImportAudioFile", Path.GetFileName(fullPath),
-                    _commands.GetImportAudioFileCommand(fullPath), $"Upload audio file '{fullPath}' to Teams.")
+                new ChangeRequest("ImportAudioFile", fileName,
+                    _commands.GetImportAudioFileCommand(fullPath, app),
+                    $"Upload audio file '{fileName}' ({size} bytes, SHA-256 {hash}) to Teams for {AudioFiles.Describe(app)} (application {app}).")
                 {
-                    OnSuccess = result => audioFileId = TenantOutputParser.ParseAudioFileId(result.RawOutput)
+                    // The plan is for this content: a file that was replaced on disk needs a new plan.
+                    ApprovedState = hash + "|" + app,
+                    OnSuccess = result =>
+                    {
+                        audioFileId = TenantOutputParser.ParseAudioFileId(result.RawOutput);
+                        if (audioFileId is not null)
+                        {
+                            _uploads.Add(new AudioUpload(hash, fileName, app, audioFileId, _tenant.TenantId, _time.GetUtcNow()));
+                        }
+                    }
                 },
                 planId,
                 cancellationToken);
-            return audioFileId is null ? outcome : new { audioFileId, result = outcome };
+            return audioFileId is null
+                ? new { application = app, usedFor = AudioFiles.Describe(app), file, result = outcome } as object
+                : new { audioFileId, application = app, usedFor = AudioFiles.Describe(app), file, result = outcome };
         });
 
     private ChangeRequest Creating(TenantObjectType type, string key, string operation, string script, string summary)

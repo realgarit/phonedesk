@@ -1219,7 +1219,8 @@ namespace PhoneDesk.ViewModels
         {
             await SelectAndImportAudioFile(
                 audioFileId => Variables.AaDefaultGreetingAudioFileId = audioFileId,
-                "AA Default Greeting");
+                "AA Default Greeting",
+                PhoneDesk.Operations.AudioFiles.AutoAttendant);
         }
 
         [RelayCommand]
@@ -1227,11 +1228,17 @@ namespace PhoneDesk.ViewModels
         {
             await SelectAndImportAudioFile(
                 audioFileId => Variables.AaAfterHoursGreetingAudioFileId = audioFileId,
-                "AA After Hours Greeting");
+                "AA After Hours Greeting",
+                PhoneDesk.Operations.AudioFiles.AutoAttendant);
         }
 
 
-        private async Task SelectAndImportAudioFile(Action<string> setAudioFileId, string context)
+        /// <summary>
+        /// Uploads a file for the application that will play it. Teams finds a file only under the
+        /// application it was uploaded for, so a greeting of an auto attendant that was uploaded for
+        /// call queues is not found when the auto attendant is created.
+        /// </summary>
+        private async Task SelectAndImportAudioFile(Action<string> setAudioFileId, string context, string application = PhoneDesk.Operations.AudioFiles.CallQueue)
         {
             try
             {
@@ -1288,7 +1295,7 @@ namespace PhoneDesk.ViewModels
                             });
                         
                         // Import the audio file via PowerShell
-                        var command = _powerShellCommandService.GetImportAudioFileCommand(filePath);
+                        var command = _powerShellCommandService.GetImportAudioFileCommand(filePath, application);
                         var result = await ExecutePowerShellCommandAsync(command, "ImportAudioFile");
                         
                         if (result.Succeeded)

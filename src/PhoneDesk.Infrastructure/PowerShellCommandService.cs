@@ -43,6 +43,7 @@ namespace PhoneDesk.Services
         public string GetRetrieveM365GroupsCommand() => _commonBuilder.GetRetrieveM365GroupsCommand();
         public string GetM365GroupIdCommand(string groupName) => _commonBuilder.GetM365GroupIdCommand(groupName);
         public string GetImportAudioFileCommand(string filePath) => _commonBuilder.GetImportAudioFileCommand(filePath);
+        public string GetImportAudioFileCommand(string filePath, string applicationId) => _commonBuilder.GetImportAudioFileCommand(filePath, applicationId);
         public string GetAssignLicenseCommand(string userId, string skuId) => _commonBuilder.GetAssignLicenseCommand(userId, skuId);
 
         public string GetRetrieveCallQueuesCommand() => _callQueueBuilder.GetRetrieveCallQueuesCommand();

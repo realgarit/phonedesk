@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.37.2](https://github.com/realgarit/phonedesk/compare/v3.37.1...v3.37.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* keep apostrophes in spoken greetings and prompts ([590d27e](https://github.com/realgarit/phonedesk/commit/590d27ea42a9c8da5754e47a36eed568b3361525))
+* keep apostrophes in spoken greetings and prompts ([559d4a8](https://github.com/realgarit/phonedesk/commit/559d4a8441848b4068bd53705fe9ee44e65f49a2))
+
 ## [3.37.1](https://github.com/realgarit/phonedesk/compare/v3.37.0...v3.37.1) (2026-11-26)
 
 

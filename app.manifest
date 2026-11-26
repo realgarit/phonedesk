@@ -2,7 +2,7 @@
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!-- build.yml syncs this attribute on release pull requests; release-please must not manage it -->
   <assemblyIdentity 
-    version="3.37.1.0"
+    version="3.37.2.0"
     name="PhoneDesk"
     processorArchitecture="*"
     type="win32"/>

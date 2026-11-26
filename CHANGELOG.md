@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.37.1](https://github.com/realgarit/phonedesk/compare/v3.37.0...v3.37.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **mcp:** refuse a copy plan when the source call flow changed after the preview ([5f2a02d](https://github.com/realgarit/phonedesk/commit/5f2a02d1f3e106a5b811926169399a4c81f0749e))
+* **mcp:** refuse a copy plan when the source call flow changed after the preview ([162d52c](https://github.com/realgarit/phonedesk/commit/162d52c69c26d37ef46f4cee6bce5958a301ef9e))
+
 ## [3.37.0](https://github.com/realgarit/phonedesk/compare/v3.36.0...v3.37.0) (2026-11-25)
 
 

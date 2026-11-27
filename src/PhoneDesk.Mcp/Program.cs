@@ -21,10 +21,7 @@ builder.Services.AddPhoneDeskMcp();
 builder.Services
     .AddMcpServer(options =>
     {
-        var version = PhoneDesk.Models.AppVersion.TryParse(PhoneDesk.Services.ConstantsService.Application.Version, out var parsed)
-            ? $"{parsed.Major}.{parsed.Minor}.{parsed.Patch}"
-            : "0.0.0";
-        options.ServerInfo = new() { Name = "phonedesk", Version = version };
+        options.ServerInfo = new() { Name = "phonedesk", Version = PhoneDesk.Mcp.ServerVersion.Text };
         options.ServerInstructions = ServerInstructions.Text;
     })
     .WithStdioServerTransport()

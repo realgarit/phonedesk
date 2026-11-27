@@ -40,7 +40,7 @@ internal sealed class SessionTools
         }, McpJson.Options);
         status["versions"] = System.Text.Json.JsonSerializer.SerializeToNode(new
         {
-            server = typeof(SessionTools).Assembly.GetName().Version?.ToString(3),
+            server = ServerVersion.Text,
             microsoftTeamsModule = _moduleVersions.TeamsModuleVersion,
             microsoftGraphModules = _moduleVersions.GraphModuleVersion,
             powerShellSdk = _moduleVersions.PowerShellSdkVersion

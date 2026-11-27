@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.41.0](https://github.com/realgarit/phonedesk/compare/v3.40.0...v3.41.0) (2026-11-27)
+
+
+### Features
+
+* both heads draw the call-flow pictures of the report ([c27b3e9](https://github.com/realgarit/phonedesk/commit/c27b3e955bbcda2b77d6904cc936b8a5a5d04a44))
+* both heads draw the call-flow pictures of the report ([61d6b83](https://github.com/realgarit/phonedesk/commit/61d6b83520d5bd06b38fa68ef04ca7ea2f5e5076))
+
+
+### Bug Fixes
+
+* **deps:** bump bundled PowerShell module versions ([a32fae9](https://github.com/realgarit/phonedesk/commit/a32fae974faf210b11e9a373a79de5e92b968756))
+
 ## [3.40.0](https://github.com/realgarit/phonedesk/compare/v3.39.0...v3.40.0) (2026-11-27)
 
 

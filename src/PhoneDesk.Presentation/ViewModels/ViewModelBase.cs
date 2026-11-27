@@ -552,6 +552,8 @@ namespace PhoneDesk.ViewModels
 
         protected async Task<OperationResult<string>?> PreviewAndExecuteAsync(string command, string context = "", Dictionary<string, string>? environmentVariables = null)
         {
+            // The change is shown for the profile in use: it runs only in that profile's session.
+            using var scope = PhoneDesk.Operations.SessionScope.Expect(_powerShellContextService.SessionKey);
             if (_dialogService != null && !(_sharedStateService?.SkipScriptPreview ?? false))
             {
                 var confirmed = await _dialogService.ShowScriptPreviewAsync(
@@ -580,6 +582,7 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         protected async Task<OperationResult<string>?> ConfirmAndExecuteAsync(string command, string confirmMessage, string context = "", Dictionary<string, string>? environmentVariables = null)
         {
+            using var scope = PhoneDesk.Operations.SessionScope.Expect(_powerShellContextService.SessionKey);
             if (_dialogService != null && !(_sharedStateService?.SkipDeleteConfirmation ?? false))
             {
                 var confirmed = await _dialogService.ShowConfirmationWithPreviewAsync(

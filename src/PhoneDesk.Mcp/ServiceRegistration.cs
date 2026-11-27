@@ -60,6 +60,9 @@ internal static class ServiceRegistration
             if (provider.GetRequiredService<PhoneDesk.Operations.TenantProfileService>().Active is { } active)
             {
                 guard.SetExpectation(active.ExpectedTenant, active.ExpectedAccount);
+                // The sessions are named after the profiles, so the first one belongs to the profile in use.
+                provider.GetRequiredService<IPowerShellContextService>().UseSession(active.Id);
+                provider.GetRequiredService<IMsalGraphAuthenticationService>().UseProfile(active.Id);
             }
 
             return guard;

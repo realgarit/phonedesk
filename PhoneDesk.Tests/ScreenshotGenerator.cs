@@ -130,6 +130,8 @@ namespace PhoneDesk.Tests
             new("Wizard", true, "navigation-tour-Wizard-de.png", "navigation-tour-Wizard-de"),
             new("GetStarted", true, "navigation-ready-GetStarted-en.png", "navigation-ready-GetStarted-en"),
             new("GetStarted", true, "navigation-ready-GetStarted-de.png", "navigation-ready-GetStarted-de"),
+            new("GetStarted", true, "readiness-teams-signin-open-en.png", "getstarted-teams-pending-en"),
+            new("GetStarted", true, "readiness-teams-signin-open-de.png", "getstarted-teams-pending-de"),
             new("Variables", true, "navigation-ready-Variables-en.png", "navigation-ready-Variables-en"),
             new("Variables", true, "navigation-ready-Variables-de.png", "navigation-ready-Variables-de"),
             new("Variables", false, "navigation-light-help-Variables-en.png", "navigation-help-Variables-en"),
@@ -1173,6 +1175,13 @@ namespace PhoneDesk.Tests
                         holidayManager.OpenRetireCommand.Execute(null);
                         holidayManager.CheckForDisplay();
                     }
+                    break;
+
+                case GetStartedViewModel readiness when scenario.StartsWith("getstarted-teams-pending", StringComparison.Ordinal):
+                    // A Teams sign-in whose browser window was closed: the page offers to give it up.
+                    readiness.ModulesChecked = true;
+                    readiness.TeamsSignInPending = true;
+                    readiness.IsBusy = true;
                     break;
 
                 case EditSettingsViewModel editSettings when scenario.StartsWith("editsettings-queue", StringComparison.Ordinal):

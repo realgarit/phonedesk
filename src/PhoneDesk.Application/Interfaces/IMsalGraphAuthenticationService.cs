@@ -22,5 +22,14 @@ namespace PhoneDesk.Services.Interfaces
         /// Checks if there's a cached account that can be used for silent authentication.
         /// </summary>
         Task<bool> HasCachedAccountAsync();
+
+        /// <summary>
+        /// Makes the sign-in of a profile the one in use. Each profile keeps its own accounts in
+        /// memory, so the sign-in of one customer is never used for another, and switching back
+        /// needs no new sign-in while the application runs. Nothing is written to disk.
+        /// </summary>
+        void UseProfile(string key)
+        {
+        }
     }
 }

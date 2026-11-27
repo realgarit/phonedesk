@@ -124,8 +124,12 @@ namespace PhoneDesk.Tests
             Assert.Equal("contoso", _variables.Customer);
             Assert.Equal("contoso.com", _guard.Expectation.Tenant);
             Assert.Null(_guard.Expectation.Account);
-            // The connection of the customer before is not kept.
-            Assert.Equal(new[] { "DISCONNECT TEAMS", "DISCONNECT GRAPH" }, _scripts);
+            // The profile has its own PowerShell session: the connection of the customer before is
+            // not used, and it is not signed out either, so a switch back finds it again.
+            var contosoId = _profiles.Find("Contoso")!.Id;
+            _harness.PowerShellContextService.Verify(host => host.UseSession(contosoId), Times.Once);
+            Assert.DoesNotContain("DISCONNECT TEAMS", _scripts);
+            Assert.Single(_scripts, script => script.Contains("PDIDENTITY_JSON", StringComparison.Ordinal));
             _harness.SessionManager.Verify(session => session.ResetSession(), Times.Once);
             _harness.SharedStateService.VerifySet(state => state.ActiveProfileLabel = "Contoso");
             Assert.True(page.Profiles.Single(row => row.Name == "Contoso").IsActive);

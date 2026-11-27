@@ -1537,11 +1537,15 @@
   "ProfilesCreatedStatus": "Profil «{name}» wurde mit der aktuellen Konfiguration erstellt. Wählen Sie «Zu diesem Profil wechseln», um es zu verwenden.",
   "ProfilesSavedStatus": "Profil «{name}» wurde gespeichert.",
   "ProfilesConfigurationSavedStatus": "Die aktuelle Konfiguration wurde in «{name}» gespeichert.",
-  "ProfilesSwitchedStatus": "Jetzt in Verwendung: «{name}». Die Konfiguration ist geladen und Sie sind abgemeldet. Melden Sie sich auf der Seite «Bereitschaftsprüfung» an; die Anmeldung wird gegen die erwartete Organisation geprüft.",
+  "ProfilesSwitchedStatus": "Jetzt in Verwendung: «{name}». Die Konfiguration ist geladen. Melden Sie sich auf der Seite «Bereitschaftsprüfung» an; die Anmeldung wird gegen die erwartete Organisation geprüft.",
   "ProfilesDeleteTitle": "Profil löschen?",
   "ProfilesDeleteMessage": "Das Profil «{name}» und seine gespeicherte Konfiguration werden von diesem Computer entfernt. Der Mandant des Kunden wird nicht verändert.",
   "ProfilesDeletedStatus": "Profil «{name}» wurde gelöscht.",
   "ProfilesFailedStatus": "Nicht ausgeführt: {details}",
   "ProfilesFooter": "Profile werden auf diesem Computer gespeichert. Ein Wechsel meldet Sie von Microsoft Teams und Microsoft Graph ab, und Sie melden sich für den anderen Kunden neu an.",
-  "ProfilesSignInOpenStatus": "Eine Anmeldung ist noch offen. Schliessen Sie sie ab oder brechen Sie sie auf der Seite «Bereitschaftsprüfung» ab, und wechseln Sie dann das Profil."
+  "ProfilesSignInOpenStatus": "Eine Anmeldung ist noch offen. Schliessen Sie sie ab oder brechen Sie sie auf der Seite «Bereitschaftsprüfung» ab, und wechseln Sie dann das Profil.",
+  "ProfilesSwitchedConnectedStatus": "Jetzt in Verwendung: «{name}». Die Konfiguration ist geladen, und die früheren Verbindungen dieses Profils sind wieder in Verwendung (Mandant: {tenant}).",
+  "ProfilesDeleteActiveBlocked": "Das Profil ist in Verwendung. Wechseln Sie zuerst zu einem anderen Profil und löschen Sie dieses dann.",
+  "GetStartedTeamsSignInRestarted": "Die Anmeldung bei Microsoft Teams wurde abgebrochen und eine neue PowerShell-Sitzung gestartet. Wählen Sie «Verbinden» für Microsoft Teams und danach für Microsoft Graph, und beachten Sie das alte Fenster nicht.",
+  "GetStartedRestartTeamsSignInTooltip": "Bricht die offene Anmeldung ab. Danach müssen beide Verbindungen neu hergestellt werden."
 }

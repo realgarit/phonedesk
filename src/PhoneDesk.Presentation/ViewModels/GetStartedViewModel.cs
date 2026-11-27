@@ -33,6 +33,12 @@ namespace PhoneDesk.ViewModels
         [ObservableProperty]
         private bool _graphSignInPending;
 
+        /// <summary>True while the Microsoft Teams sign-in window is open and the page waits for it.</summary>
+        [ObservableProperty]
+        private bool _teamsSignInPending;
+
+        private TaskCompletionSource<bool>? _abandonTeamsSignIn;
+
         private readonly PhoneDesk.Operations.TenantIdentityGuard _identityGuard;
         private TaskCompletionSource<bool>? _abandonGraphSignIn;
 
@@ -142,6 +148,18 @@ namespace PhoneDesk.ViewModels
         private void RestartGraphSignIn()
         {
             _abandonGraphSignIn?.TrySetResult(true);
+        }
+
+        /// <summary>
+        /// Gives up a Microsoft Teams sign-in that hangs. The sign-in holds its PowerShell session and
+        /// cannot be stopped, so the session is given up and a new one takes its place. Both
+        /// connections of the old session are lost: Teams and Graph need a new sign-in (the Graph one
+        /// is usually silent). Whatever the old window reports later reaches nobody.
+        /// </summary>
+        [RelayCommand]
+        private void RestartTeamsSignIn()
+        {
+            _abandonTeamsSignIn?.TrySetResult(true);
         }
 
         /// <summary>The profile in use when a Microsoft Graph sign-in started.</summary>
@@ -399,13 +417,37 @@ namespace PhoneDesk.ViewModels
 
                 var command = _powerShellCommandService.GetConnectTeamsCommand();
                 OperationResult<string> result;
+                var abandon = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _abandonTeamsSignIn = abandon;
+                TeamsSignInPending = true;
                 ChangeOpenSignIns(+1);
                 try
                 {
-                    result = await ExecutePowerShellCommandAsync(command, "ConnectTeams");
+                    var running = ExecutePowerShellCommandAsync(command, "ConnectTeams");
+                    if (await Task.WhenAny(running, abandon.Task) != running)
+                    {
+                        // The old sign-in keeps its session busy: the session is given up as a whole.
+                        _powerShellContextService.AbandonSession();
+                        TeamsConnected = false;
+                        GraphConnected = false;
+                        var modulesChecked = _sessionManager.ModulesChecked;
+                        _sessionManager.ResetSession();
+                        _sessionManager.UpdateModulesChecked(modulesChecked);
+                        _identityGuard.ClearIdentity();
+                        RaiseIdentityChanged();
+                        UpdateCanProceed();
+                        SetSetupError(
+                            UiTextKey.GetStartedTeamsSignInRestarted,
+                            "The Microsoft Teams sign-in was given up and a new PowerShell session was started. Select Connect for Microsoft Teams, then for Microsoft Graph, and ignore the old window.");
+                        return;
+                    }
+
+                    result = await running;
                 }
                 finally
                 {
+                    TeamsSignInPending = false;
+                    _abandonTeamsSignIn = null;
                     ChangeOpenSignIns(-1);
                 }
 

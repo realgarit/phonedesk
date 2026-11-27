@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using PhoneDesk.Operations;
 using PhoneDesk.Services;
+using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Mcp;
 
@@ -59,11 +60,13 @@ internal sealed class ChangeGate
     private readonly ITenantCommandRunner _runner;
     private readonly TenantGateway _tenant;
     private readonly TimeProvider _time;
+    private readonly IPowerShellContextService? _host;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, StoredPlan> _plans = new(StringComparer.Ordinal);
 
-    public ChangeGate(ITenantCommandRunner runner, TenantGateway tenant, TimeProvider time)
+    public ChangeGate(ITenantCommandRunner runner, TenantGateway tenant, TimeProvider time, IPowerShellContextService? host = null)
     {
+        _host = host;
         _runner = runner;
         _tenant = tenant;
         _time = time;
@@ -86,7 +89,10 @@ internal sealed class ChangeGate
             return Plan(request, fingerprint, stateFingerprint);
         }
 
-        TakePlan(planId, request.Operation, fingerprint, stateFingerprint);
+        var sessionKey = _host?.SessionKey ?? string.Empty;
+        TakePlan(planId, request.Operation, fingerprint, stateFingerprint, sessionKey);
+        // From here on every command of the change runs only in the session the plan was made in.
+        using var scope = SessionScope.Expect(sessionKey);
         _tenant.RequireReady();
 
         BackupInfo? backup = null;
@@ -208,7 +214,7 @@ internal sealed class ChangeGate
                 _plans.Remove(expired);
             }
 
-            _plans[id] = new StoredPlan(request.Operation, fingerprint, stateFingerprint, expires);
+            _plans[id] = new StoredPlan(request.Operation, fingerprint, stateFingerprint, expires, _host?.SessionKey ?? string.Empty);
         }
 
         return new
@@ -226,7 +232,7 @@ internal sealed class ChangeGate
         };
     }
 
-    private void TakePlan(string planId, string operation, string fingerprint, string? stateFingerprint)
+    private void TakePlan(string planId, string operation, string fingerprint, string? stateFingerprint, string sessionKey)
     {
         lock (_gate)
         {
@@ -239,6 +245,13 @@ internal sealed class ChangeGate
             if (plan.ExpiresUtc <= _time.GetUtcNow())
             {
                 throw new InvalidOperationException("This plan has expired. Call the tool without planId to get a new plan.");
+            }
+
+            // A plan made for one customer profile is never applied to another.
+            if (!string.Equals(plan.SessionKey, sessionKey, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Another profile was taken into use after this plan was made. Nothing was changed. Call the tool without planId to make a plan for the profile in use.");
             }
 
             // First the tenant: a script that holds values read from the tenant changes with it too.
@@ -260,5 +273,5 @@ internal sealed class ChangeGate
         }
     }
 
-    private sealed record StoredPlan(string Operation, string Fingerprint, string? StateFingerprint, DateTimeOffset ExpiresUtc);
+    private sealed record StoredPlan(string Operation, string Fingerprint, string? StateFingerprint, DateTimeOffset ExpiresUtc, string SessionKey);
 }

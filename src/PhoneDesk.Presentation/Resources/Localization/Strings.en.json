@@ -1537,11 +1537,15 @@
   "ProfilesCreatedStatus": "Profile '{name}' was created with the current configuration. Select Switch to use it.",
   "ProfilesSavedStatus": "Profile '{name}' was saved.",
   "ProfilesConfigurationSavedStatus": "The current configuration was saved in '{name}'.",
-  "ProfilesSwitchedStatus": "Now using '{name}'. Its configuration is loaded and you are signed out. Sign in on the Readiness Check page; the sign-in is checked against the expected organization.",
+  "ProfilesSwitchedStatus": "Now using '{name}'. Its configuration is loaded. Sign in on the Readiness Check page; the sign-in is checked against the expected organization.",
   "ProfilesDeleteTitle": "Delete the profile?",
   "ProfilesDeleteMessage": "The profile '{name}' and its saved configuration are removed from this computer. The tenant of the customer is not touched.",
   "ProfilesDeletedStatus": "Profile '{name}' was deleted.",
   "ProfilesFailedStatus": "Not done: {details}",
   "ProfilesFooter": "Profiles are kept on this computer. A switch signs you out of Microsoft Teams and Microsoft Graph, and you sign in again for the other customer.",
-  "ProfilesSignInOpenStatus": "A sign-in is still open. Finish it or give it up on the Readiness Check page, then switch the profile."
+  "ProfilesSignInOpenStatus": "A sign-in is still open. Finish it or give it up on the Readiness Check page, then switch the profile.",
+  "ProfilesSwitchedConnectedStatus": "Now using '{name}'. Its configuration is loaded, and its connections from earlier are in use again (tenant: {tenant}).",
+  "ProfilesDeleteActiveBlocked": "The profile is in use. Switch to another profile first, then delete this one.",
+  "GetStartedTeamsSignInRestarted": "The Microsoft Teams sign-in was given up and a new PowerShell session was started. Select Connect for Microsoft Teams, then for Microsoft Graph, and ignore the old window.",
+  "GetStartedRestartTeamsSignInTooltip": "Gives up the open sign-in. Both connections must then be made again."
 }

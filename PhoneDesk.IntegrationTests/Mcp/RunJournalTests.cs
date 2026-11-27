@@ -48,6 +48,15 @@ public sealed class RunJournalTests
         Assert.Same(queue, RunJournal.Record(record, RunObjectType.CallQueue, v.CqDisplayName, 4, $"SUCCESS: Call queue {v.CqDisplayName} is ready", Now));
         Assert.Equal(3, record.Objects.Count);
 
+        // The scripts print a name as they write it: with an apostrophe doubled.
+        var written = host.Get<IPowerShellCommandService>().GetEffectiveObjectName("cq-O'Brien");
+        Assert.Equal("cq-O''Brien", written);
+        var apostrophe = RunJournal.Start(RunKind.GuidedSetup, "test", "tenant-1", "Contoso", "o'brien", Now);
+        Assert.Null(RunJournal.Record(apostrophe, RunObjectType.CallQueue, "cq-O'Brien", 4, $"SUCCESS: Call queue {written} is ready", Now));
+        var recorded = RunJournal.Record(apostrophe, RunObjectType.CallQueue, "cq-O'Brien", 4, $"SUCCESS: Call queue {written} is ready", Now, host.Get<IPowerShellCommandService>().GetEffectiveObjectName)!;
+        Assert.Equal("cq-O'Brien", recorded.Name);
+        Assert.Equal(GroupId, RunJournal.GroupIdFrom($"SUCCESS: grp-O''Brien created successfully with ID: {GroupId}", "grp-O'Brien", host.Get<IPowerShellCommandService>().GetEffectiveObjectName));
+
         // What points to an object goes before the object.
         Assert.Equal(
             new[] { RunObjectType.CallQueue, RunObjectType.ResourceAccount, RunObjectType.M365Group },
@@ -110,6 +119,18 @@ public sealed class RunJournalTests
         queue.ObjectId = string.Empty;
         Assert.Equal(RunJournal.ReasonNoId, Plan(tenant).Items.Single(item => item.Object.Type == RunObjectType.CallQueue).Code);
         queue.ObjectId = "cq-1";
+
+        // An auto attendant is removed by its ID and without its schedules: a schedule attached to it
+        // can be one that existed before the run.
+        var attendant = new RunObject { Type = RunObjectType.AutoAttendant, Name = v.AaDisplayName, ObjectId = "99999999-8888-7777-6666-555555555555", Step = 7 };
+        var attendantOnly = RunJournal.GetRollbackCommand(
+            new RollbackPlan { Items = new[] { new RollbackItem(attendant, RollbackAction.Delete, RunJournal.ReasonOk, string.Empty) } }, commands);
+        Parser.ParseInput(attendantOnly, out _, out var attendantErrors);
+        Assert.Empty(attendantErrors);
+        Assert.Contains("Remove-CsAutoAttendant -Identity '99999999-8888-7777-6666-555555555555'", attendantOnly);
+        Assert.DoesNotContain("Remove-CsOnlineSchedule", attendantOnly);
+        Assert.Contains("Remove-CsOnlineSchedule", commands.GetRemoveAutoAttendantCommand(v.AaDisplayName));
+        Assert.Throws<ArgumentException>(() => RunJournal.GetRemoveAutoAttendantOnlyCommand("aa'; Remove-Item"));
 
         // The script has each delete script of its own page behind a marker, in order.
         var rollback = RunJournal.GetRollbackCommand(all, commands);
@@ -189,6 +210,22 @@ public sealed class RunJournalTests
                 Assert.True(applied.GetProperty("outcome")[0].GetProperty("removed").GetBoolean());
                 Assert.Equal("rolledBack", applied.GetProperty("run").GetProperty("state").GetString());
                 Assert.Equal(0, McpTestHost.Parse(runs.List(onlyOpen: true)).GetProperty("runs").GetArrayLength());
+
+                // The run in progress ended with its rollback: the steps are open again, and a new step starts a new record.
+                Assert.Equal(1, McpTestHost.Parse(tools.Status()).GetProperty("nextStep").GetInt32());
+                Assert.Null(host.Get<McpRunJournal>().Current);
+                host.PowerShell.DefaultResult = new() { Output = $"SUCCESS: {group} created successfully with ID: {GroupId}" };
+                await PlanAndApplyAsync(planId => tools.RunStep(1, planId, Cancellation));
+                var second = host.Get<McpRunJournal>().Current!;
+                Assert.NotEqual(runId, second.Id);
+                Assert.Equal(RunState.RolledBack, host.Get<RunJournalService>().Find(runId)!.State);
+
+                // Another tenant: the run of this tenant is not continued there.
+                host.Get<ISessionManager>().UpdateTenantInfo("tenant-2", "Fabrikam");
+                await PlanAndApplyAsync(planId => tools.RunStep(2, planId, Cancellation));
+                Assert.NotEqual(second.Id, host.Get<McpRunJournal>().Current!.Id);
+                Assert.Equal("tenant-2", host.Get<McpRunJournal>().Current!.TenantId);
+                host.Get<ISessionManager>().UpdateTenantInfo(McpTestHost.TenantId, "Contoso");
 
                 // A run of another tenant is not touched.
                 record.TenantId = "another-tenant";

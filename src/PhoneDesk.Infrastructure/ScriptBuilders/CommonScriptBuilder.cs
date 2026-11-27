@@ -238,6 +238,9 @@ catch {
         public string GetRunIdentityCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Operations.RunObject> objects)
             => PhoneDesk.Operations.RunJournal.GetIdentityCommand(objects, _sanitizer.SanitizeString);
 
+        /// <summary>A name after the rule every provisioning script applies before it writes the name.</summary>
+        public string GetEffectiveObjectName(string name) => _sanitizer.SanitizeString(name);
+
         public string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries)
             => PhoneDesk.Operations.TenantPreflight.GetReadCommand(entries, _sanitizer.SanitizeString);
 

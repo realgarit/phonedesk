@@ -427,6 +427,12 @@ namespace PhoneDesk.ViewModels
 
             try
             {
+                // After a change of tenant the run of the other tenant is not continued.
+                if (Run is { } active && !RunJournalService.IsOfTenant(active, _sessionManager.TenantId))
+                {
+                    Run = null;
+                }
+
                 var run = Run ??= _journal.Begin(
                     RunKind.GuidedSetup, "desktop", _sessionManager.TenantId, _sessionManager.TenantName,
                     Variables.Customer + " - " + Variables.CustomerGroupName);

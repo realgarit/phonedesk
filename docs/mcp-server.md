@@ -143,7 +143,8 @@ output of the script has its own "created" line, so an object the run reused is 
 - `guided_setup_resume` takes an unfinished Guided Setup up again, also in a new session. A step
   counts as completed again when its script is the one the current configuration gives.
 - `rollback_setup_run` removes what one run created, in reverse order: auto attendant, call queue,
-  resource accounts, agent group. It reads the tenant first and removes an object only while the
+  resource accounts, agent group. The schedules of a removed auto attendant stay in the tenant,
+  because a schedule attached to it can be older than the run. It reads the tenant first and removes an object only while the
   tenant shows exactly one object with the name and that object has the ID the run recorded. A
   run is rolled back only in its own tenant. The first call returns the plan; the second call
   with the `planId` runs it, and a tenant that changed in between refuses the plan.

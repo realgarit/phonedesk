@@ -274,6 +274,15 @@ namespace PhoneDesk.ViewModels
                     : GetText(UiTextKey.SetupRunsOutcomeLeft, "Not removed: {type} {name} ({message})", values));
             }
 
+            // A rollback of the run Guided Setup has in progress ends that run there: its steps are open
+            // again, and the next step starts a new record instead of writing an older copy over this result.
+            if (_sharedStateService is not null &&
+                string.Equals(_sharedStateService.SetupRun?.Id, record.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _sharedStateService.SetupRun = null;
+                _sharedStateService.WizardProgress = null;
+            }
+
             _checked = null;
             _approvedState = null;
             CanRollBack = false;

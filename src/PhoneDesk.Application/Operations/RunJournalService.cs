@@ -73,7 +73,7 @@ public sealed class RunJournalService
         {
             foreach (var (type, name) in RunJournal.ObjectsOfRow(rows[index]))
             {
-                RunJournal.Record(record, type, name, index + 1, output, Now);
+                RunJournal.Record(record, type, name, index + 1, output, Now, EffectiveName);
             }
         }
 
@@ -147,11 +147,19 @@ public sealed class RunJournalService
         return outcomes;
     }
 
+    /// <summary>The name as the scripts print it. A head without the rule (a test double) gives the name itself.</summary>
+    private string EffectiveName(string name) => _commands.GetEffectiveObjectName(name) ?? name;
+
+    /// <summary>True when the record belongs to this tenant. A run never continues in another tenant.</summary>
+    public static bool IsOfTenant(RunRecord record, string? tenantId)
+        => !string.IsNullOrWhiteSpace(record.TenantId) &&
+           string.Equals(record.TenantId, tenantId ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
     private void RecordObject(RunRecord record, GuidedSetupStep step, IPhoneManagerVariables variables, string? output)
     {
         if (RunJournal.ObjectOfStep(step, variables) is { } created)
         {
-            RunJournal.Record(record, created.Type, created.Name, (int)step, output, Now);
+            RunJournal.Record(record, created.Type, created.Name, (int)step, output, Now, EffectiveName);
         }
     }
 }

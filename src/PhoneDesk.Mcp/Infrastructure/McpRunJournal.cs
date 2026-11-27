@@ -38,6 +38,12 @@ internal sealed class McpRunJournal
     {
         try
         {
+            // After a change of tenant the run of the other tenant is not continued: its record stays as it is.
+            if (Current is { } active && !RunJournalService.IsOfTenant(active, _tenant.TenantId))
+            {
+                Current = null;
+            }
+
             var run = Current ??= _journal.Begin(
                 RunKind.GuidedSetup, "mcp", _tenant.TenantId, _session.TenantName, variables.Customer + " - " + variables.CustomerGroupName);
             if (succeeded)

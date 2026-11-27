@@ -215,7 +215,11 @@ public static class RunJournal
     /// True when the output has this object's own "created" line and no "already existed" line for
     /// it. A script that used an object that was there says so, and such an object is never the run's.
     /// </summary>
-    public static bool WasCreated(string? output, RunObjectType type, string name)
+    /// <param name="effectiveName">
+    /// How the provisioning scripts write a name. Their output has the name in that form (an
+    /// apostrophe is doubled, for example), so the line is looked for with both forms.
+    /// </param>
+    public static bool WasCreated(string? output, RunObjectType type, string name, Func<string, string>? effectiveName = null)
     {
         name = (name ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(output) || name.Length == 0)
@@ -223,6 +227,13 @@ public static class RunJournal
             return false;
         }
 
+        var written = effectiveName?.Invoke(name);
+        return HasCreatedLine(output, type, name) ||
+               (!string.IsNullOrEmpty(written) && !string.Equals(written, name, StringComparison.Ordinal) && HasCreatedLine(output, type, written));
+    }
+
+    private static bool HasCreatedLine(string output, RunObjectType type, string name)
+    {
         return type switch
         {
             RunObjectType.M365Group => Has(output, $"{name} created successfully with ID:"),
@@ -236,11 +247,17 @@ public static class RunJournal
     }
 
     /// <summary>The ID a group got, from its own "created" line.</summary>
-    public static string GroupIdFrom(string? output, string name)
+    public static string GroupIdFrom(string? output, string name, Func<string, string>? effectiveName = null)
     {
-        var marker = name.Trim() + " created successfully with ID:";
         var text = output ?? string.Empty;
+        var marker = name.Trim() + " created successfully with ID:";
         var at = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (at < 0 && effectiveName?.Invoke(name.Trim()) is { Length: > 0 } written)
+        {
+            marker = written + " created successfully with ID:";
+            at = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        }
+
         if (at < 0)
         {
             return string.Empty;
@@ -252,18 +269,25 @@ public static class RunJournal
     }
 
     /// <summary>Adds an object to the record when the output proves the run created it. Returns the object, or null.</summary>
-    public static RunObject? Record(RunRecord record, RunObjectType type, string name, int step, string? output, DateTime utcNow)
+    public static RunObject? Record(
+        RunRecord record, RunObjectType type, string name, int step, string? output, DateTime utcNow, Func<string, string>? effectiveName = null)
     {
         ArgumentNullException.ThrowIfNull(record);
-        if (!WasCreated(output, type, name))
+        if (!WasCreated(output, type, name, effectiveName))
         {
             return null;
         }
 
         var existing = record.Objects.FirstOrDefault(item => item.Type == type && Same(item.Name, name));
-        if (existing is not null)
+        if (existing is { Removed: false })
         {
             return existing;
+        }
+
+        // The object was removed and the run made it again: it is a new object with a new ID.
+        if (existing is not null)
+        {
+            record.Objects.Remove(existing);
         }
 
         var created = new RunObject
@@ -272,7 +296,7 @@ public static class RunJournal
             Name = name.Trim(),
             Step = step,
             CreatedUtc = utcNow,
-            ObjectId = type == RunObjectType.M365Group ? GroupIdFrom(output, name) : string.Empty
+            ObjectId = type == RunObjectType.M365Group ? GroupIdFrom(output, name, effectiveName) : string.Empty
         };
         record.Objects.Add(created);
         record.UpdatedUtc = utcNow;
@@ -418,7 +442,7 @@ public static class RunJournal
             builder.Append("Write-Host '").Append(StepMarker).Append(index).Append('\'').Append('\n');
             builder.Append(item.Object.Type switch
             {
-                RunObjectType.AutoAttendant => commands.GetRemoveAutoAttendantCommand(item.Object.Name),
+                RunObjectType.AutoAttendant => GetRemoveAutoAttendantOnlyCommand(item.Object.ObjectId),
                 RunObjectType.CallQueue => commands.GetRemoveCallQueueCommand(item.Object.Name),
                 RunObjectType.ResourceAccount => commands.GetRemoveResourceAccountCommand(item.Object.Name),
                 _ => commands.GetRemoveM365GroupCommand(item.Object.ObjectId, item.Object.Name)
@@ -426,6 +450,22 @@ public static class RunJournal
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Removes an auto attendant by its ID and leaves its schedules in the tenant. The delete script
+    /// of the Auto Attendants page also removes every schedule that is no longer used, and such a
+    /// schedule can be one that existed before the run and was attached later. A rollback removes
+    /// only what the run is known to have created, so it does not use that script.
+    /// </summary>
+    public static string GetRemoveAutoAttendantOnlyCommand(string autoAttendantId)
+    {
+        if (!Guid.TryParse(autoAttendantId, out var id))
+        {
+            throw new ArgumentException("The auto attendant has no usable ID.", nameof(autoAttendantId));
+        }
+
+        return RemoveAutoAttendantTemplate.Replace("__ID__", id.ToString("D"), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -506,6 +546,20 @@ public static class RunJournal
 
     private static bool Same(string? left, string? right)
         => string.Equals((left ?? string.Empty).Trim(), (right ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private const string RemoveAutoAttendantTemplate = """
+        try {
+            $pdRollbackAa = Get-CsAutoAttendant -Identity '__ID__' -ErrorAction Stop
+            if ($pdRollbackAa.ApplicationInstances) {
+                Remove-CsOnlineApplicationInstanceAssociation -Identities @($pdRollbackAa.ApplicationInstances) -ErrorAction Stop | Out-Null
+            }
+            Remove-CsAutoAttendant -Identity '__ID__' -ErrorAction Stop
+            Write-Host "SUCCESS: Auto attendant removed. Its schedules stay in the tenant."
+        }
+        catch {
+            Write-Host "ERROR: Failed to remove the auto attendant: $_"
+        }
+        """;
 
     private const string IdentityTemplate = """
         try {

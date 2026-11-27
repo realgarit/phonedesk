@@ -16,8 +16,11 @@ internal sealed class RunTools
     private readonly ChangeGate _changes;
     private readonly CreatedObjectGuard _guard;
 
-    public RunTools(McpRunJournal runs, TenantGateway tenant, ChangeGate changes, CreatedObjectGuard guard)
+    private readonly GuidedSetupProgress _progress;
+
+    public RunTools(McpRunJournal runs, TenantGateway tenant, ChangeGate changes, CreatedObjectGuard guard, GuidedSetupProgress progress)
     {
+        _progress = progress;
         _runs = runs;
         _tenant = tenant;
         _changes = changes;
@@ -75,6 +78,7 @@ internal sealed class RunTools
                 // Nothing to delete. What the check found gone is written to the record.
                 var closed = _runs.Journal.FinishRollback(record, plan, string.Empty);
                 Forget(closed);
+                EndActiveRun(record);
                 return new { success = true, applied = false, nothingToRemove = true, run = View(record), items };
             }
 
@@ -94,6 +98,7 @@ internal sealed class RunTools
                         outcomes = _runs.Journal.FinishRollback(
                             record, plan, string.IsNullOrEmpty(scriptResult.RawOutput) ? scriptResult.Value : scriptResult.RawOutput);
                         Forget(outcomes);
+                        EndActiveRun(record);
                         return outcomes.All(outcome => outcome.Removed || plan.Items.First(item => ReferenceEquals(item.Object, outcome.Object)).Action != RollbackAction.Delete);
                     }
                 },
@@ -113,6 +118,20 @@ internal sealed class RunTools
                     })),
                     "run", View(record));
         });
+
+    /// <summary>
+    /// A rollback of the run in progress ends that run in this session: its steps are open again,
+    /// and the next step starts a new record. Otherwise the session would write its older copy of
+    /// the record over the result of the rollback.
+    /// </summary>
+    private void EndActiveRun(RunRecord rolledBack)
+    {
+        if (string.Equals(_runs.Current?.Id, rolledBack.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            _runs.Reset();
+            _progress.Reset();
+        }
+    }
 
     /// <summary>An object a rollback removed is no longer one the server created.</summary>
     private void Forget(IEnumerable<RollbackOutcome> outcomes)

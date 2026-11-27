@@ -45,6 +45,8 @@ namespace PhoneDesk.Services
         public string GetRunIdentityCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Operations.RunObject> objects)
             => _commonBuilder.GetRunIdentityCommand(objects);
 
+        public string GetEffectiveObjectName(string name) => _commonBuilder.GetEffectiveObjectName(name);
+
         public string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries)
             => _commonBuilder.GetTenantPreflightCommand(entries);
 

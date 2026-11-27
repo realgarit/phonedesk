@@ -130,9 +130,8 @@ public static class RichReport
 
     private static CallFlowDiagram BuildDiagram(AutoAttendantInventorySnapshot attendant, TenantDocumentationSnapshot documentation, Names names, Text text)
     {
-        bool Mine(string name, string? identity) => identity is null
-            ? string.Equals(name, attendant.Name, StringComparison.Ordinal)
-            : string.Equals(identity, attendant.Identity, StringComparison.OrdinalIgnoreCase);
+        var shared = Shared(documentation.AutoAttendants.Select(item => item.Name));
+        bool Mine(string name, string? identity) => Owns(name, identity, attendant.Name, attendant.Identity, shared);
 
         var options = documentation.AutoAttendantMenuOptions.Where(option => Mine(option.AutoAttendantName, option.AutoAttendantIdentity)).ToList();
         var flows = new List<(string Title, string Detail, string Key, string Kind)>
@@ -423,6 +422,9 @@ public static class RichReport
         Fact(html, text["Language"], documentation.Tenant.Language);
         html.Append("</table></section>\n");
 
+        var sharedAttendants = Shared(documentation.AutoAttendants.Select(item => item.Name));
+        var sharedQueues = Shared(documentation.CallQueues.Select(item => item.Name));
+
         // Auto attendants
         html.Append("<section id=\"auto-attendants\"><h2>").Append(Escape(text["AutoAttendants"])).Append("</h2>\n");
         foreach (var diagram in diagrams)
@@ -435,10 +437,12 @@ public static class RichReport
             Fact(html, text["Voice"], attendant.Voice);
             FactHtml(html, text["ResourceAccounts"], names.AccountLinks(attendant.Identity));
             FactHtml(html, text["Schedules"], string.Join(", ", documentation.AutoAttendantScheduleAssociations
-                .Where(link => link.AutoAttendantIdentity is null ? link.AutoAttendantName == attendant.Name : string.Equals(link.AutoAttendantIdentity, attendant.Identity, StringComparison.OrdinalIgnoreCase))
+                .Where(link => Owns(link.AutoAttendantName, link.AutoAttendantIdentity, attendant.Name, attendant.Identity, sharedAttendants))
                 .OrderBy(link => link.Type, StringComparer.Ordinal).ThenBy(link => names.Schedule(link.ScheduleId), StringComparer.Ordinal)
                 .Select(link => Escape(link.Type) + ": " + names.ScheduleLink(link.ScheduleId))));
-            html.Append("</table><div class=\"diagram\">").Append(ToSvg(diagram)).Append("</div></article>\n");
+            html.Append("</table>");
+            Ambiguous(html, sharedAttendants.Contains(attendant.Name), text);
+            html.Append("<div class=\"diagram\">").Append(ToSvg(diagram)).Append("</div></article>\n");
         }
 
         Empty(html, documentation.AutoAttendants.Count, text);
@@ -448,7 +452,7 @@ public static class RichReport
         html.Append("<section id=\"call-queues\"><h2>").Append(Escape(text["CallQueues"])).Append("</h2>\n");
         foreach (var queue in documentation.CallQueues.OrderBy(item => item.Name, StringComparer.Ordinal).ThenBy(item => item.Identity, StringComparer.Ordinal))
         {
-            bool Mine(string name, string? identity) => identity is null ? name == queue.Name : string.Equals(identity, queue.Identity, StringComparison.OrdinalIgnoreCase);
+            bool Mine(string name, string? identity) => Owns(name, identity, queue.Name, queue.Identity, sharedQueues);
             html.Append("<article id=\"").Append(names.Anchor("cq", queue.Identity, queue.Name)).Append("\"><h3>").Append(Escape(queue.Name)).Append("</h3><table class=\"facts\">");
             Fact(html, text["PhoneNumbers"], names.NumbersOf(queue.Identity));
             Fact(html, text["Routing"], queue.Routing);
@@ -457,12 +461,21 @@ public static class RichReport
             FactHtml(html, text["ResourceAccounts"], names.AccountLinks(queue.Identity));
             FactHtml(html, text["Groups"], string.Join(", ", documentation.CallQueueDistributionLists.Where(item => Mine(item.CallQueueName, item.CallQueueIdentity))
                 .OrderBy(item => names.Group(item.GroupId), StringComparer.Ordinal).Select(item => names.GroupLink(item.GroupId))));
-            foreach (var action in documentation.CallQueueActions.Where(item => Mine(item.CallQueueName, item.CallQueueIdentity)).OrderBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Occurrence))
+            // The action and its threshold are on the call queue itself, also when the call is only
+            // disconnected. A target is a row of its own and is added when there is one.
+            var actions = documentation.CallQueueActions.Where(item => Mine(item.CallQueueName, item.CallQueueIdentity)).ToList();
+            string ActionHtml(string kind, string action, string threshold)
             {
-                FactHtml(html, action.Kind, Escape(action.Action + " (" + action.Threshold + ")") + (string.IsNullOrWhiteSpace(action.TargetId) ? string.Empty : " &rarr; " + names.TargetLink(action.TargetId)));
+                var target = actions.FirstOrDefault(item => string.Equals(item.Kind, kind, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(item.TargetId));
+                return string.IsNullOrWhiteSpace(action)
+                    ? string.Empty
+                    : Escape(action + " (" + threshold + ")") + (target is null ? string.Empty : " &rarr; " + names.TargetLink(target.TargetId));
             }
 
+            FactHtml(html, text["Overflow"], ActionHtml("Overflow", queue.OverflowAction, queue.OverflowThreshold));
+            FactHtml(html, text["Timeout"], ActionHtml("Timeout", queue.TimeoutAction, queue.TimeoutThreshold));
             html.Append("</table>");
+            Ambiguous(html, sharedQueues.Contains(queue.Name), text);
             var agents = documentation.CallQueueAgents.Where(item => Mine(item.CallQueueName, item.CallQueueIdentity))
                 .OrderBy(item => item.DisplayName, StringComparer.Ordinal).ThenBy(item => item.ObjectId, StringComparer.Ordinal).ToList();
             if (agents.Count > 0)
@@ -503,7 +516,7 @@ public static class RichReport
         {
             html.Append("<article id=\"").Append(names.Anchor("sch", schedule.Id, schedule.Name)).Append("\"><h3>").Append(Escape(schedule.Name))
                 .Append(" <span class=\"tag\">").Append(Escape(schedule.Type)).Append("</span></h3>");
-            var rows = ScheduleRows(documentation).Where(row => row.Id is null ? row.Name == schedule.Name : string.Equals(row.Id, schedule.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+            var rows = ScheduleRows(documentation).Where(row => string.Equals(row.Id, schedule.Id, StringComparison.OrdinalIgnoreCase) && row.Name == schedule.Name).ToList();
             if (rows.Any(row => row.Start.Length > 0))
             {
                 Table(html, new[] { text["Day"], text["Start"], text["End"] }, rows.Select(row => new[] { Escape(row.Day), Escape(row.Start), Escape(row.End) }));
@@ -575,6 +588,15 @@ public static class RichReport
         html.Append("</tbody></table>\n");
     }
 
+    /// <summary>Says that the details of an object are not shown, because another object has the same name.</summary>
+    private static void Ambiguous(StringBuilder html, bool sharedName, Text text)
+    {
+        if (sharedName)
+        {
+            html.Append("<p class=\"none\">").Append(Escape(text["SharedName"])).Append("</p>");
+        }
+    }
+
     private static void Empty(StringBuilder html, int count, Text text)
     {
         if (count == 0)
@@ -585,9 +607,10 @@ public static class RichReport
 
     private static IEnumerable<(string Name, string? Id, string Type, string Day, string Start, string End)> ScheduleRows(TenantDocumentationSnapshot documentation)
     {
+        var sharedSchedules = Shared(documentation.Schedules.Select(item => item.Name));
         foreach (var schedule in documentation.Schedules.OrderBy(item => item.Name, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal))
         {
-            bool Mine(string name, string? id) => id is null ? name == schedule.Name : string.Equals(id, schedule.Id, StringComparison.OrdinalIgnoreCase);
+            bool Mine(string name, string? id) => Owns(name, id, schedule.Name, schedule.Id, sharedSchedules);
             var any = false;
             foreach (var range in documentation.ScheduleWeeklyRanges.Where(item => Mine(item.ScheduleName, item.ScheduleId)).OrderBy(item => DayOrder(item.Day)).ThenBy(item => item.Start, StringComparer.Ordinal))
             {
@@ -610,6 +633,20 @@ public static class RichReport
 
     private static int DayOrder(string day)
         => Array.FindIndex(new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" }, name => string.Equals(name, day, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// True when a detail row belongs to an object. A row carries the ID of its parent when the
+    /// snapshot could tell which object it belongs to. A row without one is from a name that
+    /// several objects share: it is given to an object only when that object is the only one
+    /// with the name, and otherwise to none, so no object is shown with the details of another.
+    /// </summary>
+    private static bool Owns(string rowName, string? rowIdentity, string name, string identity, IReadOnlyCollection<string> sharedNames)
+        => rowIdentity is not null
+            ? string.Equals(rowIdentity, identity, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(rowName, name, StringComparison.Ordinal) && !sharedNames.Contains(name);
+
+    private static HashSet<string> Shared(IEnumerable<string> names)
+        => names.GroupBy(name => name, StringComparer.Ordinal).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.Ordinal);
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -813,6 +850,10 @@ public static class RichReport
             ["AfterHours"] = ("After hours", "Ausserhalb der Öffnungszeiten"),
             ["Holiday"] = ("Holiday", "Feiertag"),
             ["Automatic"] = ("automatic", "automatisch"),
+            ["Overflow"] = ("Overflow", "Überlauf"),
+            ["Timeout"] = ("Timeout", "Zeitlimit"),
+            ["SharedName"] = ("Another object has the same name. The snapshot cannot tell whose details are whose, so they are not shown here; the workbook lists them with their names.",
+                "Ein anderes Objekt hat denselben Namen. Der Stand zeigt nicht, zu welchem Objekt welche Details gehören; sie werden hier nicht angezeigt. Die Arbeitsmappe führt sie mit ihren Namen auf."),
             ["None"] = ("None in this snapshot.", "Keine in diesem Stand."),
             ["Footer"] = ("Made by PhoneDesk from a snapshot of the tenant. The report shows the tenant at the time of the snapshot.",
                 "Von PhoneDesk aus einem Stand des Mandanten erstellt. Der Bericht zeigt den Mandanten zum Zeitpunkt des Stands.")

@@ -120,7 +120,9 @@ public sealed class RichReportTests
         Assert.Contains("<a href=\"#aa-aa-id-1\">Main AA</a>", html);
         Assert.Contains("<a href=\"#grp-grp-1\">Support Group</a>", html);
         // The timeout of the call queue goes to the auto attendant behind the resource account.
-        Assert.Contains("&rarr; <a href=\"#aa-aa-id-1\">Main AA</a>", html);
+        Assert.Contains("<th>Timeout</th><td>Forward (1200) &rarr; <a href=\"#aa-aa-id-1\">Main AA</a>", html);
+        // An action without a target is documented too: callers over the threshold are disconnected.
+        Assert.Contains("<th>Overflow</th><td>Disconnect (50)</td>", html);
         // The diagram is inside the file.
         Assert.Contains("<svg xmlns=\"http://www.w3.org/2000/svg\"", html);
         // Nothing is loaded from elsewhere, and nothing runs.
@@ -135,6 +137,38 @@ public sealed class RichReportTests
         Assert.Contains("lang=\"de\"", RichReport.BuildHtml(Snapshot(), "DE"));
         var older = Assert.Throws<InvalidOperationException>(() => RichReport.BuildHtml(Snapshot(withDocumentation: false)));
         Assert.Contains("Take a new full snapshot", older.Message);
+    }
+
+    [Fact]
+    public void DetailsOfANameTwoObjectsShareAreGivenToNeither()
+    {
+        // A second auto attendant with the same name. The snapshot could not tell whose menu
+        // options are whose, so their rows carry no ID.
+        var one = Snapshot();
+        var documentation = one.Documentation!;
+        var twins = one with
+        {
+            Documentation = documentation with
+            {
+                AutoAttendants = documentation.AutoAttendants.Append(new AutoAttendantInventorySnapshot("Main AA", "aa-id-2", "de-DE", "W. Europe Standard Time", "Female", "Other menu")).ToList(),
+                AutoAttendantMenuOptions = documentation.AutoAttendantMenuOptions.Select(option => option with { AutoAttendantIdentity = null }).ToList(),
+                AutoAttendantCallFlows = documentation.AutoAttendantCallFlows.Select(flow => flow with { AutoAttendantIdentity = null }).ToList(),
+                AutoAttendantScheduleAssociations = documentation.AutoAttendantScheduleAssociations.Select(link => link with { AutoAttendantIdentity = null }).ToList()
+            }
+        };
+
+        var diagrams = RichReport.BuildDiagrams(twins);
+
+        Assert.Equal(2, diagrams.Count);
+        // Neither diagram shows the destinations: each has its root and its opening hours box only.
+        Assert.All(diagrams, diagram => Assert.DoesNotContain(diagram.Boxes, box => box.Kind is "target" or "holiday" or "afterhours"));
+        Assert.All(diagrams, diagram => Assert.Equal(2, diagram.Boxes.Count));
+        Assert.Contains("Another object has the same name", RichReport.BuildHtml(twins));
+        // The workbook still lists the rows, with the name they carry.
+        Assert.Equal(3, RichReport.BuildSheets(twins).Single(sheet => sheet.Name == "Menu options").Rows.Count);
+        // With one object of the name, a row without an ID is its own.
+        var single = one with { Documentation = twins.Documentation! with { AutoAttendants = documentation.AutoAttendants } };
+        Assert.Equal(3, RichReport.BuildDiagrams(single).Single().Boxes.Count(box => box.Kind == "target"));
     }
 
     [Fact]

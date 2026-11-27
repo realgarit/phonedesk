@@ -88,6 +88,143 @@ public static class SimulatedTenant
         Assert.True(string.Equals(ExpectedPhoneState, actual, StringComparison.Ordinal), "The inventory holds: " + actual);
     }
 
+    public const string RunTenantId = "tenant-1";
+    public const string RunGroup = "ttgrp-contoso-reception";
+    public const string RunGroupId = "11111111-2222-3333-4444-555555555555";
+    public const string RunAccount = "racq-contoso-reception@contoso.onmicrosoft.com";
+    public const string RunAccountId = "66666666-2222-3333-4444-555555555555";
+    public const string RunQueue = "cq-contoso-reception";
+    public const string RunQueueId = "77777777-2222-3333-4444-555555555555";
+
+    /// <summary>
+    /// What is left after both heads rolled the run back: the objects that were in the tenant before
+    /// the run, and none of the three the run created.
+    /// </summary>
+    public const string ExpectedRollbackState = "groups=ttgrp-fabrikam-sales; accounts=racq-fabrikam-sales@contoso.onmicrosoft.com; queues=cq-fabrikam-sales";
+
+    /// <summary>A failed Guided Setup run that created an agent group, a resource account and a call queue.</summary>
+    public static RunRecord SeedRun(RunJournalService journal)
+    {
+        var record = journal.Begin(RunKind.GuidedSetup, "test", RunTenantId, "Contoso", "contoso - reception");
+        record.Objects.Add(new RunObject { Type = RunObjectType.M365Group, Name = RunGroup, ObjectId = RunGroupId, Step = 1 });
+        record.Objects.Add(new RunObject { Type = RunObjectType.ResourceAccount, Name = RunAccount, ObjectId = RunAccountId, Step = 2 });
+        record.Objects.Add(new RunObject { Type = RunObjectType.CallQueue, Name = RunQueue, ObjectId = RunQueueId, Step = 4 });
+        record.State = RunState.Failed;
+        journal.Save(record);
+        return record;
+    }
+
+    /// <summary>Fails with what the tenant holds when it is not <see cref="ExpectedRollbackState"/>.</summary>
+    public static async Task AssertExpectedRollbackStateAsync(IPowerShellContextService tenant, CancellationToken cancellationToken)
+    {
+        var result = await tenant.ExecuteCommandWithDetailsAsync(
+            "Write-Host ('groups=' + (@($global:pdRunGroups | ForEach-Object { $_.DisplayName }) -join ',') + '; accounts=' + (@($global:pdRunAccounts | ForEach-Object { $_.UserPrincipalName }) -join ',') + '; queues=' + (@($global:pdRunQueues | ForEach-Object { $_.Name }) -join ','))",
+            null, null, cancellationToken);
+        Assert.True(string.Equals(ExpectedRollbackState, result.Output.Trim(), StringComparison.Ordinal), "The tenant holds: " + result.Output);
+    }
+
+    /// <summary>
+    /// A tenant with the three objects of the run and three that were there before it. The stand-ins
+    /// remove what the delete scripts of the pages remove, and nothing else.
+    /// </summary>
+    public const string RunTenant = """
+        $global:pdRunGroups = @(
+            [pscustomobject]@{ Id = '11111111-2222-3333-4444-555555555555'; DisplayName = 'ttgrp-contoso-reception' },
+            [pscustomobject]@{ Id = '11111111-0000-0000-0000-00000000000f'; DisplayName = 'ttgrp-fabrikam-sales' })
+        $global:pdRunAccounts = @(
+            [pscustomobject]@{ Id = '66666666-2222-3333-4444-555555555555'; UserPrincipalName = 'racq-contoso-reception@contoso.onmicrosoft.com'; Queue = '77777777-2222-3333-4444-555555555555' },
+            [pscustomobject]@{ Id = '66666666-0000-0000-0000-00000000000f'; UserPrincipalName = 'racq-fabrikam-sales@contoso.onmicrosoft.com'; Queue = '77777777-0000-0000-0000-00000000000f' })
+        $global:pdRunQueues = @(
+            [pscustomobject]@{ Identity = '77777777-2222-3333-4444-555555555555'; Name = 'cq-contoso-reception'; ApplicationInstances = @('66666666-2222-3333-4444-555555555555') },
+            [pscustomobject]@{ Identity = '77777777-0000-0000-0000-00000000000f'; Name = 'cq-fabrikam-sales'; ApplicationInstances = @('66666666-0000-0000-0000-00000000000f') })
+        function global:Get-MgGroup { [CmdletBinding()] param($Filter, [switch]$All, $GroupId)
+            if ($GroupId) {
+                $pdFound = $global:pdRunGroups | Where-Object { $_.Id -eq $GroupId }
+                if (-not $pdFound) { throw "Group $GroupId does not exist." }
+                return $pdFound
+            }
+            $global:pdRunGroups | Where-Object { $Filter -eq ("displayName eq '" + $_.DisplayName + "'") }
+        }
+        function global:Remove-MgGroup { [CmdletBinding()] param($GroupId)
+            if (-not ($global:pdRunGroups | Where-Object { $_.Id -eq $GroupId })) { throw "Group $GroupId does not exist." }
+            $global:pdRunGroups = @($global:pdRunGroups | Where-Object { $_.Id -ne $GroupId })
+        }
+        function global:Get-MgUser { [CmdletBinding()] param($Filter, $Property)
+            $global:pdRunAccounts | Where-Object { $Filter -eq ("userPrincipalName eq '" + $_.UserPrincipalName + "'") }
+        }
+        function global:Remove-MgUser { [CmdletBinding()] param($UserId)
+            if (-not ($global:pdRunAccounts | Where-Object { $_.Id -eq $UserId })) { throw "User $UserId does not exist." }
+            $global:pdRunAccounts = @($global:pdRunAccounts | Where-Object { $_.Id -ne $UserId })
+        }
+        function global:Get-CsOnlineApplicationInstance { [CmdletBinding()] param($Identity)
+            $pdFound = $global:pdRunAccounts | Where-Object { $_.UserPrincipalName -eq $Identity }
+            if (-not $pdFound) { throw "Application instance $Identity was not found." }
+            [pscustomobject]@{ ObjectId = $pdFound.Id; UserPrincipalName = $pdFound.UserPrincipalName }
+        }
+        function global:Get-CsOnlineApplicationInstanceAssociation { [CmdletBinding()] param($Identity)
+            $pdFound = $global:pdRunAccounts | Where-Object { $_.Id -eq $Identity }
+            if (-not $pdFound -or -not $pdFound.Queue) { throw "No association." }
+            [pscustomobject]@{ Id = $pdFound.Id; ConfigurationId = $pdFound.Queue }
+        }
+        function global:Remove-CsOnlineApplicationInstanceAssociation { [CmdletBinding()] param($Identities)
+            foreach ($pdId in @($Identities)) {
+                foreach ($pdAccount in @($global:pdRunAccounts | Where-Object { $_.Id -eq $pdId })) { $pdAccount.Queue = $null }
+                foreach ($pdQueue in $global:pdRunQueues) { $pdQueue.ApplicationInstances = @($pdQueue.ApplicationInstances | Where-Object { $_ -ne $pdId }) }
+            }
+        }
+        function global:Get-CsCallQueue { [CmdletBinding()] param($NameFilter, $Identity)
+            $global:pdRunQueues | Where-Object { (-not $NameFilter -or $_.Name -like "*$NameFilter*") -and (-not $Identity -or $_.Identity -eq $Identity) }
+        }
+        function global:Remove-CsCallQueue { [CmdletBinding()] param($Identity)
+            if (-not ($global:pdRunQueues | Where-Object { $_.Identity -eq $Identity })) { throw "Call queue $Identity does not exist." }
+            $global:pdRunQueues = @($global:pdRunQueues | Where-Object { $_.Identity -ne $Identity })
+        }
+        function global:Get-CsAutoAttendant { [CmdletBinding()] param($NameFilter, $Identity) }
+        """;
+
+    /// <summary>
+    /// Stand-ins for the two commands that say who a session is signed in as. A session is signed
+    /// in only after <see cref="SignInAsync"/> ran in it, like a browser sign-in the operator finished.
+    /// </summary>
+    public const string ProfileTenant = """
+        $global:pdSignedIn = $null
+        function global:Get-CsTenant { [CmdletBinding()] param()
+            if (-not $global:pdSignedIn) { throw 'You must call the Connect-MicrosoftTeams cmdlet before calling any other cmdlets.' }
+            [pscustomobject]@{ TenantId = $global:pdSignedIn.Id; DisplayName = $global:pdSignedIn.Name; VerifiedDomains = @([pscustomobject]@{ Name = $global:pdSignedIn.Domain }) }
+        }
+        function global:Get-MgContext { [CmdletBinding()] param()
+            if (-not $global:pdSignedIn) { return $null }
+            [pscustomobject]@{ TenantId = $global:pdSignedIn.Id; Account = $global:pdSignedIn.Account }
+        }
+        """;
+
+    /// <summary>Stands for a finished sign-in to Teams and Graph in the session that is active now.</summary>
+    public static Task SignInAsync(IPowerShellContextService tenant, string customer, CancellationToken cancellationToken)
+        => tenant.ExecuteCommandWithDetailsAsync(
+            "$global:pdSignedIn = @{ Id = '" + customer + "-tenant-id'; Name = '" + customer + " AG'; Domain = '" + customer.ToLowerInvariant() + ".com'; Account = 'admin@" + customer.ToLowerInvariant() + ".com' }",
+            null, null, cancellationToken);
+
+    /// <summary>
+    /// The end of the profile scenario in both heads: after Contoso, then Fabrikam, then Contoso
+    /// again, the session of Contoso is in use and still signed in as Contoso, with no new sign-in.
+    /// </summary>
+    public static void AssertBackOnContoso(IPowerShellContextService tenant, ISessionManager session, TenantIdentityGuard identity, string contosoProfileId)
+    {
+        Assert.Equal(contosoProfileId, tenant.SessionKey);
+        Assert.True(session.TeamsConnected);
+        Assert.True(session.GraphConnected);
+        Assert.Equal("Contoso AG", session.TenantName);
+        Assert.Equal("contoso.com", identity.Expectation.Tenant);
+        Assert.Empty(identity.Problems);
+    }
+
+    /// <summary>The state right after the first switch to a customer: its session has no sign-in yet.</summary>
+    public static void AssertNotSignedIn(ISessionManager session)
+    {
+        Assert.False(session.TeamsConnected);
+        Assert.False(session.GraphConnected);
+    }
+
     /// <summary>A tenant with two employees, one resource account and three numbers.</summary>
     public const string PhoneTenant = """
         $global:pdFakeUsers = @(
@@ -200,20 +337,48 @@ public static class SimulatedTenant
 }
 
 /// <summary>
-/// Runs every script in one real PowerShell engine that holds the simulated tenant. It returns
-/// what the script wrote, like the app's own host does, so a head that works with it runs its real
-/// scripts and reads their real output.
+/// Runs every script in a real PowerShell engine that holds the simulated tenant. It returns what
+/// the script wrote, like the app's own host does, so a head that works with it runs its real
+/// scripts and reads their real output. Like the app's host it keeps one engine per session key:
+/// what one session holds (a sign-in, a variable) is not there in another.
 /// </summary>
 public sealed class SimulatedTenantPowerShell : IPowerShellContextService
 {
-    private readonly PowerShell _shell = PowerShell.Create();
+    private readonly Dictionary<string, PowerShell> _sessions = new(StringComparer.Ordinal);
+    private readonly string _tenant;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private PowerShell _shell;
 
     /// <param name="tenant">The stand-ins to load. Without it: the call queue and auto attendant of <see cref="SimulatedTenant.Teams"/>.</param>
     public SimulatedTenantPowerShell(string? tenant = null)
     {
-        _shell.AddScript(tenant ?? SimulatedTenant.Teams).Invoke();
-        Assert.True(_shell.Streams.Error.Count == 0, string.Join("; ", _shell.Streams.Error.Select(error => error.ToString())));
+        _tenant = tenant ?? SimulatedTenant.Teams;
+        _shell = Open(string.Empty);
+    }
+
+    public string SessionKey { get; private set; } = string.Empty;
+
+    public void UseSession(string key)
+    {
+        SessionKey = key ?? string.Empty;
+        _shell = _sessions.TryGetValue(SessionKey, out var existing) ? existing : Open(SessionKey);
+    }
+
+    public void CloseSession(string key)
+    {
+        if (!string.Equals(key, SessionKey, StringComparison.Ordinal) && _sessions.Remove(key ?? string.Empty, out var closed))
+        {
+            closed.Dispose();
+        }
+    }
+
+    private PowerShell Open(string key)
+    {
+        var shell = PowerShell.Create();
+        shell.AddScript(_tenant).Invoke();
+        Assert.True(shell.Streams.Error.Count == 0, string.Join("; ", shell.Streams.Error.Select(error => error.ToString())));
+        _sessions[key] = shell;
+        return shell;
     }
 
     /// <summary>Every script a head sent, in order.</summary>
@@ -269,7 +434,11 @@ public sealed class SimulatedTenantPowerShell : IPowerShellContextService
 
     public void Dispose()
     {
-        _shell.Dispose();
+        foreach (var shell in _sessions.Values)
+        {
+            shell.Dispose();
+        }
+
         _gate.Dispose();
     }
 }

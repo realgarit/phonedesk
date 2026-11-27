@@ -44,8 +44,7 @@ public sealed class PhoneNumberRow
     /// <summary>NotBlocked, BlockedForever or BlockedUntil: Teams refuses a blocked number for another account.</summary>
     public string AssignmentBlockedState { get; init; } = string.Empty;
 
-    public bool IsBlockedForAssignment
-        => AssignmentBlockedState.StartsWith("Blocked", StringComparison.OrdinalIgnoreCase);
+    public bool IsBlockedForAssignment => PhoneNumbers.IsBlockedForAssignment(AssignmentBlockedState);
 
     /// <summary>
     /// True when the number belongs to something that is not an account, for example a Teams shared
@@ -127,6 +126,22 @@ public static class PhoneNumbers
     public const int OwnerLookupLimit = 100;
 
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>The capability a number needs for a resource account, and the one it needs for a user.</summary>
+    public const string ResourceAccountCapability = "VoiceApplicationAssignment";
+    public const string UserCapability = "UserAssignment";
+
+    /// <summary>True when Teams blocks the number for assignment (AssignmentBlockedState starts with "Blocked").</summary>
+    public static bool IsBlockedForAssignment(string? assignmentBlockedState)
+        => (assignmentBlockedState ?? string.Empty).StartsWith("Blocked", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when a number can be given to this kind of account. A number that lists no capability is
+    /// not refused: not every number type reports them.
+    /// </summary>
+    public static bool HasCapabilityFor(IReadOnlyList<string> capabilities, bool resourceAccount)
+        => capabilities.Count == 0 ||
+           capabilities.Contains(resourceAccount ? ResourceAccountCapability : UserCapability, StringComparer.OrdinalIgnoreCase);
 
     public static string RequireNumber(string? number)
     {
@@ -252,8 +267,8 @@ public static class PhoneNumbers
 
         if (target is not null && row is not null && row.Capabilities.Count > 0)
         {
-            var needed = target.IsResourceAccount ? "VoiceApplicationAssignment" : "UserAssignment";
-            if (!row.Capabilities.Contains(needed, StringComparer.OrdinalIgnoreCase))
+            var needed = target.IsResourceAccount ? ResourceAccountCapability : UserCapability;
+            if (!HasCapabilityFor(row.Capabilities, target.IsResourceAccount))
             {
                 blockers.Add(new("capability",
                     $"The number {wanted} cannot be used for a {(target.IsResourceAccount ? "resource account" : "user")}: " +

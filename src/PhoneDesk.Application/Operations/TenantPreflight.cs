@@ -47,6 +47,12 @@ public sealed class PreflightNumber
 
     /// <summary>The sign-in name of the account that has the number, when it could be read.</summary>
     public string AssignedTo { get; init; } = string.Empty;
+
+    /// <summary>What the number can be used for, for example UserAssignment or VoiceApplicationAssignment.</summary>
+    public IReadOnlyList<string> Capabilities { get; init; } = Array.Empty<string>();
+
+    /// <summary>Not empty when Teams blocks the number for assignment.</summary>
+    public string AssignmentBlockedState { get; init; } = string.Empty;
 }
 
 /// <summary>The licenses of one product the tenant has. Null when the tenant has no such subscription.</summary>
@@ -256,18 +262,36 @@ public static class TenantPreflight
                 $"The number {wanted} is a {number.Type} number in the tenant, not {source.PhoneNumberType}.");
         }
 
-        if (string.IsNullOrWhiteSpace(number.AssignedToId))
+        var assigned = !string.IsNullOrWhiteSpace(number.AssignedToId);
+        var own = assigned && row.AutoAttendantAccount is { Exists: true } account &&
+                  (string.Equals(account.Id, number.AssignedToId, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(source.RaaaUPN, number.AssignedTo, StringComparison.OrdinalIgnoreCase));
+        if (own)
+        {
+            return new PreflightCheck(name, PreflightStatus.Pass, $"The number {wanted} is already assigned to the auto attendant resource account.");
+        }
+
+        // The same rules as the Phone Numbers page: a free number is not yet a usable one.
+        if (PhoneNumbers.IsBlockedForAssignment(number.AssignmentBlockedState))
+        {
+            return new PreflightCheck(name, PreflightStatus.Fail,
+                $"Teams blocks the number {wanted} for assignment ({number.AssignmentBlockedState}). An administrator removes the block with Remove-CsPhoneNumberAssignmentBlock. The number step would fail.");
+        }
+
+        if (!PhoneNumbers.HasCapabilityFor(number.Capabilities, resourceAccount: true))
+        {
+            return new PreflightCheck(name, PreflightStatus.Fail,
+                $"The number {wanted} cannot be used for a resource account: it has the capabilities {string.Join(", ", number.Capabilities)}, " +
+                $"not {PhoneNumbers.ResourceAccountCapability}. The number step would fail.");
+        }
+
+        if (!assigned)
         {
             return new PreflightCheck(name, PreflightStatus.Pass, $"The number {wanted} is in the tenant and not assigned.");
         }
 
         var owner = string.IsNullOrWhiteSpace(number.AssignedTo) ? number.AssignedToId : number.AssignedTo;
-        var own = row.AutoAttendantAccount is { Exists: true } account &&
-                  (string.Equals(account.Id, number.AssignedToId, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(source.RaaaUPN, number.AssignedTo, StringComparison.OrdinalIgnoreCase));
-        return own
-            ? new PreflightCheck(name, PreflightStatus.Pass, $"The number {wanted} is already assigned to the auto attendant resource account.")
-            : new PreflightCheck(name, PreflightStatus.Fail, $"The number {wanted} is assigned to {owner}. The number step would fail.");
+        return new PreflightCheck(name, PreflightStatus.Fail, $"The number {wanted} is assigned to {owner}. The number step would fail.");
     }
 
     private static string Label(PreflightLicense license)
@@ -337,10 +361,17 @@ public static class TenantPreflight
                             if ($pdOwnerId) {
                                 try { $pdOwnerName = [string](Get-CsOnlineUser -Identity $pdOwnerId -ErrorAction Stop).UserPrincipalName } catch { $pdOwnerName = '' }
                             }
-                            $pdNumber = [ordered]@{ inInventory = $true; type = [string]$pdItem.NumberType; assignedToId = $pdOwnerId; assignedTo = $pdOwnerName }
+                            $pdNumber = [ordered]@{
+                                inInventory = $true
+                                type = [string]$pdItem.NumberType
+                                assignedToId = $pdOwnerId
+                                assignedTo = $pdOwnerName
+                                capabilities = @(@($pdItem.Capability) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+                                assignmentBlockedState = [string]$pdItem.AssignmentBlockedState
+                            }
                         }
                         else {
-                            $pdNumber = [ordered]@{ inInventory = $false; type = ''; assignedToId = ''; assignedTo = '' }
+                            $pdNumber = [ordered]@{ inInventory = $false; type = ''; assignedToId = ''; assignedTo = ''; capabilities = @(); assignmentBlockedState = '' }
                         }
                     }
                     catch { $pdErrors += "Phone number: $_" }

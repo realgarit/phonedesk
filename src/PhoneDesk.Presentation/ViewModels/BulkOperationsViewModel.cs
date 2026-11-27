@@ -294,6 +294,31 @@ namespace PhoneDesk.ViewModels
                 new Dictionary<string, object?> { ["rows"] = Plan.EntryCount, ["invalid"] = Plan.InvalidEntryCount });
         }
 
+        /// <summary>The same plan, with the checks against what the tenant holds for every row. Reads only.</summary>
+        [RelayCommand]
+        private async Task CheckPlanAgainstTenantAsync()
+        {
+            if (_planBuilder == null)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsPlanPreviewUnavailable,
+                    "Plan preview is unavailable.");
+                return;
+            }
+
+            if (ParsedEntries.Count == 0)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.BulkOperationsNoEntriesToPlanError,
+                    "No entries to plan. Parse CSV first.");
+                return;
+            }
+
+            var sources = CollectParsedVariables();
+            var plan = _planBuilder.BuildBulkPlan(sources);
+            await RunBusyAsync(async () => Plan = await CheckPlanAgainstTenantAsync(plan, sources), nameof(CheckPlanAgainstTenantAsync));
+        }
+
         [RelayCommand]
         private Task ExportPlanJsonAsync() => ExportPlanAsync(asJson: true);
 

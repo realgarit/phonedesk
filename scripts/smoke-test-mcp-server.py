@@ -17,7 +17,7 @@ EXPECTED_TOOLS = {
     "session_status", "check_modules", "connect_teams", "connect_graph", "disconnect",
     "configuration_get", "configuration_update", "tenant_overview", "run_health_check",
     "backup_tenant", "compare_with_backup", "guided_setup_status", "guided_setup_run_step",
-    "create_call_queue", "create_auto_attendant", "delete_call_queue", "bulk_setup", "audit_history",
+    "create_call_queue", "create_auto_attendant", "delete_call_queue", "bulk_setup", "bulk_setup_preview", "audit_history",
     "list_holiday_schedules", "holiday_call_handling", "copy_holiday_call_handling",
     "backup_holiday_call_handling", "list_audio_files",
     "tenant_identity", "restart_sign_in", "compare_holiday_list", "holiday_change_table",

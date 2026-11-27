@@ -437,6 +437,41 @@ namespace PhoneDesk.ViewModels
         /// Wraps an async operation with IsBusy tracking and error handling.
         /// Reduces the try/catch/finally boilerplate in every command method.
         /// </summary>
+/// <summary>
+        /// Reads the tenant for a dry-run plan and returns the plan with the checks against it:
+        /// what exists already, free licenses, and whether the phone number is free. The script
+        /// only reads. When the tenant cannot be read the plan comes back as it was.
+        /// </summary>
+        protected async Task<PhoneDesk.Planning.DryRunPlan> CheckPlanAgainstTenantAsync(
+            PhoneDesk.Planning.DryRunPlan plan, IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> sources)
+        {
+            var result = await ExecutePowerShellCommandAsync(
+                PhoneDesk.Operations.TenantPreflight.GetReadCommand(sources), null, "PreviewTenantCheck", allowThrottleRetry: true);
+            try
+            {
+                var state = PhoneDesk.Operations.TenantPreflight.Parse(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput);
+                var live = PhoneDesk.Operations.TenantPreflight.Apply(plan, sources, state);
+                var checks = live.Entries.SelectMany(entry => entry.PreflightChecks).ToList();
+                StatusMessage = GetText(
+                    UiTextKey.PlanTenantCheckDoneStatus,
+                    "Tenant checked: {fail} check(s) would fail, {warning} warning(s).",
+                    new Dictionary<string, object?>
+                    {
+                        ["fail"] = checks.Count(check => check.IsFail),
+                        ["warning"] = checks.Count(check => check.IsWarning)
+                    });
+                return live;
+            }
+            catch (System.IO.InvalidDataException ex)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.PlanTenantCheckFailedStatus,
+                    "The tenant could not be read for the preview: {details}",
+                    new Dictionary<string, object?> { ["details"] = string.IsNullOrWhiteSpace(result.ErrorMessage) ? ex.Message : result.ErrorMessage });
+                return plan;
+            }
+        }
+
         protected async Task RunBusyAsync(Func<Task> action, string context = "", string? waitingMessage = null)
         {
             try

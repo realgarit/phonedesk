@@ -13,13 +13,19 @@ internal sealed class BulkTools
     private readonly IDryRunPlanBuilder _planBuilder;
     private readonly ChangeGate _changes;
     private readonly CreatedObjectGuard _guard;
+    private readonly IDryRunPlanExporter _planExporter;
+    private readonly TenantGateway _tenant;
 
     public BulkTools(
         BulkSetupScriptBuilder bulk,
         IDryRunPlanBuilder planBuilder,
         ChangeGate changes,
-        CreatedObjectGuard guard)
+        CreatedObjectGuard guard,
+        IDryRunPlanExporter planExporter,
+        TenantGateway tenant)
     {
+        _planExporter = planExporter;
+        _tenant = tenant;
         _bulk = bulk;
         _planBuilder = planBuilder;
         _changes = changes;
@@ -33,6 +39,30 @@ internal sealed class BulkTools
         columns = BulkSetupScriptBuilder.CsvHeaders,
         template = _bulk.GenerateCsvTemplate()
     });
+
+    [McpServerTool(Name = "bulk_setup_preview", ReadOnly = true, Idempotent = true, OpenWorld = true)]
+    [Description("Returns the dry-run plan of a bulk setup: for every CSV row the objects that would be created with their computed names, the validation errors, and the preflight checks (the same group, account or number in two rows). Without checkTenant nothing is sent to the tenant. With checkTenant=true (needs both connections) it also reads the tenant for every row: which names and accounts exist already (the setup reuses them: a warning), whether enough licenses are free for all rows together, and whether each phone number is free. A check with the status Fail means that row would fail. Use it before bulk_setup. Read-only.")]
+    public Task<string> BulkSetupPreview(
+        [Description("CSV text with the header row from bulk_setup_template.")] string csv,
+        [Description("True to compare the plan with what the tenant holds. Needs both connections.")] bool checkTenant = false,
+        CancellationToken cancellationToken = default)
+        => McpJson.RunAsync(async () =>
+        {
+            var entries = _bulk.ParseCsv(csv ?? string.Empty).Select(ToVariables).ToList();
+            if (entries.Count == 0)
+            {
+                throw new InvalidOperationException("The CSV has no data rows. It needs the header row and at least one row.");
+            }
+
+            var plan = _planBuilder.BuildBulkPlan(entries);
+            if (checkTenant)
+            {
+                var read = await _tenant.ReadAsync(TenantPreflight.GetReadCommand(entries), "PreviewTenantCheck", cancellationToken);
+                plan = TenantPreflight.Apply(plan, entries, TenantPreflight.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput));
+            }
+
+            return (object)System.Text.Json.Nodes.JsonNode.Parse(_planExporter.ToJson(plan))!;
+        });
 
     [McpServerTool(Name = "bulk_setup", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
     [Description("Sets up several complete phone systems from CSV text, one per row, in one script. Every row is validated first; one invalid row stops the whole run, unless skipInvalidRows is true: then the valid rows are planned and the result lists the rows that were left out. CHANGES THE TENANT. Call it first without planId: it returns the rows, their computed names and the exact script as a plan and changes nothing. Show the plan to the user, then call it again with the same CSV and the planId to run it.")]

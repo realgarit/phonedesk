@@ -1,5 +1,39 @@
 # Changelog
 
+## [3.40.0](https://github.com/realgarit/phonedesk/compare/v3.39.0...v3.40.0) (2026-11-27)
+
+
+### Features
+
+* change a call queue or an auto attendant that exists, in the app and the MCP server ([9c2262b](https://github.com/realgarit/phonedesk/commit/9c2262bb7301588f74f96a95774dfdc8fa459737))
+* change a call queue or an auto attendant that exists, in the app and the MCP server ([d9c2a3c](https://github.com/realgarit/phonedesk/commit/d9c2a3cf03d0374a20f64a8081aaa3da45b365c4)), closes [#65](https://github.com/realgarit/phonedesk/issues/65)
+* check the dry-run preview against the tenant, in the app and the MCP server ([48dc702](https://github.com/realgarit/phonedesk/commit/48dc7024d39c79440480f76a34fb36afad065d0e))
+* check the dry-run preview against the tenant, in the app and the MCP server ([f354f3a](https://github.com/realgarit/phonedesk/commit/f354f3a6ff05a39de132df1c843fdfbc67e6629b)), closes [#139](https://github.com/realgarit/phonedesk/issues/139)
+* customer profiles with one-step switching, in the app and the MCP server ([8bfec28](https://github.com/realgarit/phonedesk/commit/8bfec2879479f0b99b9a0134174e3ad0fb36c888))
+* customer profiles with one-step switching, in the app and the MCP server ([cded454](https://github.com/realgarit/phonedesk/commit/cded4540603b0b881b6053a2d70ab8b803d81343)), closes [#70](https://github.com/realgarit/phonedesk/issues/70)
+* one PowerShell session and Graph sign-in per profile, and give up a hanging Teams sign-in ([e5a4404](https://github.com/realgarit/phonedesk/commit/e5a44046a452a3b30d5692ef6230e670af73ed7b))
+* one PowerShell session and Graph sign-in per profile, and give up a hanging Teams sign-in ([dc6fe0c](https://github.com/realgarit/phonedesk/commit/dc6fe0c0dafabecee24dbe58cec0317c56a18622)), closes [#70](https://github.com/realgarit/phonedesk/issues/70) [#271](https://github.com/realgarit/phonedesk/issues/271)
+* public holidays of more countries and calendar file import, in the app and the MCP server ([9e1a275](https://github.com/realgarit/phonedesk/commit/9e1a2750311234776a2dd68ce57b3e906d254c17))
+* public holidays of more countries and calendar file import, in the app and the MCP server ([dd9ce8c](https://github.com/realgarit/phonedesk/commit/dd9ce8c9ca53b00bbff0035c52058971bfb3c3a6)), closes [#75](https://github.com/realgarit/phonedesk/issues/75)
+* readable tenant report as HTML, workbook and call-flow diagrams, in the app and the MCP server ([39c2ec7](https://github.com/realgarit/phonedesk/commit/39c2ec770809d6cd6e415588b4d030c7c90eb62c))
+* readable tenant report as HTML, workbook and call-flow diagrams, in the app and the MCP server ([63126ed](https://github.com/realgarit/phonedesk/commit/63126ed1fe6f332d99f819779d17da6dfa6f66b8)), closes [#73](https://github.com/realgarit/phonedesk/issues/73)
+* record every setup run, resume it and roll it back, in the app and the MCP server ([5412aea](https://github.com/realgarit/phonedesk/commit/5412aeaf0fed110ca05dd7fdda13ec982be0b758))
+* record every setup run, resume it and roll it back, in the app and the MCP server ([a976faf](https://github.com/realgarit/phonedesk/commit/a976faf4136b61469e50ab194e970c02f49670c8)), closes [#69](https://github.com/realgarit/phonedesk/issues/69)
+
+
+### Bug Fixes
+
+* bind a change of opening hours to its schedule, and never call an unread save confirmed ([6bbc47d](https://github.com/realgarit/phonedesk/commit/6bbc47d0b47b52d5ca52a80c4fa4b5633a113246))
+* bind a change to the session it was checked for, drop a given-up Teams result, one shared profile switch ([7986916](https://github.com/realgarit/phonedesk/commit/7986916e47ec546ca1d117b9a6d7a21d04211d18))
+* fail the preview for a number Teams blocks or that a resource account cannot have ([7a39144](https://github.com/realgarit/phonedesk/commit/7a39144f1153a646e873a4bf0c9a367c3a1a67f5))
+* fail the preview for a number Teams blocks or that a resource account cannot have ([e723c16](https://github.com/realgarit/phonedesk/commit/e723c16cd1bfe8a1538631d946322ba914bd9b53))
+* give details of a shared name to no object, and always show overflow and timeout ([341bb8c](https://github.com/realgarit/phonedesk/commit/341bb8c72e95c098294dc1bf6074f1bff9476518))
+* keep schedules in a rollback, reset the run after it, and stay in one tenant ([6b9a2fe](https://github.com/realgarit/phonedesk/commit/6b9a2fe99b9e4955e9871d87ee40535fd00b5855))
+* read the length of a calendar event, choose the year before the limit, and guard file paths once ([b76d695](https://github.com/realgarit/phonedesk/commit/b76d6950bebc99a64b95ff5b6297132e435f7ba9))
+* refuse network and device paths for files an AI client names ([b5c426f](https://github.com/realgarit/phonedesk/commit/b5c426fff06e0acf91d03c95014df4675dbc7ba6))
+* restore the profile's tenant at MCP start, keep edits on a switch to the same profile, wait for open sign-ins ([27f4b72](https://github.com/realgarit/phonedesk/commit/27f4b72e98bebe7d2586894255c20183fdeca285))
+* search the tenant for the names as the provisioning scripts write them ([77705b5](https://github.com/realgarit/phonedesk/commit/77705b57b1033e6d1f2ad032af7a86d084377506))
+
 ## [3.39.0](https://github.com/realgarit/phonedesk/compare/v3.38.0...v3.39.0) (2026-11-27)
 
 

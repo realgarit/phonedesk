@@ -581,6 +581,17 @@ namespace PhoneDesk.ViewModels
             ShowAssociateDialog = true;
         }
 
+        /// <summary>Opens the selected auto attendant on the Edit Settings page.</summary>
+        [RelayCommand]
+        private void EditAutoAttendant(string? aaName)
+        {
+            if (!string.IsNullOrWhiteSpace(aaName) && _sharedStateService is not null)
+            {
+                _sharedStateService.EditRequest = new EditRequest(PhoneDesk.Operations.EditObjectKind.AutoAttendant, aaName);
+                NavigateTo(ConstantsService.Pages.EditSettings);
+            }
+        }
+
         [RelayCommand]
         private async Task RemoveAutoAttendantAsync(string? aaName = null)
         {

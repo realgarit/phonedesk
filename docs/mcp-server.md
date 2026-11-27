@@ -132,6 +132,28 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### Changing a call queue or an auto attendant that exists
+
+`get_call_queue_settings` and `get_auto_attendant_settings` read the settings that can be changed,
+with their current values, allowed values and ranges. `edit_call_queue` and `edit_auto_attendant`
+take a map of setting to new value:
+
+- Call queue: routing method, agent alert time, language, greeting text, opt-out, presence-based
+  routing, conference mode, agent groups, and the overflow and timeout thresholds, actions and targets.
+- Auto attendant: language, time zone, greeting text and action with target in opening hours, the
+  opening hours (`Mon 08:00-12:00,13:00-17:00; Sat closed`), and greeting text and action after hours.
+
+Only a setting that differs from the tenant is sent. The first call returns each change with its
+old and new value; the second call with the `planId` saves them, one setting at a time, and a
+setting that fails does not stop the others. The object is read again before the save (a changed
+object refuses the plan) and after it, and the result says for each setting whether it was saved
+and whether the tenant shows it. Not changed by these tools: a menu with keys, a greeting that is
+an audio file, and holidays (use the holiday tools). The opening hours are in a schedule; when it
+is shared, the new hours apply to every auto attendant that uses it, and the tools say so.
+
+The desktop app has the same on the **Edit Settings** page, and an **Edit** button on the call
+queue and auto attendant lists.
+
 ### The readable report
 
 `export_tenant_report` writes the documentation of a tenant from a snapshot file, without reading

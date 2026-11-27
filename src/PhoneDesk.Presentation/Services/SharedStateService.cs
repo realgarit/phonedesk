@@ -30,4 +30,7 @@ public partial class SharedStateService : ObservableObject, ISharedStateService
 
     [ObservableProperty]
     private PhoneDesk.Operations.RunRecord? _setupRun;
+
+    [ObservableProperty]
+    private EditRequest? _editRequest;
 }

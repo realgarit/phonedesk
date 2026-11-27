@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.41.3](https://github.com/realgarit/phonedesk/compare/v3.41.2...v3.41.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* confirm an edit target given as a sign-in name, in both heads ([bccb843](https://github.com/realgarit/phonedesk/commit/bccb843812e47922406a6d3b5fddc306e91ecadd))
+* confirm an edit target given as a sign-in name, in both heads ([fd45972](https://github.com/realgarit/phonedesk/commit/fd45972c83d71cac8392c8f8905e756404426bd6))
+
 ## [3.41.2](https://github.com/realgarit/phonedesk/compare/v3.41.1...v3.41.2) (2026-11-27)
 
 

@@ -1426,5 +1426,12 @@
   "WizardRollbackRunAction": "Roll back this run",
   "WizardRunResumedStatus": "Resumed: {count} completed step(s) restored. A step that ran with other configuration values must run again.",
   "WizardRunJournalFailedLog": "The run record could not be written: {error}",
-  "SetupRunsOtherTenantStatus": "This run belongs to another tenant ({tenant}). Connect to that tenant to roll it back."
+  "SetupRunsOtherTenantStatus": "This run belongs to another tenant ({tenant}). Connect to that tenant to roll it back.",
+  "DocumentationRichReportAction": "Report (HTML, Excel, diagrams)",
+  "DocumentationRichReportTooltip": "Reads the tenant and writes a readable report: one HTML file, a workbook, and a call-flow diagram per auto attendant. The tenant is only read.",
+  "DocumentationRichReportFromFileAction": "Report from a snapshot file",
+  "DocumentationRichReportFromFileTooltip": "Writes the same report from a snapshot file that was saved before. The tenant is not read.",
+  "DocumentationRichReportFolderTitle": "Choose the folder for the report",
+  "DocumentationRichReportSavedStatus": "Report saved: {count} files in {path}.",
+  "DocumentationRichReportFailedStatus": "The report could not be written: {error}"
 }

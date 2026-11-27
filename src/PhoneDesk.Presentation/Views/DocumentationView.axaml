@@ -72,6 +72,28 @@
                             </StackPanel>
                         </Button>
 
+                        <Button Command="{Binding ExportRichReportCommand}"
+                                Classes="IconText" Margin="0,0,12,8"
+                                IsEnabled="{Binding !IsBusy}"
+                                ToolTip.Tip="{loc:Translate Key=DocumentationRichReportTooltip}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="DocumentTable"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationRichReportAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ExportRichReportFromFileCommand}"
+                                Classes="IconText" Margin="0,0,12,8"
+                                IsEnabled="{Binding !IsBusy}"
+                                ToolTip.Tip="{loc:Translate Key=DocumentationRichReportFromFileTooltip}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="FolderOpen"/>
+                                <TextBlock Text="{loc:Translate Key=DocumentationRichReportFromFileAction}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <Button Command="{Binding CompareTopologySnapshotCommand}"
                                 Classes="IconText" Margin="0,0,12,8"
                                 IsEnabled="{Binding !IsBusy}">

@@ -299,6 +299,13 @@ namespace PhoneDesk.Tests
                 .WithInterFont()
                 .SetupWithoutStarting();
 
+            // The report files are not pages, but they are what an operator hands to a customer:
+            // a sample is written beside the shots so it can be looked at too.
+            if (Environment.GetEnvironmentVariable("SCREENSHOT_REPORT") == "1")
+            {
+                WriteSampleReport(outDir);
+            }
+
             var app = Application.Current
                 ?? throw new InvalidOperationException("Avalonia application was not initialised.");
 
@@ -511,6 +518,70 @@ namespace PhoneDesk.Tests
 
             sharedState.Variables = new PhoneManagerVariables();
             session.ResetSession();
+        }
+
+        private static void WriteSampleReport(string outDir)
+        {
+            var documentation = new TenantDocumentationSnapshot(
+                new TenantInformationSnapshot("Contoso AG", "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43", "CH", "de-CH"),
+                new[]
+                {
+                    new ResourceAccountInventorySnapshot("raaa-contoso-main", "raaa-contoso-main@contoso.onmicrosoft.com", "ra-aa", "app", "+41441234567", new[] { new ResourceAccountAssociationSnapshot("aa-1", "AutoAttendant", 0) }),
+                    new ResourceAccountInventorySnapshot("racq-contoso-reception", "racq-contoso-reception@contoso.onmicrosoft.com", "ra-cq1", "app", string.Empty, new[] { new ResourceAccountAssociationSnapshot("cq-1", "CallQueue", 0) }),
+                    new ResourceAccountInventorySnapshot("racq-contoso-support", "racq-contoso-support@contoso.onmicrosoft.com", "ra-cq2", "app", string.Empty, new[] { new ResourceAccountAssociationSnapshot("cq-2", "CallQueue", 0) })
+                },
+                new[] { new AutoAttendantInventorySnapshot("aa-contoso-main-reception", "aa-1", "de-DE", "W. Europe Standard Time", "Female", "Hauptmenü") },
+                new[]
+                {
+                    new AutoAttendantMenuOptionSnapshot("aa-contoso-main-reception", "aa-1", "DefaultCallFlow", "Tone1", "TransferCallToTarget", "ra-cq1", 0),
+                    new AutoAttendantMenuOptionSnapshot("aa-contoso-main-reception", "aa-1", "DefaultCallFlow", "Tone2", "TransferCallToTarget", "ra-cq2", 0),
+                    new AutoAttendantMenuOptionSnapshot("aa-contoso-main-reception", "aa-1", "DefaultCallFlow", "Tone9", "TransferCallToTarget", "tel:+41449990000", 0),
+                    new AutoAttendantMenuOptionSnapshot("aa-contoso-main-reception", "aa-1", "After hours call flow", "Automatic", "DisconnectCall", string.Empty, 0),
+                    new AutoAttendantMenuOptionSnapshot("aa-contoso-main-reception", "aa-1", "Feiertage 2027 call flow", "Automatic", "DisconnectCall", string.Empty, 0)
+                },
+                new[]
+                {
+                    new AutoAttendantCallFlowSnapshot("aa-contoso-main-reception", "aa-1", "After hours call flow", "After hours", 0),
+                    new AutoAttendantCallFlowSnapshot("aa-contoso-main-reception", "aa-1", "Feiertage 2027 call flow", "Holiday", 0)
+                },
+                new[]
+                {
+                    new AutoAttendantScheduleAssociationSnapshot("aa-contoso-main-reception", "aa-1", "AfterHours", "s-hours", "f1", 0),
+                    new AutoAttendantScheduleAssociationSnapshot("aa-contoso-main-reception", "aa-1", "Holiday", "s-holiday", "f2", 0)
+                },
+                Array.Empty<AutoAttendantOperatorSnapshot>(),
+                new[]
+                {
+                    new CallQueueInventorySnapshot("cq-contoso-reception", "cq-1", "Attendant", "30", "de-DE", 2, "50", "1200", "Disconnect", "Forward"),
+                    new CallQueueInventorySnapshot("cq-contoso-support", "cq-2", "LongestIdle", "20", "de-DE", 1, "50", "600", "Disconnect", "Disconnect")
+                },
+                new[]
+                {
+                    new CallQueueAgentSnapshot("cq-contoso-reception", "cq-1", "u1", "True", "Anna Muster", "anna.muster@contoso.com", 0),
+                    new CallQueueAgentSnapshot("cq-contoso-reception", "cq-1", "u2", "False", "Ben Beispiel", "ben.beispiel@contoso.com", 0),
+                    new CallQueueAgentSnapshot("cq-contoso-support", "cq-2", "u1", "True", "Anna Muster", "anna.muster@contoso.com", 0)
+                },
+                new[] { new CallQueueDistributionListSnapshot("cq-contoso-reception", "cq-1", "g1", 0) },
+                new[] { new QueueThresholdActionSnapshot("cq-contoso-reception", "cq-1", "Timeout", "Forward", "ra-cq2", "1200", 0) },
+                new[] { new ScheduleInventorySnapshot("After Hours Schedule", "s-hours", "WeeklyRecurrence", 0), new ScheduleInventorySnapshot("hd-contoso-2027", "s-holiday", "Fixed", 2) },
+                new[]
+                {
+                    new ScheduleDateRangeSnapshot("hd-contoso-2027", "s-holiday", "25/12/2027 00:00", "27/12/2027 00:00", 0),
+                    new ScheduleDateRangeSnapshot("hd-contoso-2027", "s-holiday", "01/08/2027 00:00", "02/08/2027 00:00", 1)
+                },
+                new[]
+                {
+                    new ScheduleWeeklyRangeSnapshot("After Hours Schedule", "s-hours", "Monday", "08:00", "17:00", 0),
+                    new ScheduleWeeklyRangeSnapshot("After Hours Schedule", "s-hours", "Friday", "08:00", "16:00", 0)
+                },
+                new[] { new PhoneNumberInventorySnapshot("+41441234567", "DirectRouting", "raaa-contoso-main@contoso.onmicrosoft.com", "VoiceApplicationAssigned", "Activated", "Zürich", "VoiceApplicationAssignment") },
+                new[] { new VoiceUserInventorySnapshot("Anna Muster", "anna.muster@contoso.com", "tel:+41441110001", "CH-National", "Default", "CH") });
+            var snapshot = new TopologySnapshotDocument(
+                2, "phonedesk.topology", new DateTimeOffset(2027, 3, 1, 8, 30, 0, TimeSpan.Zero),
+                Array.Empty<TopologyAutoAttendantSnapshot>(), Array.Empty<TopologyCallQueueSnapshot>(), Array.Empty<TopologyResourceAccountSnapshot>(),
+                new[] { new TopologyGroupSnapshot("ttgrp-contoso-reception", "g1", "ttgrp-contoso-reception", "Agents of the reception") },
+                documentation);
+            PhoneDesk.Operations.RichReport.WriteFiles(outDir, snapshot, PhoneDesk.Operations.RichReport.German, PhoneDesk.Services.CallFlowPictureRenderer.RenderPng);
         }
 
         /// <summary>The run records live in a folder of their own, never in the folder of the real application.</summary>

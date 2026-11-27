@@ -41,6 +41,18 @@ public sealed class PortabilityFileService : IPortabilityFileService
         return new PortableTextFile(file.Name, Describe(file), content);
     }
 
+    public async Task<string?> PickFolderAsync(string title)
+    {
+        var window = GetMainWindow();
+        if (window is null)
+        {
+            return null;
+        }
+
+        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+        return folders.FirstOrDefault()?.TryGetLocalPath();
+    }
+
     public async Task<string?> SaveJsonAsync(string title, string suggestedFileName, string content)
     {
         var window = GetMainWindow();

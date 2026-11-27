@@ -1426,5 +1426,12 @@
   "WizardRollbackRunAction": "Diesen Lauf rückgängig machen",
   "WizardRunResumedStatus": "Fortgesetzt: {count} abgeschlossene(r) Schritt(e) wiederhergestellt. Ein Schritt, der mit anderen Konfigurationswerten lief, muss erneut ausgeführt werden.",
   "WizardRunJournalFailedLog": "Der Laufeintrag konnte nicht geschrieben werden: {error}",
-  "SetupRunsOtherTenantStatus": "Dieser Lauf gehört zu einem anderen Mandanten ({tenant}). Verbinden Sie sich mit diesem Mandanten, um ihn rückgängig zu machen."
+  "SetupRunsOtherTenantStatus": "Dieser Lauf gehört zu einem anderen Mandanten ({tenant}). Verbinden Sie sich mit diesem Mandanten, um ihn rückgängig zu machen.",
+  "DocumentationRichReportAction": "Bericht (HTML, Excel, Diagramme)",
+  "DocumentationRichReportTooltip": "Liest den Mandanten und schreibt einen lesbaren Bericht: eine HTML-Datei, eine Arbeitsmappe und ein Anrufablauf-Diagramm pro automatischer Telefonzentrale. Der Mandant wird nur gelesen.",
+  "DocumentationRichReportFromFileAction": "Bericht aus einer Stand-Datei",
+  "DocumentationRichReportFromFileTooltip": "Schreibt denselben Bericht aus einer früher gespeicherten Stand-Datei. Der Mandant wird nicht gelesen.",
+  "DocumentationRichReportFolderTitle": "Ordner für den Bericht auswählen",
+  "DocumentationRichReportSavedStatus": "Bericht gespeichert: {count} Dateien in {path}.",
+  "DocumentationRichReportFailedStatus": "Der Bericht konnte nicht geschrieben werden: {error}"
 }

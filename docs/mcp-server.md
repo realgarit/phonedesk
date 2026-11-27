@@ -131,6 +131,37 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### A customer's holiday list and the change table
+
+A customer sends a list of closed days. Two steps use it, in the desktop app (Holiday Manager,
+**Compare a customer list**) and in the server.
+
+The list has one entry per line: a day or a range, then the customer's wording.
+
+```
+25.12.2027 Weihnachten
+24.12.2027 12:00-24:00 Heiligabend Nachmittag
+27.12. bis 02.01. Betriebsferien
+G 01.08. Bundesfeier
+```
+
+A leading letter marks the kind of day: G statutory holiday, B business closure, R additional
+rest day, H half day. Without a letter, a part of a day is H and several days are B. An entry
+without a year takes the year you give and is flagged.
+
+- `compare_holiday_list` compares every entry with the holidays each auto attendant has, whatever
+  the schedules are called: match, covered (a longer range of a schedule contains it), sameStart
+  (Teams refuses a second holiday with this start), partialOverlap, disabled (attached but
+  switched off, so callers do not get it), or missing. It also lists
+  ranges only the tenant has, lines it could not read, and whether the list spans several years.
+- `holiday_change_table` writes the table for the customer record after the work. It compares a
+  holiday backup from before the work with the tenant now: `done` only when the tenant did not
+  have the range before and has it now, `no change` when it was there already, `pending` when it
+  is still missing. Rows keep the customer's wording; a range that a longer existing schedule
+  covers gets the marker W. The table also comes as tab-separated text.
+- Take the backup before the work with `backup_holiday_call_handling`. In the desktop app the
+  "before" is what the page read first in the session.
+
 ### The right tenant, and a sign-in that hangs
 
 A sign-in can report success and still be wrong: the browser kept the session of the previous

@@ -189,6 +189,8 @@ namespace PhoneDesk.Tests
             new("HolidayManager", true, "holiday-manager-attach-de.png", "holidaymanager-attach-de"),
             new("HolidayManager", true, "holiday-manager-retire-en.png", "holidaymanager-retire-en"),
             new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
+            new("HolidayManager", true, "holiday-manager-compare-en.png", "holidaymanager-compare-en"),
+            new("HolidayManager", true, "holiday-manager-compare-de.png", "holidaymanager-compare-de"),
             new("PhoneNumbers", true, "phone-numbers-empty-en.png", "phonenumbers-empty-en"),
             new("PhoneNumbers", true, "phone-numbers-empty-de.png", "phonenumbers-empty-de"),
             new("PhoneNumbers", true, "phone-numbers-loaded-en.png", "phonenumbers-loaded-en"),
@@ -945,6 +947,13 @@ namespace PhoneDesk.Tests
                         {
                             choice.IsSelected = true;
                         }
+                        holidayManager.CheckForDisplay();
+                    }
+                    else if (scenario.Contains("-compare-", StringComparison.Ordinal))
+                    {
+                        holidayManager.OpenCompareListCommand.Execute(null);
+                        holidayManager.OperationSecondText = "2027";
+                        holidayManager.OperationText = "25.12.2027 Weihnachten\n24.12.2027 12:00-24:00 Heiligabend Nachmittag\nG 01.08. Bundesfeier\nOstern (Datum folgt)";
                         holidayManager.CheckForDisplay();
                     }
                     else if (scenario.Contains("-retire-", StringComparison.Ordinal))

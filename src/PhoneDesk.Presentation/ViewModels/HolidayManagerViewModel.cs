@@ -18,7 +18,8 @@ namespace PhoneDesk.ViewModels
         EditDates,
         ReplaceGreeting,
         Attach,
-        Retire
+        Retire,
+        CompareList
     }
 
     /// <summary>A holiday schedule of the tenant, as a row.</summary>
@@ -71,6 +72,9 @@ namespace PhoneDesk.ViewModels
     {
         private readonly TimeProvider _time;
         private HolidayCallHandlingState? _state;
+
+        /// <summary>What the tenant held when this page first read it: the "before" of the change table.</summary>
+        private HolidayCallHandlingState? _baseline;
         private string? _approvedState;
         private string? _pendingScript;
         private Func<HolidayCallHandlingState, string>? _verify;
@@ -159,6 +163,10 @@ namespace PhoneDesk.ViewModels
         public bool IsReplaceGreeting => Operation == HolidayOperationKind.ReplaceGreeting;
         public bool IsAttach => Operation == HolidayOperationKind.Attach;
         public bool IsRetire => Operation == HolidayOperationKind.Retire;
+        public bool IsCompareList => Operation == HolidayOperationKind.CompareList;
+
+        /// <summary>A comparison changes nothing, so it has nothing to apply.</summary>
+        public bool ShowApply => !IsCompareList;
         public bool ShowOverlapOption => IsEditDates || IsAttach;
         public bool HasOperationPreview => !string.IsNullOrEmpty(OperationPreview);
 
@@ -171,6 +179,8 @@ namespace PhoneDesk.ViewModels
             OnPropertyChanged(nameof(IsReplaceGreeting));
             OnPropertyChanged(nameof(IsAttach));
             OnPropertyChanged(nameof(IsRetire));
+            OnPropertyChanged(nameof(IsCompareList));
+            OnPropertyChanged(nameof(ShowApply));
             OnPropertyChanged(nameof(ShowOverlapOption));
         }
 
@@ -299,6 +309,20 @@ namespace PhoneDesk.ViewModels
         }
 
         [RelayCommand]
+        private void OpenCompareList()
+        {
+            if (_state is null)
+            {
+                StatusMessage = GetText(UiTextKey.HolidayManagerReadFirstStatus, "Read the tenant first.");
+                return;
+            }
+
+            Open(HolidayOperationKind.CompareList, GetText(UiTextKey.HolidayManagerCompareAction, "Compare a customer list"));
+            OperationSecondText = _time.GetLocalNow().Year.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            InvalidateCheck();
+        }
+
+        [RelayCommand]
         private void CloseOperation()
         {
             Operation = HolidayOperationKind.None;
@@ -416,6 +440,7 @@ namespace PhoneDesk.ViewModels
         public void ShowStateForDisplay(string readOutput)
         {
             _state = HolidayCallHandling.ParseState(readOutput);
+            _baseline ??= _state;
             ShowState(_state);
         }
 
@@ -451,6 +476,7 @@ namespace PhoneDesk.ViewModels
             try
             {
                 _state = HolidayCallHandling.ParseState(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput);
+                _baseline ??= _state;
                 return _state;
             }
             catch (System.IO.InvalidDataException ex)
@@ -566,6 +592,10 @@ namespace PhoneDesk.ViewModels
                     case HolidayOperationKind.Retire:
                         blockers = PrepareRetire(state, lines);
                         break;
+                    case HolidayOperationKind.CompareList:
+                        PrepareComparison(state, lines);
+                        OperationPreview = string.Join(Environment.NewLine, lines);
+                        return;
                 }
             }
             catch (Exception ex) when (ex is FormatException or ArgumentException)
@@ -737,6 +767,89 @@ namespace PhoneDesk.ViewModels
 
             return assessment.Blockers.Select(blocker => blocker.Message).ToList();
         }
+
+        /// <summary>
+        /// Compares the customer's list with every auto attendant, and lists what changed since the page
+        /// first read the tenant: only what the tenant shows now counts as done.
+        /// </summary>
+        private void PrepareComparison(HolidayCallHandlingState state, List<string> lines)
+        {
+            if (!int.TryParse(OperationSecondText.Trim(), out var year) || year is < 2000 or > 2100)
+            {
+                lines.Add(GetText(UiTextKey.HolidayManagerCompareYearInvalid, "Enter the year of the list, for example 2027."));
+                return;
+            }
+
+            var list = HolidayListComparer.Parse(OperationText, year);
+            foreach (var line in list.Unreadable)
+            {
+                lines.Add(GetText(
+                    UiTextKey.HolidayManagerCompareUnreadable,
+                    "Line {number} was not read: {text}",
+                    new Dictionary<string, object?> { ["number"] = line.LineNumber, ["text"] = line.Text }));
+            }
+
+            if (list.Years.Count > 1)
+            {
+                lines.Add(Line(UiTextKey.HolidayManagerCompareSeveralYears, "The list spans several years: {value}", string.Join(", ", list.Years)));
+            }
+
+            foreach (var entry in list.Entries.Where(entry => entry.YearWasAssumed))
+            {
+                lines.Add(GetText(
+                    UiTextKey.HolidayManagerCompareYearAssumed,
+                    "The year {year} was assumed for: {text}",
+                    new Dictionary<string, object?> { ["year"] = entry.Window.Start.Year, ["text"] = entry.Original }));
+            }
+
+            var comparison = HolidayListComparer.Compare(state, list);
+            foreach (var row in comparison.Rows)
+            {
+                lines.Add(GetText(
+                    UiTextKey.HolidayManagerCompareRow,
+                    "{line} | {attendant}: {status}{detail}",
+                    new Dictionary<string, object?>
+                    {
+                        ["line"] = row.Entry.Original,
+                        ["attendant"] = row.AutoAttendantName,
+                        ["status"] = StatusText(row.Status),
+                        ["detail"] = row.Schedule is null ? string.Empty : " (" + row.Schedule.Name + ", " + HolidayScheduleOperations.Format(row.ScheduleWindow!) + ")"
+                    }));
+            }
+
+            foreach (var range in comparison.OnlyInTenant)
+            {
+                lines.Add(GetText(
+                    UiTextKey.HolidayManagerCompareOnlyInTenant,
+                    "Only in the tenant: {attendant}: {range} ({schedule})",
+                    new Dictionary<string, object?>
+                    {
+                        ["attendant"] = range.AutoAttendantName,
+                        ["range"] = HolidayScheduleOperations.Format(range.Window),
+                        ["schedule"] = range.Schedule.Name
+                    }));
+            }
+
+            if (_baseline is not null && list.Entries.Count > 0)
+            {
+                lines.Add(string.Empty);
+                lines.Add(GetText(
+                    UiTextKey.HolidayManagerCompareChangesTitle,
+                    "Changes since this page first read the tenant (tab-separated, for the customer record):"));
+                lines.Add(HolidayListComparer.ToTable(HolidayListComparer.Changes(_baseline, state, list)).TrimEnd('\n'));
+            }
+        }
+
+        private string StatusText(HolidayListStatus status)
+            => status switch
+            {
+                HolidayListStatus.Match => GetText(UiTextKey.HolidayManagerCompareMatch, "in the tenant"),
+                HolidayListStatus.Covered => GetText(UiTextKey.HolidayManagerCompareCovered, "covered by a longer schedule"),
+                HolidayListStatus.SameStart => GetText(UiTextKey.HolidayManagerCompareSameStart, "same start, another end"),
+                HolidayListStatus.PartialOverlap => GetText(UiTextKey.HolidayManagerComparePartialOverlap, "overlaps partly"),
+                HolidayListStatus.Disabled => GetText(UiTextKey.HolidayManagerCompareDisabled, "attached but switched off"),
+                _ => GetText(UiTextKey.HolidayManagerCompareMissing, "missing")
+            };
 
         /// <summary>The oldest expired holiday of an auto attendant at the call flow limit, when the option is on.</summary>
         private string? ReplaceFor(HolidayCallHandlingState state, string attendantId, string source, string target, DateTime now)

@@ -13,7 +13,40 @@ namespace PhoneDesk.Services
     public class MsalGraphAuthenticationService : IMsalGraphAuthenticationService
     {
         private readonly ILoggingService _loggingService;
-        private readonly IMsalPublicClient _msalClient;
+        private readonly Func<IMsalPublicClient> _clientFactory;
+        private readonly Dictionary<string, IMsalPublicClient> _clients = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Lock _clientGate = new();
+        private string _profile = string.Empty;
+
+        /// <summary>
+        /// The client of the profile in use. Each profile has its own client and so its own accounts
+        /// in memory: the sign-in of one customer is never offered for another, and it is there again
+        /// after a switch back. Nothing is written to disk.
+        /// </summary>
+        private IMsalPublicClient _msalClient
+        {
+            get
+            {
+                lock (_clientGate)
+                {
+                    if (!_clients.TryGetValue(_profile, out var client))
+                    {
+                        client = _clientFactory();
+                        _clients[_profile] = client;
+                    }
+
+                    return client;
+                }
+            }
+        }
+
+        public void UseProfile(string key)
+        {
+            lock (_clientGate)
+            {
+                _profile = (key ?? string.Empty).Trim();
+            }
+        }
         
         // Required scopes for the app
         private static readonly string[] Scopes = new[]
@@ -25,16 +58,23 @@ namespace PhoneDesk.Services
         };
         
         public MsalGraphAuthenticationService(ILoggingService loggingService)
-            : this(loggingService, new MsalPublicClient())
+            : this(loggingService, () => new MsalPublicClient())
         {
         }
 
         internal MsalGraphAuthenticationService(
             ILoggingService loggingService,
             IMsalPublicClient msalClient)
+            : this(loggingService, () => msalClient)
+        {
+        }
+
+        internal MsalGraphAuthenticationService(
+            ILoggingService loggingService,
+            Func<IMsalPublicClient> clientFactory)
         {
             _loggingService = loggingService;
-            _msalClient = msalClient;
+            _clientFactory = clientFactory;
             _loggingService.Log("MSAL Graph authentication service initialized", LogLevel.Info);
         }
         

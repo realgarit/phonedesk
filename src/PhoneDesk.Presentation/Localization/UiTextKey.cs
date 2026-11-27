@@ -1548,4 +1548,8 @@ public enum UiTextKey
     ProfilesFailedStatus,
     ProfilesFooter,
     ProfilesSignInOpenStatus,
+    ProfilesSwitchedConnectedStatus,
+    ProfilesDeleteActiveBlocked,
+    GetStartedTeamsSignInRestarted,
+    GetStartedRestartTeamsSignInTooltip,
 }

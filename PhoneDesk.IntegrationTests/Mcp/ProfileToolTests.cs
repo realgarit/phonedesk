@@ -36,10 +36,12 @@ public sealed class ProfileToolTests
         host.Connected();
         var switched = McpTestHost.Parse(await tools.Switch("Fabrikam", Cancellation));
         Assert.Equal("Fabrikam", switched.GetProperty("activeProfile").GetProperty("name").GetString());
-        Assert.True(switched.GetProperty("signedOut").GetBoolean());
         Assert.Equal("fabrikam", store.Variables.Customer);
         Assert.Equal("other.com", host.Get<TenantConnectionService>().Identity.Expectation.Tenant);
-        // Signed out: the connection of the customer before is not used for this one.
+        // The profile has its own session: the connection of the customer before is not used for this one.
+        var fabrikamId = host.Get<TenantProfileService>().Find("Fabrikam")!.Id;
+        Assert.Equal(fabrikamId, host.PowerShell.SessionKey);
+        Assert.False(switched.GetProperty("teamsConnected").GetBoolean());
         Assert.False(host.Get<TenantConnectionService>().IsReady);
         Assert.Contains("fabrikam", host.Get<TenantProfileService>().Find("Contoso")!.ConfigurationJson);
 
@@ -48,6 +50,8 @@ public sealed class ProfileToolTests
         Assert.Equal(2, listed.GetProperty("profiles").GetArrayLength());
 
         Assert.Contains("no profile", McpTestHost.Parse(await tools.Switch("Nobody", Cancellation)).GetProperty("error").GetString());
+        // The profile in use is not removed.
+        Assert.Contains("in use", McpTestHost.Parse(tools.Delete("Fabrikam")).GetProperty("error").GetString());
         Assert.Equal("Contoso", McpTestHost.Parse(tools.Delete("Contoso")).GetProperty("deleted").GetString());
         Assert.Equal(1, McpTestHost.Parse(tools.List()).GetProperty("profiles").GetArrayLength());
     }
@@ -88,6 +92,33 @@ public sealed class ProfileToolTests
                 Directory.Delete(directory, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public async Task SwitchingBack_FindsTheConnectionsTheProfileStillHas()
+    {
+        using var host = new McpTestHost().Connected().Configured();
+        var tools = host.Tool<ProfileTools>();
+        tools.Save("Contoso", "contoso.com");
+        tools.Save("Fabrikam", "fabrikam.com");
+        // The session of a profile answers the identity read with what it is connected to.
+        host.PowerShell.Respond(TenantIdentity.GetReadCommand(), TenantIdentity.JsonMarker + JsonSerializer.Serialize(new
+        {
+            teamsTenantId = McpTestHost.TenantId,
+            teamsTenantName = "Contoso AG",
+            teamsDomains = new[] { "contoso.com" },
+            graphTenantId = McpTestHost.TenantId,
+            graphAccount = "admin@contoso.com"
+        }));
+
+        var back = McpTestHost.Parse(await tools.Switch("Contoso", Cancellation));
+
+        Assert.True(back.GetProperty("teamsConnected").GetBoolean());
+        Assert.True(back.GetProperty("graphConnected").GetBoolean());
+        Assert.Equal("Contoso AG", back.GetProperty("tenant").GetString());
+        Assert.True(host.Get<TenantConnectionService>().IsReady);
+        Assert.Empty(host.Get<TenantConnectionService>().Identity.Problems);
+        Assert.False(back.TryGetProperty("identityProblems", out _));
     }
 
     [Fact]

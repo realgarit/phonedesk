@@ -9,19 +9,134 @@ namespace PhoneDesk.Services
     public class PowerShellContextService : IPowerShellContextService
     {
         private readonly ILoggingService _loggingService;
-        private readonly Runspace _runspace;
-        private readonly PowerShell _powerShell;
-        private readonly SemaphoreSlim _semaphore = new(1, 1);
+        private readonly Lock _sessionGate = new();
+        private readonly Dictionary<string, Session> _sessions = new(StringComparer.OrdinalIgnoreCase);
+        private Session _active;
+        private string _activeKey = string.Empty;
         private bool _disposed = false;
+
+        /// <summary>
+        /// One PowerShell session: a runspace with its own connections to Microsoft Teams and
+        /// Microsoft Graph, and the lock that lets one command run in it at a time. A command works
+        /// with the session that was active when it started, also when another session becomes
+        /// active while it runs.
+        /// </summary>
+        private sealed class Session
+        {
+            public Session(Runspace runspace, PowerShell powerShell)
+            {
+                Runspace = runspace;
+                PowerShell = powerShell;
+            }
+
+            public Runspace Runspace { get; }
+
+            public PowerShell PowerShell { get; }
+
+            public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        }
 
         public PowerShellContextService(ILoggingService loggingService)
         {
             _loggingService = loggingService;
+            _active = CreateSession();
+            _sessions[_activeKey] = _active;
+            _loggingService.Log("PowerShell context service initialized with persistent runspace", LogLevel.Info);
+        }
 
+        /// <summary>The key of the session commands run in now. Empty for the session the application starts with.</summary>
+        public string SessionKey
+        {
+            get
+            {
+                lock (_sessionGate)
+                {
+                    return _activeKey;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Makes the session of a key the one commands run in, and creates it when it does not exist.
+        /// A customer profile has its own session, so its sign-ins stay while the operator works for
+        /// another customer and are there again after a switch back. Nothing is written to disk: a
+        /// session lives as long as the application runs.
+        /// </summary>
+        public void UseSession(string key)
+        {
+            var name = (key ?? string.Empty).Trim();
+            lock (_sessionGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (!_sessions.TryGetValue(name, out var session))
+                {
+                    session = CreateSession();
+                    _sessions[name] = session;
+                    _loggingService.Log("PowerShell session created for another profile", LogLevel.Info);
+                }
+
+                _active = session;
+                _activeKey = name;
+            }
+        }
+
+        /// <summary>
+        /// Gives up the active session and starts a new one in its place. This is the way out of a
+        /// command that does not return, such as a Microsoft Teams sign-in whose browser window was
+        /// closed: stopping the pipeline does not interrupt that command. The old session is stopped
+        /// and released in the background; whatever it reports later reaches nobody. Its connections
+        /// are lost, so both services need a new sign-in.
+        /// </summary>
+        public bool AbandonSession()
+        {
+            Session old;
+            lock (_sessionGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                old = _active;
+                _active = CreateSession();
+                _sessions[_activeKey] = _active;
+            }
+
+            _loggingService.Log("PowerShell session abandoned; a new session was started", LogLevel.Warning);
+            ReleaseInBackground(old);
+            return true;
+        }
+
+        /// <summary>Releases the session of a key that is not the active one, for example of a profile that was removed.</summary>
+        public void CloseSession(string key)
+        {
+            var name = (key ?? string.Empty).Trim();
+            Session? closed = null;
+            lock (_sessionGate)
+            {
+                if (!string.Equals(name, _activeKey, StringComparison.OrdinalIgnoreCase) && _sessions.Remove(name, out var session))
+                {
+                    closed = session;
+                }
+            }
+
+            if (closed is not null)
+            {
+                ReleaseInBackground(closed);
+            }
+        }
+
+        private static void ReleaseInBackground(Session session)
+            => _ = Task.Run(() =>
+            {
+                // Stop and Dispose can wait for a command that does not return; that must not hold up the caller.
+                try { session.PowerShell.Stop(); } catch { /* the pipeline may have finished */ }
+                try { session.PowerShell.Dispose(); } catch { /* best effort */ }
+                try { session.Runspace.Dispose(); } catch { /* best effort */ }
+            });
+
+        private Session CreateSession()
+        {
             // Use local variables during construction to ensure proper cleanup on failure
             Runspace? localRunspace = null;
             PowerShell? localPowerShell = null;
-            
+
             try
             {
                 // Set execution policy via InitialSessionState (configuration-level, not a runtime command).
@@ -41,12 +156,9 @@ namespace PhoneDesk.Services
                 localPowerShell = PowerShell.Create();
                 localPowerShell.Runspace = localRunspace;
 
-                // Assign to fields only after successful initialization
-                _runspace = localRunspace;
-                _powerShell = localPowerShell;
-
-                InitializeRunspacePreferences();
-                _loggingService.Log("PowerShell context service initialized with persistent runspace", LogLevel.Info);
+                var session = new Session(localRunspace, localPowerShell);
+                InitializeRunspacePreferences(session);
+                return session;
             }
             catch
             {
@@ -57,7 +169,7 @@ namespace PhoneDesk.Services
             }
         }
 
-        private void InitializeRunspacePreferences()
+        private void InitializeRunspacePreferences(Session session)
         {
             try
             {
@@ -67,8 +179,8 @@ namespace PhoneDesk.Services
                 // Calling Set-ExecutionPolicy Bypass is unnecessary and triggers AV heuristics
                 // (MITRE ATT&CK T1059.001).
 
-                _powerShell.Commands.Clear();
-                _powerShell.AddCommand("Set-Variable")
+                session.PowerShell.Commands.Clear();
+                session.PowerShell.AddCommand("Set-Variable")
                     .AddParameter("Name", "InformationPreference")
                     .AddParameter("Value", "Continue")
                     .Invoke();
@@ -79,6 +191,14 @@ namespace PhoneDesk.Services
             catch (Exception ex)
             {
                 _loggingService.Log($"Error initializing PowerShell preferences: {ex.Message}", LogLevel.Warning);
+            }
+        }
+
+        private Session ActiveSession()
+        {
+            lock (_sessionGate)
+            {
+                return _active;
             }
         }
 
@@ -100,7 +220,8 @@ namespace PhoneDesk.Services
             if (_disposed)
                 throw new ObjectDisposedException(nameof(PowerShellContextService));
 
-            await _semaphore.WaitAsync(cancellationToken);
+            var session = ActiveSession();
+            await session.Semaphore.WaitAsync(cancellationToken);
             try
             {
                 // Set environment variables for the PowerShell script to consume via $env:VAR_NAME.
@@ -118,8 +239,8 @@ namespace PhoneDesk.Services
 
                 try
                 {
-                    _powerShell.Commands.Clear();
-                    _powerShell.Streams.ClearStreams();
+                    session.PowerShell.Commands.Clear();
+                    session.PowerShell.Streams.ClearStreams();
 
                     var fullCommand = $@"
 # Ensure we're in the right context
@@ -127,7 +248,7 @@ $ErrorActionPreference = 'Continue'
 {command}
 ";
 
-                    _powerShell.AddScript(fullCommand);
+                    session.PowerShell.AddScript(fullCommand);
 
                     // Forward native PowerShell progress records (Write-Progress from cmdlets) to the caller.
                     // This only OBSERVES the existing Progress stream; it never alters the script text.
@@ -135,7 +256,7 @@ $ErrorActionPreference = 'Continue'
                     {
                         try
                         {
-                            var record = _powerShell.Streams.Progress[e.Index];
+                            var record = session.PowerShell.Streams.Progress[e.Index];
                             progress?.Report(new PowerShellProgress
                             {
                                 Activity = record.Activity ?? string.Empty,
@@ -155,7 +276,7 @@ $ErrorActionPreference = 'Continue'
 
                     if (progress != null)
                     {
-                        _powerShell.Streams.Progress.DataAdded += OnProgressAdded;
+                        session.PowerShell.Streams.Progress.DataAdded += OnProgressAdded;
                     }
 
                     System.Collections.ObjectModel.Collection<PSObject> result;
@@ -172,17 +293,17 @@ $ErrorActionPreference = 'Continue'
                             {
                                 try { ((PowerShell)state!).Stop(); }
                                 catch { /* pipeline may have already finished */ }
-                            }, _powerShell);
+                            }, session.PowerShell);
 
                             try
                             {
-                                var invoked = _powerShell.Invoke();
+                                var invoked = session.PowerShell.Invoke();
 
                                 // Depending on the host, Stop() either makes Invoke() throw
                                 // PipelineStoppedException or return an (empty) collection with the
                                 // invocation state set to Stopped. Handle the non-throwing case here.
                                 if (cancellationToken.IsCancellationRequested ||
-                                    _powerShell.InvocationStateInfo.State == PSInvocationState.Stopped)
+                                    session.PowerShell.InvocationStateInfo.State == PSInvocationState.Stopped)
                                 {
                                     throw new OperationCanceledException(cancellationToken);
                                 }
@@ -200,20 +321,20 @@ $ErrorActionPreference = 'Continue'
                     {
                         if (progress != null)
                         {
-                            _powerShell.Streams.Progress.DataAdded -= OnProgressAdded;
+                            session.PowerShell.Streams.Progress.DataAdded -= OnProgressAdded;
                         }
                     }
 
                     var output = new StringBuilder();
                     var errorInfos = new List<PowerShellErrorInfo>();
 
-                    foreach (var item in _powerShell.Streams.Information)
+                    foreach (var item in session.PowerShell.Streams.Information)
                     {
                         output.AppendLine(item.ToString());
                     }
 
                     // Capture Warning stream (device code from Connect-MgGraph -UseDeviceCode is output here)
-                    foreach (var item in _powerShell.Streams.Warning)
+                    foreach (var item in session.PowerShell.Streams.Warning)
                     {
                         _loggingService.Log($"{item}", LogLevel.Warning);
                         output.AppendLine($"WARNING: {item}");
@@ -228,10 +349,10 @@ $ErrorActionPreference = 'Continue'
                         }
                     }
 
-                    var hadErrors = _powerShell.HadErrors;
+                    var hadErrors = session.PowerShell.HadErrors;
                     if (hadErrors)
                     {
-                        foreach (var error in _powerShell.Streams.Error)
+                        foreach (var error in session.PowerShell.Streams.Error)
                         {
                             _loggingService.Log($"PowerShell error: {error}", LogLevel.Error);
                             output.AppendLine($"ERROR: {error}");
@@ -292,7 +413,7 @@ $ErrorActionPreference = 'Continue'
             }
             finally
             {
-                _semaphore.Release();
+                session.Semaphore.Release();
             }
         }
 
@@ -322,8 +443,9 @@ $ErrorActionPreference = 'Continue'
 
         public async Task<bool> IsConnectedAsync(string service, CancellationToken cancellationToken = default)
         {
+            var session = ActiveSession();
             // Use timeout to prevent indefinite blocking
-            if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(ConstantsService.PowerShell.ConnectionCheckTimeoutSeconds), cancellationToken))
+            if (!await session.Semaphore.WaitAsync(TimeSpan.FromSeconds(ConstantsService.PowerShell.ConnectionCheckTimeoutSeconds), cancellationToken))
             {
                 _loggingService.Log("IsConnectedAsync timed out waiting for semaphore", LogLevel.Warning);
                 return false;
@@ -331,26 +453,26 @@ $ErrorActionPreference = 'Continue'
             
             try
             {
-                _powerShell.Commands.Clear();
-                _powerShell.Streams.ClearStreams();
+                session.PowerShell.Commands.Clear();
+                session.PowerShell.Streams.ClearStreams();
 
                 switch (service.ToLowerInvariant())
                 {
                     case "teams":
                         // Use command-based execution instead of script for better security tool compatibility
-                        _powerShell.AddCommand("Get-CsTenant")
+                        session.PowerShell.AddCommand("Get-CsTenant")
                             .AddParameter("ErrorAction", "SilentlyContinue");
                         break;
                     case "graph":
                         // Use command-based execution instead of script for better security tool compatibility
-                        _powerShell.AddCommand("Get-MgContext")
+                        session.PowerShell.AddCommand("Get-MgContext")
                             .AddParameter("ErrorAction", "SilentlyContinue");
                         break;
                     default:
                         return false;
                 }
 
-                var result = await Task.Run(() => _powerShell.Invoke(), cancellationToken);
+                var result = await Task.Run(() => session.PowerShell.Invoke(), cancellationToken);
                 return result != null && result.Count > 0;
             }
             catch (OperationCanceledException)
@@ -364,17 +486,18 @@ $ErrorActionPreference = 'Continue'
             }
             finally
             {
-                _semaphore.Release();
+                session.Semaphore.Release();
             }
         }
 
         public async Task<string> GetConnectionStatusAsync(CancellationToken cancellationToken = default)
         {
-            await _semaphore.WaitAsync(cancellationToken);
+            var session = ActiveSession();
+            await session.Semaphore.WaitAsync(cancellationToken);
             try
             {
-                _powerShell.Commands.Clear();
-                _powerShell.Streams.ClearStreams();
+                session.PowerShell.Commands.Clear();
+                session.PowerShell.Streams.ClearStreams();
 
                 var statusCommand = @"
 $status = @()
@@ -403,11 +526,11 @@ try {
 $status -join ""`n""
 ";
 
-                _powerShell.AddScript(statusCommand);
+                session.PowerShell.AddScript(statusCommand);
                 var result = await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    return _powerShell.Invoke();
+                    return session.PowerShell.Invoke();
                 }, cancellationToken);
 
                 var output = new StringBuilder();
@@ -427,7 +550,7 @@ $status -join ""`n""
             }
             finally
             {
-                _semaphore.Release();
+                session.Semaphore.Release();
             }
         }
 
@@ -435,10 +558,21 @@ $status -join ""`n""
         {
             if (!_disposed)
             {
-                _semaphore.Dispose();
-                _powerShell?.Dispose();
-                _runspace?.Dispose();
-                _disposed = true;
+                List<Session> sessions;
+                lock (_sessionGate)
+                {
+                    _disposed = true;
+                    sessions = _sessions.Values.ToList();
+                    _sessions.Clear();
+                }
+
+                foreach (var session in sessions)
+                {
+                    session.Semaphore.Dispose();
+                    session.PowerShell.Dispose();
+                    session.Runspace.Dispose();
+                }
+
                 _loggingService.Log("PowerShell context service disposed", LogLevel.Info);
             }
         }

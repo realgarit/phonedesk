@@ -53,6 +53,64 @@ public sealed class PowerShellContextServiceIntegrationTests
     }
 
     [Fact]
+    public async Task EachSessionKeepsItsOwnStateAndASwitchBackFindsItAgain()
+    {
+        // A profile has its own session: what one customer's session holds (its connections) is
+        // not seen in another, and is there again after a switch back.
+        using var service = CreateService();
+        var token = TestContext.Current.CancellationToken;
+        await service.ExecuteCommandWithDetailsAsync("$global:pdMark = 'contoso'", null, null, token);
+
+        service.UseSession("fabrikam");
+        Assert.Equal("fabrikam", service.SessionKey);
+        var other = await service.ExecuteCommandWithDetailsAsync("Write-Host \"mark=[$global:pdMark]\"", null, null, token);
+        Assert.Contains("mark=[]", other.Output, StringComparison.Ordinal);
+        await service.ExecuteCommandWithDetailsAsync("$global:pdMark = 'fabrikam'", null, null, token);
+
+        service.UseSession(string.Empty);
+        var back = await service.ExecuteCommandWithDetailsAsync("Write-Host \"mark=[$global:pdMark]\"", null, null, token);
+        Assert.Contains("mark=[contoso]", back.Output, StringComparison.Ordinal);
+
+        // A session that is closed starts empty when it is used again.
+        service.CloseSession("fabrikam");
+        service.UseSession("fabrikam");
+        var reopened = await service.ExecuteCommandWithDetailsAsync("Write-Host \"mark=[$global:pdMark]\"", null, null, token);
+        Assert.Contains("mark=[]", reopened.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ACommandThatCannotBeStoppedIsGivenUpWithItsSession()
+    {
+        // Like a Microsoft Teams sign-in whose window was closed: a .NET wait that the pipeline
+        // stop does not interrupt. Giving up the session lets the next command run at once.
+        using var service = CreateService();
+        var token = TestContext.Current.CancellationToken;
+        await service.ExecuteCommandWithDetailsAsync("$global:pdMark = 'before'", null, null, token);
+        var stuck = service.ExecuteCommandWithDetailsAsync("[System.Threading.Thread]::Sleep(4000); 'late'", null, null, CancellationToken.None);
+        await Task.Delay(300, token);
+        Assert.False(stuck.IsCompleted);
+
+        Assert.True(service.AbandonSession());
+
+        var stopwatch = Stopwatch.StartNew();
+        var next = await service.ExecuteCommandWithDetailsAsync("Write-Host \"mark=[$global:pdMark]\"; 'fresh'", null, null, token);
+        stopwatch.Stop();
+        // The old command sleeps four seconds: the new session did not wait for it.
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(3), $"The new session took {stopwatch.Elapsed.TotalSeconds:F1}s.");
+        Assert.Contains("fresh", next.Output, StringComparison.Ordinal);
+        // The new session is empty: the connections of the old one are gone.
+        Assert.Contains("mark=[]", next.Output, StringComparison.Ordinal);
+        Assert.False(stuck.IsCompleted);
+
+        // The old command ends some time later; its result reaches nobody who still waits for it,
+        // and it must not break the host. It is awaited here only so the test ends after it.
+        // The given-up session was stopped, so the old command ends as cancelled.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => stuck.WaitAsync(TimeSpan.FromSeconds(30), token));
+        var after = await service.ExecuteCommandWithDetailsAsync("'still-fine'", null, null, token);
+        Assert.Contains("still-fine", after.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CancellationStopsLongRunningCommandAndLeavesRunspaceReusable()
     {
         using var service = CreateService();

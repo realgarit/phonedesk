@@ -605,7 +605,8 @@ namespace PhoneDesk.ViewModels
         /// be read is left alone and the application starts without one.
         /// </summary>
         private void UseStoredProfile(
-            PhoneDesk.Operations.TenantProfileService? profiles, PhoneDesk.Operations.TenantIdentityGuard? identityGuard, ITenantAsCodeService? tenantAsCode)
+            PhoneDesk.Operations.TenantProfileService? profiles, PhoneDesk.Operations.TenantIdentityGuard? identityGuard, ITenantAsCodeService? tenantAsCode,
+            IMsalGraphAuthenticationService? graphAuthentication)
         {
             if (profiles is null || _sharedStateService is null)
             {
@@ -628,6 +629,9 @@ namespace PhoneDesk.ViewModels
 
                 identityGuard?.SetExpectation(active.ExpectedTenant, active.ExpectedAccount);
                 _sharedStateService.ActiveProfileLabel = active.Name;
+                // The sessions are named after the profiles, so the first one belongs to the profile in use.
+                _powerShellContextService.UseSession(active.Id);
+                graphAuthentication?.UseProfile(active.Id);
             }
             catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or System.Text.Json.JsonException or ArgumentException)
             {
@@ -658,12 +662,13 @@ namespace PhoneDesk.ViewModels
             IUserPreferencesStore? userPreferences = null,
             PhoneDesk.Operations.TenantProfileService? profiles = null,
             PhoneDesk.Operations.TenantIdentityGuard? identityGuard = null,
-            ITenantAsCodeService? tenantAsCode = null)
+            ITenantAsCodeService? tenantAsCode = null,
+            IMsalGraphAuthenticationService? graphAuthentication = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _userPreferences = userPreferences;
-            UseStoredProfile(profiles, identityGuard, tenantAsCode);
+            UseStoredProfile(profiles, identityGuard, tenantAsCode, graphAuthentication);
             if (_sharedStateService is System.ComponentModel.INotifyPropertyChanged notifying)
             {
                 notifying.PropertyChanged += (_, e) =>

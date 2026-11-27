@@ -200,12 +200,18 @@ namespace PhoneDesk.ViewModels
             }
 
             Use(profile);
-            await SignOutAsync();
+            await UseSessionAsync(profile);
             Refresh(profile.Id);
-            StatusMessage = GetText(
-                UiTextKey.ProfilesSwitchedStatus,
-                "Now using '{name}'. Its configuration is loaded and you are signed out. Sign in on the Readiness Check page; the sign-in is checked against the expected organization.",
-                new Dictionary<string, object?> { ["name"] = profile.Name });
+            var tenant = string.IsNullOrWhiteSpace(_sessionManager.TenantName) ? _sessionManager.TenantId : _sessionManager.TenantName;
+            StatusMessage = _sessionManager.TeamsConnected && _sessionManager.GraphConnected
+                ? GetText(
+                    UiTextKey.ProfilesSwitchedConnectedStatus,
+                    "Now using '{name}'. Its configuration is loaded, and its connections from earlier are in use again (tenant: {tenant}).",
+                    new Dictionary<string, object?> { ["name"] = profile.Name, ["tenant"] = tenant })
+                : GetText(
+                    UiTextKey.ProfilesSwitchedStatus,
+                    "Now using '{name}'. Its configuration is loaded. Sign in on the Readiness Check page; the sign-in is checked against the expected organization.",
+                    new Dictionary<string, object?> { ["name"] = profile.Name });
         }, nameof(SwitchAsync));
 
         /// <summary>Writes the configuration that is on the Configuration page now into the profile in use.</summary>
@@ -241,12 +247,14 @@ namespace PhoneDesk.ViewModels
 
             Try(() =>
             {
-                var wasActive = SelectedProfile.IsActive;
-                _profiles.Delete(SelectedProfile.Id);
-                if (wasActive && _sharedStateService is not null)
+                if (SelectedProfile.IsActive)
                 {
-                    _sharedStateService.ActiveProfileLabel = string.Empty;
+                    throw new ArgumentException(GetText(UiTextKey.ProfilesDeleteActiveBlocked, "The profile is in use. Switch to another profile first, then delete this one."));
                 }
+
+                var id = SelectedProfile.Id;
+                _profiles.Delete(id);
+                _powerShellContextService.CloseSession(id);
 
                 Refresh();
                 StatusMessage = GetText(UiTextKey.ProfilesDeletedStatus, "Profile '{name}' was deleted.", new Dictionary<string, object?> { ["name"] = name });
@@ -264,26 +272,15 @@ namespace PhoneDesk.ViewModels
         }
 
         /// <summary>
-        /// Signs out of both services, so the connection of the customer before is not used for the
-        /// new one. What was read from that tenant and the progress of a setup are forgotten too.
+        /// Takes up the PowerShell session and the Graph sign-in of the profile. Each profile keeps
+        /// its own while the application runs, so the connections of one customer are never used for
+        /// another, and a switch back needs no new sign-in. The state of the connections is read from
+        /// the session; what was read from the tenant before and the progress of a setup are forgotten.
         /// </summary>
-        private async Task SignOutAsync()
+        private async Task UseSessionAsync(TenantProfile profile)
         {
-            if (_sessionManager.TeamsConnected)
-            {
-                await ExecutePowerShellCommandAsync(_powerShellCommandService.GetDisconnectTeamsCommand(), "DisconnectTeams");
-            }
-
-            if (_sessionManager.GraphConnected)
-            {
-                if (_graphAuthentication is not null)
-                {
-                    await _graphAuthentication.SignOutAsync();
-                }
-
-                await ExecutePowerShellCommandAsync(_powerShellCommandService.GetDisconnectGraphCommand(), "DisconnectGraph");
-            }
-
+            _powerShellContextService.UseSession(profile.Id);
+            _graphAuthentication?.UseProfile(profile.Id);
             var modulesChecked = _sessionManager.ModulesChecked;
             _sessionManager.ResetSession();
             _sessionManager.UpdateModulesChecked(modulesChecked);
@@ -292,6 +289,31 @@ namespace PhoneDesk.ViewModels
             {
                 _sharedStateService.WizardProgress = null;
                 _sharedStateService.SetupRun = null;
+            }
+
+            var read = await ExecutePowerShellCommandAsync(TenantIdentity.GetReadCommand(), null, "ReadConnectionIdentity");
+            try
+            {
+                var identity = TenantIdentity.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput);
+                if (identity.TeamsKnown)
+                {
+                    _sessionManager.UpdateTeamsConnection(true);
+                    _sessionManager.UpdateTenantInfo(identity.TeamsTenantId, identity.TeamsTenantName);
+                }
+
+                if (identity.GraphKnown)
+                {
+                    _sessionManager.UpdateGraphConnection(true, identity.GraphAccount);
+                }
+
+                if (identity.TeamsKnown || identity.GraphKnown)
+                {
+                    _identityGuard?.Update(identity);
+                }
+            }
+            catch (System.IO.InvalidDataException)
+            {
+                // The connections could not be read: both stay off, and the operator signs in.
             }
         }
 

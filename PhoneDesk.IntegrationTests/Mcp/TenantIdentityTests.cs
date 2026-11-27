@@ -216,13 +216,49 @@ public sealed class TenantIdentityTests
     }
 
     [Fact]
-    public void RestartSignInTool_SaysThatATeamsSignInCannotBeGivenUp()
+    public async Task TeamsSignIn_IsGivenUpWithItsSessionAndANewOneCanStart()
+    {
+        using var host = new McpTestHost();
+        var commands = host.Get<IPowerShellCommandService>();
+        var session = host.Get<ISessionManager>();
+        session.UpdateModulesChecked(true);
+        var connection = new TenantConnectionService(
+            host.Get<ITenantCommandRunner>(), commands, host.GraphAuthentication, session,
+            host.Get<ITenantTopologyCache>(), host.Get<ITenantHealthCheckCache>(), host.Get<TenantIdentityGuard>(), host.PowerShell)
+        {
+            SignInWait = TimeSpan.FromMilliseconds(50)
+        };
+
+        // The user closed the browser window: the Teams sign-in never reports back and holds its session.
+        var hanging = host.PowerShell.Hold(commands.GetConnectTeamsCommand());
+        Assert.True((await connection.ConnectTeamsAsync(Cancellation)).WaitingForSignIn);
+        Assert.True((await connection.CheckModulesAsync(Cancellation)).WaitingForSignIn);
+
+        Assert.True(connection.AbandonTeamsSignIn());
+        Assert.Equal(1, host.PowerShell.SessionsAbandoned);
+        Assert.False(connection.TeamsSignInOpen);
+        Assert.False(connection.GetStatus().TeamsConnected);
+        Assert.False(connection.GetStatus().GraphConnected);
+        Assert.True(connection.GetStatus().ModulesChecked);
+
+        // A new sign-in starts at once, and the old window that finishes later connects nothing.
+        host.PowerShell.Respond(commands.GetConnectTeamsCommand(), "Connected to tenant: Contoso AG (" + Contoso + ")\nSUCCESS: Connected to Microsoft Teams");
+        var fresh = await connection.ConnectTeamsAsync(Cancellation);
+        Assert.True(fresh.Success, fresh.Message + fresh.Details);
+        hanging.SetResult();
+        Assert.False(connection.AbandonTeamsSignIn());
+    }
+
+    [Fact]
+    public void RestartSignInTool_GivesUpWhatIsOpenAndSaysWhenNothingIs()
     {
         using var host = new McpTestHost().Connected();
         var tools = host.Tool<SessionTools>();
 
         var teams = McpTestHost.Parse(tools.RestartSignIn("teams"));
-        Assert.False(teams.GetProperty("success").GetBoolean());
+        Assert.True(teams.GetProperty("success").GetBoolean());
+        Assert.False(teams.GetProperty("restarted").GetBoolean());
+        Assert.Contains("No Microsoft Teams sign-in is open", teams.GetProperty("message").GetString());
         var graph = McpTestHost.Parse(tools.RestartSignIn("Graph"));
         Assert.True(graph.GetProperty("success").GetBoolean());
         Assert.False(graph.GetProperty("restarted").GetBoolean());

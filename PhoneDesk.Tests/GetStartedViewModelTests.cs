@@ -62,6 +62,43 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public async Task RestartTeamsSignIn_GivesUpTheSessionThatHoldsTheSignIn()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.PowerShellCommandService.Setup(c => c.GetConnectTeamsCommand()).Returns("CONNECT TEAMS");
+            var hanging = new TaskCompletionSource<PowerShellExecutionResult>();
+            harness.PowerShellContextService
+                .Setup(p => p.ExecuteCommandWithDetailsAsync(
+                    "CONNECT TEAMS", It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()))
+                .Returns(hanging.Task);
+            harness.PowerShellContextService.Setup(p => p.AbandonSession()).Returns(true);
+            harness.SessionManager.SetupGet(s => s.ModulesChecked).Returns(true);
+            var vm = CreateViewModel(harness, new PhoneDesk.Operations.TenantIdentityGuard());
+            vm.ModulesChecked = true;
+
+            var connecting = vm.ConnectTeamsCommand.ExecuteAsync(null);
+            Assert.True(vm.TeamsSignInPending);
+
+            vm.RestartTeamsSignInCommand.Execute(null);
+            await connecting;
+
+            harness.PowerShellContextService.Verify(p => p.AbandonSession(), Times.Once);
+            Assert.False(vm.TeamsSignInPending);
+            Assert.False(vm.TeamsConnected);
+            Assert.False(vm.GraphConnected);
+            Assert.False(vm.IsBusy);
+            Assert.Contains("new PowerShell session", vm.SetupGuidance);
+            // The module check stays: the new session can connect at once.
+            harness.SessionManager.Verify(s => s.UpdateModulesChecked(true), Times.Once);
+
+            // The old window is finished later: nothing is connected by it.
+            hanging.SetResult(new PowerShellExecutionResult { Output = "SUCCESS: Connected to Microsoft Teams" });
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            Assert.False(vm.TeamsConnected);
+            harness.SessionManager.Verify(s => s.UpdateTeamsConnection(true, It.IsAny<string?>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RestartGraphSignIn_GivesUpASignInThatHangsAndItsLateResultConnectsNothing()
         {
             var harness = new ViewModelTestHarness();

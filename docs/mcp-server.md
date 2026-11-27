@@ -141,12 +141,19 @@ sign-ins must reach, the sign-in account, and the configuration of that customer
 - `save_profile` saves the current configuration as a profile, or updates one.
 - `switch_profile` saves the current configuration into the profile that was in use, loads the
   configuration of the other profile, sets the expected organization and account, clears the
-  Guided Setup progress, and signs out. Sign in again afterwards; a sign-in that reaches another
+  Guided Setup progress, and takes up the profile's own PowerShell session and Graph sign-in.
+  Each profile keeps its connections while the server runs, so a switch back needs no new
+  sign-in, and the connections of one customer are never used for another. A profile without a
+  connection signs in with `connect_teams` and `connect_graph`; a sign-in that reaches another
   organization than the profile expects blocks every read and change.
 - `remove_profile` removes a profile from this computer. No tenant is touched.
 
 Every plan of a change names the tenant it is for (`tenant`). A profile holds no password and no
-token: after a switch the user signs in again in the browser. The desktop app has the same on its
+token; the sessions and sign-ins live in memory only and end with the server.
+
+`restart_sign_in teams` gives up a Microsoft Teams sign-in that hangs: the PowerShell session that
+holds it is replaced by a new one. Both connections of that session are lost; connect Teams and
+then Graph again (the Graph sign-in is usually silent). The desktop app has the same on its
 **Profiles** page, shows the profile in use in the sidebar, and names the tenant in the title of
 every confirmation.
 

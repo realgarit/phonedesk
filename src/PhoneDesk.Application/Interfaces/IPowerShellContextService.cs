@@ -23,4 +23,27 @@ public interface IPowerShellContextService : IDisposable
 
     Task<bool> IsConnectedAsync(string service, CancellationToken cancellationToken = default);
     Task<string> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The key of the PowerShell session commands run in now. Empty for the session the application starts with.</summary>
+    string SessionKey => string.Empty;
+
+    /// <summary>
+    /// Makes the session of a key the one commands run in, and creates it when it does not exist.
+    /// Each customer profile has its own session, so its sign-ins are kept while another customer is worked on.
+    /// </summary>
+    void UseSession(string key)
+    {
+    }
+
+    /// <summary>
+    /// Gives up the active session and starts a new one in its place: the way out of a command that
+    /// does not return, such as a Microsoft Teams sign-in that hangs. Both connections of the session
+    /// are lost. Returns false when the host cannot do this.
+    /// </summary>
+    bool AbandonSession() => false;
+
+    /// <summary>Releases the session of a key that is not the active one.</summary>
+    void CloseSession(string key)
+    {
+    }
 }

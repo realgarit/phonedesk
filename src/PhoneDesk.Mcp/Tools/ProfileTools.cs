@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 using PhoneDesk.Operations;
+using PhoneDesk.Services.Interfaces;
 
 namespace PhoneDesk.Mcp.Tools;
 
@@ -18,10 +19,13 @@ internal sealed class ProfileTools
     private readonly TenantConnectionService _connection;
     private readonly GuidedSetupProgress _progress;
     private readonly McpRunJournal _runs;
+    private readonly IPowerShellContextService _host;
 
     public ProfileTools(
-        TenantProfileService profiles, ConfigurationStore store, TenantConnectionService connection, GuidedSetupProgress progress, McpRunJournal runs)
+        TenantProfileService profiles, ConfigurationStore store, TenantConnectionService connection, GuidedSetupProgress progress, McpRunJournal runs,
+        IPowerShellContextService host)
     {
+        _host = host;
         _profiles = profiles;
         _store = store;
         _connection = connection;
@@ -73,7 +77,7 @@ internal sealed class ProfileTools
         });
 
     [McpServerTool(Name = "switch_profile", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
-    [Description("Switches to another customer profile. It saves the current configuration into the profile that was in use, loads the configuration of the named profile, sets the organization and account the next sign-ins must reach, clears the Guided Setup progress, and signs out of Microsoft Teams and Microsoft Graph. After it, sign in again with connect_teams and connect_graph: a sign-in that reaches another organization than the profile expects blocks every read and change. Tell the user that they are signed out. The tenant of either customer is not changed.")]
+    [Description("Switches to another customer profile. It saves the current configuration into the profile that was in use, loads the configuration of the named profile, sets the organization and account the sign-ins must reach, clears the Guided Setup progress, and takes up the profile's own PowerShell session and sign-in. Each profile keeps its connections while the server runs: switching back to a profile that was signed in earlier needs no new sign-in, and the connections of one customer are never used for another. The result says which connections the profile has; when it has none, sign in with connect_teams and connect_graph. A sign-in that reaches another organization than the profile expects blocks every read and change. The tenant of either customer is not changed.")]
     public Task<string> Switch(
         [Description(ProfileDescription)] string profile,
         CancellationToken cancellationToken = default)
@@ -118,13 +122,20 @@ internal sealed class ProfileTools
             _connection.Identity.SetExpectation(active.ExpectedTenant, active.ExpectedAccount);
             _progress.Reset();
             _runs.Reset();
-            var disconnect = await _connection.DisconnectAsync(cancellationToken);
+            var session = await _connection.UseProfileSessionAsync(active.Id, cancellationToken);
+            var status = _connection.GetStatus();
+            var problems = _connection.Identity.Problems;
             return new
             {
                 success = true,
                 activeProfile = View(active, true),
-                signedOut = disconnect.Success,
-                next = "Sign in again with connect_teams and connect_graph. The sign-ins are checked against the expected organization of this profile.",
+                teamsConnected = status.TeamsConnected,
+                graphConnected = status.GraphConnected,
+                tenant = status.TenantName,
+                identityProblems = problems.Count == 0 ? null : problems.Select(problem => problem.Message),
+                next = status.TeamsConnected && status.GraphConnected
+                    ? "This profile's connections from earlier in this session are in use again. Check the tenant above with the user before any change."
+                    : "Sign in with connect_teams and connect_graph. The sign-ins are checked against the expected organization of this profile. " + session.Message,
                 expectedTenant = active.ExpectedTenant.Length == 0 ? null : active.ExpectedTenant,
                 expectedAccount = active.ExpectedAccount.Length == 0 ? null : active.ExpectedAccount
             };
@@ -135,7 +146,13 @@ internal sealed class ProfileTools
     public string Delete([Description(ProfileDescription)] string profile) => McpJson.Run(() =>
     {
         var target = _profiles.Find(profile) ?? throw new ArgumentException($"There is no profile '{profile}'. Use list_profiles.");
+        if (_profiles.Active?.Id == target.Id)
+        {
+            throw new InvalidOperationException("The profile is in use. Switch to another profile first, then remove this one.");
+        }
+
         _profiles.Delete(target.Id);
+        _host.CloseSession(target.Id);
         return new { success = true, deleted = target.Name, activeProfile = _profiles.Active?.Name };
     });
 

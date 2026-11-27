@@ -97,7 +97,7 @@ internal sealed class SessionTools
         });
 
     [McpServerTool(Name = "restart_sign_in", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
-    [Description("Gives up a sign-in that hangs, so a new browser window can be opened. For 'graph': the sign-in that is open is dropped and the next connect_graph opens a new window; a sign-in that is finished later in the old window connects nothing; the Microsoft Teams connection stays. For 'teams': a Microsoft Teams sign-in cannot be given up, because it holds the PowerShell session until it ends; the result says what the user can do. Use it when connect_graph keeps reporting waitingForSignIn although the user closed the browser window. Nothing in the tenant changes.")]
+    [Description("Gives up a sign-in that hangs, so a new browser window can be opened. For 'graph': the sign-in that is open is dropped and the next connect_graph opens a new window; a sign-in that is finished later in the old window connects nothing; the Microsoft Teams connection stays. For 'teams': the PowerShell session that holds the sign-in is given up and a new one takes its place; both connections are lost, so call connect_teams and then connect_graph again (the Graph sign-in is usually silent). Use it when a connect call keeps reporting waitingForSignIn although the user closed the browser window. Nothing in the tenant changes.")]
     public string RestartSignIn(
         [Description("'graph' or 'teams'.")] string service)
         => McpJson.Run(() =>
@@ -119,14 +119,19 @@ internal sealed class SessionTools
 
             if (name == "teams")
             {
+                var open = _connection.TeamsSignInOpen;
+                var restarted = open && _connection.AbandonTeamsSignIn();
                 return new
                 {
-                    success = false,
-                    restarted = false,
-                    message = _connection.TeamsSignInOpen
-                        ? "A Microsoft Teams sign-in cannot be given up: it holds the PowerShell session until it ends. Ask the user to finish it in the browser, or to close the browser window and wait until connect_teams reports an error. When it does not end, the user restarts the MCP server (a new session of the AI client); both sign-ins are then needed again."
-                        : "No Microsoft Teams sign-in is open. Call connect_teams to sign in.",
-                    teamsConnected = _connection.GetStatus().TeamsConnected
+                    success = restarted || !open,
+                    restarted,
+                    message = restarted
+                        ? "The Microsoft Teams sign-in was given up with its PowerShell session, and a new session was started. Call connect_teams: a new browser window opens. Then call connect_graph again, because the Microsoft Graph connection of the old session is gone too. Ask the user to ignore the old window."
+                        : open
+                            ? "The Microsoft Teams sign-in could not be given up. Ask the user to finish it in the browser, or restart the MCP server."
+                            : "No Microsoft Teams sign-in is open. Call connect_teams to sign in.",
+                    teamsConnected = _connection.GetStatus().TeamsConnected,
+                    graphConnected = _connection.GetStatus().GraphConnected
                 };
             }
 

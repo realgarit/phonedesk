@@ -218,6 +218,29 @@ internal sealed class FakePowerShell : IPowerShellContextService
     public Task<bool> IsConnectedAsync(string service, CancellationToken cancellationToken = default)
         => Task.FromResult(true);
 
+    /// <summary>The keys of the sessions taken into use, in order.</summary>
+    public List<string> SessionsUsed { get; } = new();
+
+    public int SessionsAbandoned { get; private set; }
+
+    public string SessionKey { get; private set; } = string.Empty;
+
+    public void UseSession(string key)
+    {
+        SessionKey = key;
+        SessionsUsed.Add(key);
+    }
+
+    public bool AbandonSession()
+    {
+        SessionsAbandoned++;
+        return true;
+    }
+
+    public void CloseSession(string key)
+    {
+    }
+
     public Task<string> GetConnectionStatusAsync(CancellationToken cancellationToken = default)
         => Task.FromResult("Connected");
 

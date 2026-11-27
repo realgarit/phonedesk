@@ -40,6 +40,7 @@ public sealed class TenantConnectionService
     private readonly ITenantTopologyCache _topologyCache;
     private readonly ITenantHealthCheckCache _healthCheckCache;
     private readonly TenantIdentityGuard _identity;
+    private readonly IPowerShellContextService? _host;
     private readonly Lock _gate = new();
 
     private Task<TenantCommandOutcome>? _pendingTeamsSignIn;
@@ -52,9 +53,11 @@ public sealed class TenantConnectionService
         ISessionManager session,
         ITenantTopologyCache topologyCache,
         ITenantHealthCheckCache healthCheckCache,
-        TenantIdentityGuard? identity = null)
+        TenantIdentityGuard? identity = null,
+        IPowerShellContextService? host = null)
     {
         _identity = identity ?? new TenantIdentityGuard();
+        _host = host;
         _runner = runner;
         _commands = commands;
         _graphAuthentication = graphAuthentication;
@@ -125,6 +128,104 @@ public sealed class TenantConnectionService
             _pendingGraphSignIn = null;
             return true;
         }
+    }
+
+    /// <summary>
+    /// Gives up the Microsoft Teams sign-in that is open. The sign-in holds its PowerShell session
+    /// and cannot be stopped, so the session is given up as a whole and a new one takes its place.
+    /// Both connections of that session are lost: Microsoft Teams and Microsoft Graph need a new
+    /// sign-in (the Graph sign-in is usually silent, because its account is still known). Whatever
+    /// the old window reports later reaches nobody. Returns false when no Teams sign-in was open,
+    /// or when the host cannot start a new session.
+    /// </summary>
+    public bool AbandonTeamsSignIn()
+    {
+        lock (_gate)
+        {
+            if (_pendingTeamsSignIn is not { IsCompleted: false } || _host is null || !_host.AbandonSession())
+            {
+                return false;
+            }
+
+            _pendingTeamsSignIn = null;
+            _pendingGraphSignIn = null;
+        }
+
+        ForgetConnections();
+        return true;
+    }
+
+    /// <summary>
+    /// Takes up the PowerShell session and the Graph sign-in of a profile. Each profile keeps its
+    /// own while the application runs, so after a switch back its connections are there again
+    /// without a sign-in. The state of the connections is read from the session, never carried over
+    /// from the profile before.
+    /// </summary>
+    public async Task<ConnectionOutcome> UseProfileSessionAsync(string profileKey, CancellationToken cancellationToken)
+    {
+        if (TeamsSignInOpen)
+        {
+            return Waiting(TeamsSignInOpenMessage);
+        }
+
+        lock (_gate)
+        {
+            _pendingGraphSignIn = null;
+        }
+
+        _host?.UseSession(profileKey);
+        _graphAuthentication.UseProfile(profileKey);
+        ForgetConnections();
+        await AdoptConnectionsAsync(cancellationToken);
+        return Ok(_session.TeamsConnected || _session.GraphConnected
+            ? "The profile's connections are in use again."
+            : "The profile has no connection yet. Sign in to Microsoft Teams and Microsoft Graph.");
+    }
+
+    /// <summary>
+    /// Reads which connections the PowerShell session in use has, and sets the session state from
+    /// that read alone. A read that fails leaves both connections off.
+    /// </summary>
+    private async Task AdoptConnectionsAsync(CancellationToken cancellationToken)
+    {
+        var outcome = await _runner.RunAsync(
+            new TenantCommandRequest(TenantIdentity.GetReadCommand(), "ReadConnectionIdentity") { IsIdempotentRead = true }, cancellationToken);
+        TenantIdentityInfo identity;
+        try
+        {
+            identity = TenantIdentity.Parse(string.IsNullOrEmpty(outcome.Result.RawOutput) ? outcome.Result.Value : outcome.Result.RawOutput);
+        }
+        catch (InvalidDataException)
+        {
+            return;
+        }
+
+        if (identity.TeamsKnown)
+        {
+            _session.UpdateTeamsConnection(true);
+            _session.UpdateTenantInfo(identity.TeamsTenantId, identity.TeamsTenantName);
+        }
+
+        if (identity.GraphKnown)
+        {
+            _session.UpdateGraphConnection(true, identity.GraphAccount);
+        }
+
+        if (identity.TeamsKnown || identity.GraphKnown)
+        {
+            _identity.Update(identity);
+        }
+    }
+
+    /// <summary>Forgets the connection state and everything read from the tenant. The module check stays.</summary>
+    private void ForgetConnections()
+    {
+        var modulesChecked = _session.ModulesChecked;
+        _session.ResetSession();
+        _session.UpdateModulesChecked(modulesChecked);
+        _topologyCache.Clear();
+        _healthCheckCache.Clear();
+        _identity.ClearIdentity();
     }
 
     /// <summary>

@@ -471,12 +471,7 @@ internal sealed class ProvisioningTools
         => McpJson.RunAsync(async () =>
         {
             var app = AudioFiles.NormalizeApplication(application);
-            if (McpFiles.IsNetworkOrDevicePath(path))
-            {
-                throw new ArgumentException("Only a file on a drive of this computer can be uploaded, not a network or device path.");
-            }
-
-            var fullPath = Path.GetFullPath(path);
+            var fullPath = McpFiles.LocalFullPath(path);
             if (!AudioExtensions.Contains(Path.GetExtension(fullPath), StringComparer.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only .wav, .mp3 and .wma files can be uploaded.");

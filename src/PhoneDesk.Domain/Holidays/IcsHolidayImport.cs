@@ -104,6 +104,17 @@ namespace PhoneDesk.Holidays
             {
                 to = until;
             }
+            else if (properties.TryGetValue("DURATION", out var duration))
+            {
+                // An event gives its length instead of its end.
+                if (!TryReadDuration(duration.Value, out var length) || length <= TimeSpan.Zero)
+                {
+                    skipped.Add($"{label}: the length of the event ({duration.Value.Trim()}) could not be read.");
+                    return;
+                }
+
+                to = from + length;
+            }
 
             if (to is not null && to <= from)
             {
@@ -174,6 +185,72 @@ namespace PhoneDesk.Holidays
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out value);
+        }
+
+        /// <summary>Reads a duration of RFC 5545: P1W, P7D, PT4H, P1DT12H30M.</summary>
+        internal static bool TryReadDuration(string? text, out TimeSpan value)
+        {
+            value = TimeSpan.Zero;
+            var input = (text ?? string.Empty).Trim().ToUpperInvariant();
+            if (input.StartsWith('+'))
+            {
+                input = input[1..];
+            }
+
+            if (input.Length < 3 || input[0] != 'P')
+            {
+                return false;
+            }
+
+            var inTime = false;
+            var digits = new StringBuilder();
+            var any = false;
+            foreach (var character in input[1..])
+            {
+                if (character == 'T' && digits.Length == 0)
+                {
+                    inTime = true;
+                    continue;
+                }
+
+                if (char.IsAsciiDigit(character))
+                {
+                    digits.Append(character);
+                    continue;
+                }
+
+                if (digits.Length == 0 || digits.Length > 6)
+                {
+                    return false;
+                }
+
+                var number = int.Parse(digits.ToString(), CultureInfo.InvariantCulture);
+                digits.Clear();
+                switch (character)
+                {
+                    case 'W' when !inTime:
+                        value += TimeSpan.FromDays(7 * number);
+                        break;
+                    case 'D' when !inTime:
+                        value += TimeSpan.FromDays(number);
+                        break;
+                    case 'H' when inTime:
+                        value += TimeSpan.FromHours(number);
+                        break;
+                    case 'M' when inTime:
+                        value += TimeSpan.FromMinutes(number);
+                        break;
+                    case 'S' when inTime:
+                        value += TimeSpan.FromSeconds(number);
+                        break;
+                    default:
+                        return false;
+                }
+
+                any = true;
+            }
+
+            return any && digits.Length == 0;
         }
 
         /// <summary>Joins folded lines: a line that starts with a space or a tab continues the line before.</summary>

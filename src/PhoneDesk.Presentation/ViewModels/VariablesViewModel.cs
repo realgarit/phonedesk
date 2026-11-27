@@ -594,8 +594,12 @@ namespace PhoneDesk.ViewModels
         [NotifyPropertyChangedFor(nameof(HasHolidaySourceNote))]
         private string _holidaySourceNote = string.Empty;
 
-        /// <summary>The events of a calendar file (.ics) the operator loaded. While set, they are the suggested dates.</summary>
-        private IReadOnlyList<IcsHoliday>? _calendarFile;
+        /// <summary>
+        /// The text of a calendar file (.ics) the operator loaded. While set, its events of the selected
+        /// year are the suggested dates. The text is kept, not a list of events, so another year can be
+        /// chosen and a long calendar is not cut before the year is known.
+        /// </summary>
+        private string? _calendarFile;
 
         public bool HasProviderRegions => !IsCalendarFileLoaded && ProviderRegions.Count > 0;
         public bool HasHolidaySourceNote => !string.IsNullOrWhiteSpace(HolidaySourceNote);
@@ -648,20 +652,25 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         public void LoadHolidayCalendar(string content)
         {
-            var result = IcsHolidayImport.Parse(content);
-            _calendarFile = result.Holidays;
+            _calendarFile = content ?? string.Empty;
+            OnCalendarFileChanged();
+        }
+
+        /// <summary>Says what the reader found in the calendar file for the selected year.</summary>
+        private void ShowCalendarNotes(IcsImportResult result)
+        {
             var notes = new List<string>
             {
                 GetText(
                     UiTextKey.HolidayCalendarLoadedNote,
-                    "{count} event(s) read from the calendar file. The list shows the events of {year}.",
+                    "{count} event(s) of {year} read from the calendar file.",
                     new Dictionary<string, object?> { ["count"] = result.Holidays.Count, ["year"] = SelectedYear })
             };
             if (result.Skipped.Count > 0)
             {
                 notes.Add(GetText(
                     UiTextKey.HolidayCalendarSkippedNote,
-                    "{count} event(s) were not read (cancelled, or without a date that could be read).",
+                    "{count} event(s) were not read (cancelled, or without a date or a length that could be read).",
                     new Dictionary<string, object?> { ["count"] = result.Skipped.Count }));
             }
 
@@ -680,8 +689,8 @@ namespace PhoneDesk.ViewModels
                     UiTextKey.HolidayCalendarUtcNote,
                     "Some times are written in UTC and were kept as they are. Correct them for the time zone of the auto attendant."));
             }
+
             HolidaySourceNote = string.Join(Environment.NewLine, notes);
-            OnCalendarFileChanged();
         }
 
         private void OnCalendarFileChanged()
@@ -803,7 +812,9 @@ namespace PhoneDesk.ViewModels
             PredefinedHolidayPreview.Clear();
             if (_calendarFile is not null)
             {
-                foreach (var holiday in _calendarFile.Where(item => item.Entry.Date.Year == SelectedYear || item.Entry.EndDate?.Year == SelectedYear))
+                var calendar = IcsHolidayImport.Parse(_calendarFile, SelectedYear);
+                ShowCalendarNotes(calendar);
+                foreach (var holiday in calendar.Holidays)
                 {
                     PredefinedHolidayPreview.Add(new HolidayEntry(holiday.Entry.Date, holiday.Entry.Time, holiday.Entry.Name, holiday.Entry.EndDate, holiday.Entry.EndTime));
                 }

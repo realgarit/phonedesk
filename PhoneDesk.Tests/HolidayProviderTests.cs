@@ -206,6 +206,33 @@ public class HolidayProviderTests
     }
 
     [Fact]
+    public void CalendarFile_TakesTheLengthOfAnEventAndCutsALongFileOnlyAfterTheYear()
+    {
+        var week = IcsHolidayImport.Parse("BEGIN:VEVENT\nDTSTART;VALUE=DATE:20271227\nDURATION:P1W\nSUMMARY:Closure\nEND:VEVENT").Holidays.Single().Entry;
+        Assert.Equal(new DateTime(2028, 1, 3), week.EndDateTime);
+        var afternoon = IcsHolidayImport.Parse("BEGIN:VEVENT\nDTSTART:20271224T120000\nDURATION:PT4H30M\nSUMMARY:Afternoon\nEND:VEVENT").Holidays.Single();
+        Assert.Equal(new DateTime(2027, 12, 24, 16, 30, 0), afternoon.Entry.EndDateTime);
+        Assert.DoesNotContain("one hour", afternoon.Note);
+        // A length that cannot be read is not replaced by another one.
+        var unreadable = IcsHolidayImport.Parse("BEGIN:VEVENT\nDTSTART;VALUE=DATE:20271227\nDURATION:P1M\nSUMMARY:Closure\nEND:VEVENT");
+        Assert.Empty(unreadable.Holidays);
+        Assert.Contains("length", Assert.Single(unreadable.Skipped));
+
+        // 600 events of earlier years in front of the one of 2027: the year is chosen before the limit.
+        var events = Enumerable.Range(0, 600)
+            .Select(index => $"BEGIN:VEVENT\nDTSTART;VALUE=DATE:{new DateTime(2020, 1, 1).AddDays(index):yyyyMMdd}\nSUMMARY:Old {index}\nEND:VEVENT")
+            .Append("BEGIN:VEVENT\nDTSTART;VALUE=DATE:20270801\nSUMMARY:Bundesfeier\nEND:VEVENT");
+        var longCalendar = string.Join("\n", events);
+        Assert.Equal("Bundesfeier", IcsHolidayImport.Parse(longCalendar, 2027).Holidays.Single().Entry.Name);
+
+        var vm = Create(new ViewModelTestHarness());
+        vm.OpenPredefinedHolidaysWizardCommand.Execute(null);
+        vm.SelectedYear = 2027;
+        vm.LoadHolidayCalendar(longCalendar);
+        Assert.Equal("Bundesfeier", Assert.Single(vm.PredefinedHolidayPreview).Name);
+    }
+
+    [Fact]
     public void Picker_OffersTheCountriesAndAddsOnlyTheDatesLeftIn()
     {
         var vm = Create(new ViewModelTestHarness());

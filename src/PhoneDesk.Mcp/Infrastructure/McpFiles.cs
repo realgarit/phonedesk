@@ -23,19 +23,41 @@ internal static class McpFiles
                text.Contains("://", StringComparison.Ordinal);
     }
 
-    private static string ReadFile(string path, string extension, long maxBytes)
+    /// <summary>
+    /// The full path of a file an AI client named, when it is on a drive of this computer. The
+    /// path is checked as it was given and again after it was made absolute, and a drive letter
+    /// that is mapped to a share is refused too.
+    /// </summary>
+    public static string LocalFullPath(string? path)
     {
+        const string refusal = "Only a file on a drive of this computer can be used, not a network or device path.";
         if (IsNetworkOrDevicePath(path))
         {
-            throw new ArgumentException("Only a file on a drive of this computer can be read, not a network or device path.");
+            throw new ArgumentException(refusal);
         }
 
         var fullPath = Path.GetFullPath(path ?? string.Empty);
-        if (IsNetworkOrDevicePath(fullPath))
+        if (IsNetworkOrDevicePath(fullPath) || !Path.IsPathFullyQualified(fullPath))
         {
-            throw new ArgumentException("Only a file on a drive of this computer can be read, not a network or device path.");
+            throw new ArgumentException(refusal);
         }
 
+        if (OperatingSystem.IsWindows())
+        {
+            var root = Path.GetPathRoot(fullPath) ?? string.Empty;
+            var isDriveLetter = root.Length == 3 && char.IsAsciiLetter(root[0]) && root[1] == ':';
+            if (!isDriveLetter || new DriveInfo(root).DriveType == DriveType.Network)
+            {
+                throw new ArgumentException(refusal);
+            }
+        }
+
+        return fullPath;
+    }
+
+    private static string ReadFile(string path, string extension, long maxBytes)
+    {
+        var fullPath = LocalFullPath(path);
         if (!fullPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException($"Only {extension} files can be read.");

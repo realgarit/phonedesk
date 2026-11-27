@@ -589,6 +589,56 @@ namespace PhoneDesk.ViewModels
             }
         }
 
+        /// <summary>The profile in use, for the brand block of the sidebar: the customer the application works for now.</summary>
+        public string ActiveProfileText => string.IsNullOrWhiteSpace(_sharedStateService?.ActiveProfileLabel)
+            ? string.Empty
+            : GetText(
+                UiTextKey.MainActiveProfile,
+                "Profile: {name}",
+                new Dictionary<string, object?> { ["name"] = _sharedStateService!.ActiveProfileLabel });
+
+        public bool HasActiveProfile => !string.IsNullOrWhiteSpace(_sharedStateService?.ActiveProfileLabel);
+
+        /// <summary>
+        /// Takes up the profile that was in use when the application was closed: its configuration,
+        /// its name in the shell, and its expected tenant for the next sign-in. A profile that cannot
+        /// be read is left alone and the application starts without one.
+        /// </summary>
+        private void UseStoredProfile(
+            PhoneDesk.Operations.TenantProfileService? profiles, PhoneDesk.Operations.TenantIdentityGuard? identityGuard, ITenantAsCodeService? tenantAsCode)
+        {
+            if (profiles is null || _sharedStateService is null)
+            {
+                return;
+            }
+
+            try
+            {
+                var active = profiles.Active;
+                if (active is null)
+                {
+                    return;
+                }
+
+                if (tenantAsCode is not null && !string.IsNullOrWhiteSpace(active.ConfigurationJson))
+                {
+                    _sharedStateService.Variables = PhoneDesk.Portability.PhoneManagerVariablesPortabilityMapper.FromDocument(
+                        tenantAsCode.DeserializeConfiguration(active.ConfigurationJson));
+                }
+
+                identityGuard?.SetExpectation(active.ExpectedTenant, active.ExpectedAccount);
+                _sharedStateService.ActiveProfileLabel = active.Name;
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or System.Text.Json.JsonException or ArgumentException)
+            {
+                LogLocalized(
+                    UiTextKey.MainProfileLoadFailedLog,
+                    "The profile in use could not be loaded: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
+        }
+
         public MainWindowViewModel(
             IPowerShellContextService powerShellContextService,
             IPowerShellCommandService powerShellCommandService,
@@ -605,11 +655,26 @@ namespace PhoneDesk.ViewModels
             IBundledModuleVersionService bundledModuleVersionService,
             IAuditLog? auditLog = null,
             ITranslationService? translationService = null,
-            IUserPreferencesStore? userPreferences = null)
+            IUserPreferencesStore? userPreferences = null,
+            PhoneDesk.Operations.TenantProfileService? profiles = null,
+            PhoneDesk.Operations.TenantIdentityGuard? identityGuard = null,
+            ITenantAsCodeService? tenantAsCode = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _userPreferences = userPreferences;
+            UseStoredProfile(profiles, identityGuard, tenantAsCode);
+            if (_sharedStateService is System.ComponentModel.INotifyPropertyChanged notifying)
+            {
+                notifying.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(ISharedStateService.ActiveProfileLabel))
+                    {
+                        OnPropertyChanged(nameof(ActiveProfileText));
+                        OnPropertyChanged(nameof(HasActiveProfile));
+                    }
+                };
+            }
             IsIntroductionVisible = userPreferences != null && !userPreferences.LoadIntroductionDismissed();
             _pageViewModelFactory = pageViewModelFactory;
             _updateCheckService = updateCheckService;

@@ -144,6 +144,17 @@ namespace PhoneDesk.ViewModels
             _abandonGraphSignIn?.TrySetResult(true);
         }
 
+        /// <summary>The profile in use when a Microsoft Graph sign-in started.</summary>
+        private string? _profileAtStart;
+
+        private void ChangeOpenSignIns(int change)
+        {
+            if (_sharedStateService is not null)
+            {
+                _sharedStateService.OpenSignIns = Math.Max(0, _sharedStateService.OpenSignIns + change);
+            }
+        }
+
         private UiTextKey? _lastSetupErrorKey;
         private string? _lastSetupErrorFallback;
 
@@ -387,7 +398,17 @@ namespace PhoneDesk.ViewModels
                     LogLevel.Info);
 
                 var command = _powerShellCommandService.GetConnectTeamsCommand();
-                var result = await ExecutePowerShellCommandAsync(command, "ConnectTeams");
+                OperationResult<string> result;
+                ChangeOpenSignIns(+1);
+                try
+                {
+                    result = await ExecutePowerShellCommandAsync(command, "ConnectTeams");
+                }
+                finally
+                {
+                    ChangeOpenSignIns(-1);
+                }
+
                 TeamsConnected = result.HasSuccessMarker;
 
                 string? tenantId = null;
@@ -477,6 +498,7 @@ namespace PhoneDesk.ViewModels
 
                 ClearSetupError();
                 IsBusy = true;
+                _profileAtStart = _sharedStateService?.ActiveProfileLabel;
                 LogLocalized(
                     UiTextKey.GetStartedConnectGraphAuthLog,
                     "Authenticating to Microsoft Graph...",
@@ -485,6 +507,9 @@ namespace PhoneDesk.ViewModels
                 // Step 1: Authenticate using MSAL (opens browser popup). A sign-in window that was closed
                 // never reports back, so the operator can give up the wait and start again.
                 var signIn = _msalAuthService.AuthenticateAsync();
+                // Counted until the sign-in is used or given up, so a profile switch waits for it.
+                var counted = true;
+                ChangeOpenSignIns(+1);
                 var abandon = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _abandonGraphSignIn = abandon;
                 GraphSignInPending = true;
@@ -492,6 +517,8 @@ namespace PhoneDesk.ViewModels
                 {
                     if (await Task.WhenAny(signIn, abandon.Task) != signIn)
                     {
+                        counted = false;
+                        ChangeOpenSignIns(-1);
                         // The old attempt is not awaited any more: when it finishes later, its result is not used.
                         GraphConnected = false;
                         _sessionManager.UpdateGraphConnection(false);
@@ -509,6 +536,19 @@ namespace PhoneDesk.ViewModels
                 }
 
                 var authResult = await signIn;
+                if (counted)
+                {
+                    counted = false;
+                    ChangeOpenSignIns(-1);
+                }
+
+                // Another profile was taken into use while the window was open: this sign-in belongs
+                // to the customer before and is not used.
+                if (_sharedStateService is not null && _profileAtStart is not null &&
+                    !string.Equals(_profileAtStart, _sharedStateService.ActiveProfileLabel, StringComparison.Ordinal))
+                {
+                    return;
+                }
 
                 if (!authResult.Success || string.IsNullOrEmpty(authResult.AccessToken))
                 {

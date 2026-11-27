@@ -52,7 +52,18 @@ internal static class ServiceRegistration
         services.AddTransient<TenantSnapshotCollector>();
 
         // Headless operations and server state.
-        services.AddSingleton<TenantIdentityGuard>();
+        // A restarted server works for the profile that was in use: its sign-ins are checked
+        // against that customer from the first connect call on.
+        services.AddSingleton(provider =>
+        {
+            var guard = new TenantIdentityGuard();
+            if (provider.GetRequiredService<PhoneDesk.Operations.TenantProfileService>().Active is { } active)
+            {
+                guard.SetExpectation(active.ExpectedTenant, active.ExpectedAccount);
+            }
+
+            return guard;
+        });
         services.AddSingleton<TenantConnectionService>();
         services.AddSingleton<TenantHealthCheckService>();
         services.AddSingleton<ConfigurationStore>();
@@ -69,6 +80,10 @@ internal static class ServiceRegistration
             provider.GetRequiredService<IPowerShellCommandService>(),
             provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<McpRunJournal>();
+        services.AddSingleton<PhoneDesk.Operations.ITenantProfileStore>(provider =>
+            new FileTenantProfileStore(Path.Combine(provider.GetRequiredService<McpEnvironment>().DataDirectory, "profiles.json")));
+        services.AddSingleton(provider => new PhoneDesk.Operations.TenantProfileService(
+            provider.GetRequiredService<PhoneDesk.Operations.ITenantProfileStore>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<HolidayCallHandlingReader>();
         services.AddSingleton<HolidayBackupWriter>();
         services.AddSingleton<AudioUploadLog>();

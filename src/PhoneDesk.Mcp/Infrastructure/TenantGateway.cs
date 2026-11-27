@@ -72,6 +72,12 @@ internal sealed class TenantGateway
 
     public string TenantId => _session.TenantId ?? string.Empty;
 
+    /// <summary>The connected tenant for a person to read: its name and ID. Null when not connected.</summary>
+    public string? TenantLabel
+        => string.IsNullOrWhiteSpace(_session.TenantId)
+            ? null
+            : string.IsNullOrWhiteSpace(_session.TenantName) ? _session.TenantId : $"{_session.TenantName} ({_session.TenantId})";
+
     public void RequireReady()
     {
         if (!_connection.IsReady)

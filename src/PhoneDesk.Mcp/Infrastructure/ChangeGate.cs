@@ -217,6 +217,7 @@ internal sealed class ChangeGate
             planId = id,
             operation = request.Operation,
             target = request.Target,
+            tenant = _tenant.TenantLabel,
             summary = request.Summary,
             script = request.Script,
             expiresUtc = expires,

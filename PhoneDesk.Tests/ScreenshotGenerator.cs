@@ -196,6 +196,10 @@ namespace PhoneDesk.Tests
             new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
             new("HolidayManager", true, "holiday-manager-compare-en.png", "holidaymanager-compare-en"),
             new("HolidayManager", true, "holiday-manager-compare-de.png", "holidaymanager-compare-de"),
+            new("Profiles", true, "profiles-empty-en.png", "profiles-empty-en"),
+            new("Profiles", true, "profiles-empty-de.png", "profiles-empty-de"),
+            new("Profiles", true, "profiles-list-en.png", "ready-profiles-list"),
+            new("Profiles", true, "profiles-list-de.png", "ready-profiles-list-de"),
             new("EditSettings", true, "edit-settings-empty-en.png", "editsettings-empty-en"),
             new("EditSettings", true, "edit-settings-empty-de.png", "editsettings-empty-de"),
             new("EditSettings", true, "edit-settings-queue-en.png", "editsettings-queue-en"),
@@ -488,6 +492,11 @@ namespace PhoneDesk.Tests
             // Guided Setup progress lives in the shared state; every shot starts without it.
             sharedState.WizardProgress = null;
             sharedState.SetupRun = null;
+            sharedState.ActiveProfileLabel = string.Empty;
+            if (Directory.Exists(ScreenshotRunDirectory + "-profiles"))
+            {
+                Directory.Delete(ScreenshotRunDirectory + "-profiles", recursive: true);
+            }
             if (Directory.Exists(ScreenshotRunDirectory))
             {
                 Directory.Delete(ScreenshotRunDirectory, recursive: true);
@@ -615,6 +624,16 @@ namespace PhoneDesk.Tests
             failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.M365Group, Name = "ttgrp-contoso-reception", ObjectId = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43", Step = 1 });
             failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.ResourceAccount, Name = "racq-contoso-reception@contoso.onmicrosoft.com", ObjectId = "a1", Step = 2 });
             failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.CallQueue, Name = "cq-contoso-reception", ObjectId = "c1", Step = 4 });
+
+            if (scenario.Contains("profiles-list", StringComparison.Ordinal))
+            {
+                var profiles = provider.GetRequiredService<PhoneDesk.Operations.TenantProfileService>();
+                var contoso = profiles.Create("Contoso Produktion", "contoso.com", "admin@contoso.com", string.Empty);
+                profiles.Create("Fabrikam", "fabrikam.onmicrosoft.com", string.Empty, string.Empty);
+                profiles.Create("Northwind Traders Test", "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43", "phone-admin@northwindtraders.example", string.Empty);
+                profiles.Activate(contoso.Id, string.Empty);
+                provider.GetRequiredService<ISharedStateService>().ActiveProfileLabel = contoso.Name;
+            }
 
             if (scenario.Contains("pending-run", StringComparison.Ordinal))
             {
@@ -1825,6 +1844,7 @@ namespace PhoneDesk.Tests
             ReplaceSingleton<IUserPreferencesStore>(services, new ScreenshotPreferences());
             ReplaceSingleton<IAuditLog>(services, new ScreenshotAuditLog());
             ReplaceSingleton<PhoneDesk.Operations.IRunJournalStore>(services, new FileRunJournalStore(ScreenshotRunDirectory));
+            ReplaceSingleton<PhoneDesk.Operations.ITenantProfileStore>(services, new FileTenantProfileStore(Path.Combine(ScreenshotRunDirectory + "-profiles", "profiles.json")));
             ReplaceSingleton<IUpdateCheckService>(services, new StubUpdateCheckService());
             ReplaceSingleton<IPowerShellContextService>(services, new StubPowerShellContextService());
             ReplaceSingleton<IMsalGraphAuthenticationService>(services, new StubMsalGraphAuthenticationService());

@@ -187,15 +187,29 @@ namespace PhoneDesk.ViewModels
             var after = await ReadAsync();
             var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
             var lines = new List<string>();
+            var confirmed = 0;
             foreach (var outcome in outcomes)
             {
                 var values = new Dictionary<string, object?> { ["setting"] = LabelOf(outcome.Key, outcome.Label), ["message"] = outcome.Message };
-                // A setting counts as saved when the script said so and the new read shows it.
-                lines.Add(outcome.Saved && open?.Contains(outcome.Key) != true
-                    ? GetText(UiTextKey.EditSettingsOutcomeSaved, "Saved: {setting}", values)
-                    : outcome.Saved
-                        ? GetText(UiTextKey.EditSettingsOutcomeNotShown, "Sent, but the tenant does not show it yet: {setting}", values)
-                        : GetText(UiTextKey.EditSettingsOutcomeFailed, "Not saved: {setting} ({message})", values));
+                // A setting counts as saved only when the script said so and a new read shows it.
+                // Without that read nothing is confirmed.
+                if (!outcome.Saved)
+                {
+                    lines.Add(GetText(UiTextKey.EditSettingsOutcomeFailed, "Not saved: {setting} ({message})", values));
+                }
+                else if (open is null)
+                {
+                    lines.Add(GetText(UiTextKey.EditSettingsOutcomeUnverified, "Sent, but not confirmed because the object could not be read again: {setting}", values));
+                }
+                else if (open.Contains(outcome.Key))
+                {
+                    lines.Add(GetText(UiTextKey.EditSettingsOutcomeNotShown, "Sent, but the tenant does not show it yet: {setting}", values));
+                }
+                else
+                {
+                    confirmed++;
+                    lines.Add(GetText(UiTextKey.EditSettingsOutcomeSaved, "Saved: {setting}", values));
+                }
             }
 
             if (after is not null)
@@ -204,10 +218,14 @@ namespace PhoneDesk.ViewModels
             }
 
             Summary = string.Join(Environment.NewLine, lines);
-            StatusMessage = GetText(
-                UiTextKey.EditSettingsDoneStatus,
-                "{saved} of {total} settings saved.",
-                new Dictionary<string, object?> { ["saved"] = outcomes.Count(outcome => outcome.Saved), ["total"] = outcomes.Count });
+            StatusMessage = after is null
+                ? GetText(
+                    UiTextKey.EditSettingsUnverifiedStatus,
+                    "The change was sent, but the object could not be read again, so the result is not confirmed. Read the object to see what it holds.")
+                : GetText(
+                    UiTextKey.EditSettingsDoneStatus,
+                    "{saved} of {total} settings saved.",
+                    new Dictionary<string, object?> { ["saved"] = confirmed, ["total"] = outcomes.Count });
         }, nameof(ApplyAsync));
 
         /// <summary>Shows an object without a tenant, for the headless renders of the page.</summary>

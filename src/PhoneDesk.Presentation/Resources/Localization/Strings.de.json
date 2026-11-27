@@ -1508,5 +1508,7 @@
   "EditLabelAaAfterHoursAction": "Aktion ausserhalb der Öffnungszeiten",
   "EditHelpAaAfterHoursAction": "Was mit einem Anruf ausserhalb der Öffnungszeiten geschieht.",
   "EditLabelAaAfterHoursTarget": "Ziel ausserhalb der Öffnungszeiten",
-  "EditHelpAaAfterHoursTarget": "Anmeldename oder Objekt-ID des Kontos, an das der Anruf geht."
+  "EditHelpAaAfterHoursTarget": "Anmeldename oder Objekt-ID des Kontos, an das der Anruf geht.",
+  "EditSettingsOutcomeUnverified": "Gesendet, aber nicht bestätigt, weil das Objekt nicht erneut gelesen werden konnte: {setting}",
+  "EditSettingsUnverifiedStatus": "Die Änderung wurde gesendet, aber das Objekt konnte nicht erneut gelesen werden. Das Ergebnis ist daher nicht bestätigt. Lesen Sie das Objekt, um zu sehen, was es enthält."
 }

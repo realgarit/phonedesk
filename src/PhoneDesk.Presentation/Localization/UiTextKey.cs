@@ -1513,4 +1513,6 @@ public enum UiTextKey
     EditHelpAaAfterHoursAction,
     EditLabelAaAfterHoursTarget,
     EditHelpAaAfterHoursTarget,
+    EditSettingsOutcomeUnverified,
+    EditSettingsUnverifiedStatus,
 }

@@ -19,6 +19,7 @@ namespace PhoneDesk.Tests
         private readonly ViewModelTestHarness _harness = new();
         private readonly List<string> _changes = new();
         private string _routing = "Attendant";
+        private bool _readFails;
 
         public EditSettingsViewModelTests()
         {
@@ -27,6 +28,11 @@ namespace PhoneDesk.Tests
                     It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string script, Dictionary<string, string>? _, IProgress<PowerShellProgress>? _, CancellationToken _) =>
                 {
+                    if (script.Contains("PDEDIT_JSON", StringComparison.Ordinal) && _readFails)
+                    {
+                        return new PowerShellExecutionResult { Output = "ERROR: The service did not answer." };
+                    }
+
                     if (script.Contains("PDEDIT_JSON", StringComparison.Ordinal))
                     {
                         return new PowerShellExecutionResult
@@ -44,8 +50,29 @@ namespace PhoneDesk.Tests
 
                     _changes.Add(script);
                     _routing = "Serial";
+                    _readFails = FailReadAfterSave;
                     return new PowerShellExecutionResult { Output = ObjectEdit.PropertyMarker + "routingMethod\nSUCCESS: saved" };
                 });
+        }
+
+        private bool FailReadAfterSave { get; set; }
+
+        [Fact]
+        public async Task Page_DoesNotCallASaveConfirmedWhenTheObjectCannotBeReadAgain()
+        {
+            var page = Page();
+            page.ObjectName = "Support CQ";
+            await page.LoadCommand.ExecuteAsync(null);
+            page.Fields[0].NewValue = "Serial";
+            page.CheckCommand.Execute(null);
+            FailReadAfterSave = true;
+
+            await page.ApplyCommand.ExecuteAsync(null);
+
+            Assert.Single(_changes);
+            Assert.Contains("not confirmed", page.Summary);
+            Assert.DoesNotContain("Saved:", page.Summary);
+            Assert.Contains("not confirmed", page.StatusMessage);
         }
 
         private EditSettingsViewModel Page() => new(

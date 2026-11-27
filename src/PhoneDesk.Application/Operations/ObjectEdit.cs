@@ -49,6 +49,13 @@ public sealed class EditObjectState
 
     /// <summary>What an operator must know before they change the object.</summary>
     public IReadOnlyList<string> Notes { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// The objects a change reaches beside the object itself: for an auto attendant the schedule of
+    /// its opening hours, who else uses that schedule, and its after-hours call flow. A change is
+    /// approved for this reach, and it is saved only to these objects.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Scope { get; init; } = new Dictionary<string, string>();
 }
 
 public sealed record EditChange(string Key, string Label, string Old, string New);
@@ -162,7 +169,8 @@ public static class ObjectEdit
             Name = raw.Name,
             Values = values,
             Locked = new Dictionary<string, string>(raw.Locked, StringComparer.OrdinalIgnoreCase),
-            Notes = raw.Notes
+            Notes = raw.Notes,
+            Scope = new Dictionary<string, string>(raw.Scope.ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty), StringComparer.OrdinalIgnoreCase)
         };
     }
 
@@ -247,10 +255,16 @@ public static class ObjectEdit
         return new EditAssessment { State = state, Changes = changes, Blockers = blockers, Warnings = warnings };
     }
 
-    /// <summary>The text an approval is bound to: the object and every change with its old and new value.</summary>
+    /// <summary>
+    /// The text an approval is bound to: the object, every change with its old and new value, and
+    /// the other objects the change reaches. When the auto attendant is given another schedule
+    /// after the check, or another auto attendant starts to use its schedule, the approval no
+    /// longer holds.
+    /// </summary>
     public static string ApprovedState(EditAssessment assessment)
         => assessment.State.Kind + "|" + assessment.State.Id + "\n" +
-           string.Join("\n", assessment.Changes.Select(change => $"{change.Key}|{change.Old}|{change.New}"));
+           string.Join("\n", assessment.Changes.Select(change => $"{change.Key}|{change.Old}|{change.New}")) + "\n" +
+           string.Join("\n", assessment.State.Scope.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => $"scope:{pair.Key}={pair.Value}"));
 
     /// <summary>
     /// The script that saves the changes. Each setting is saved on its own behind a marker line, so
@@ -272,6 +286,12 @@ public static class ObjectEdit
         foreach (var change in assessment.Changes)
         {
             values[change.Key] = change.New;
+        }
+
+        // The reach the change was approved for. The script saves to these objects and to no others.
+        foreach (var (key, value) in state.Scope)
+        {
+            values["scope" + char.ToUpperInvariant(key[0]) + key[1..]] = value;
         }
 
         if (values.TryGetValue("businessHours", out var hours))
@@ -441,6 +461,8 @@ public static class ObjectEdit
         public Dictionary<string, string> Locked { get; init; } = new();
 
         public List<string> Notes { get; init; } = new();
+
+        public Dictionary<string, string?> Scope { get; init; } = new();
     }
 
     /// <summary>Opening hours as text: one entry per day, each with its time ranges.</summary>
@@ -558,6 +580,7 @@ public static class ObjectEdit
             param($pdAa)
             $pdLink = @($pdAa.CallHandlingAssociations | Where-Object { "$($_.Type)" -eq 'AfterHours' }) | Select-Object -First 1
             if (-not $pdLink) { throw 'The auto attendant has no after-hours call handling.' }
+            if ("$($pdLink.CallFlowId)" -ne [string]$pdEdit.scopeCallFlowId) { throw 'The auto attendant has another after-hours call flow than when the change was checked. Nothing was saved to it.' }
             $pdFound = @($pdAa.CallFlows | Where-Object { "$($_.Id)" -eq "$($pdLink.CallFlowId)" }) | Select-Object -First 1
             if (-not $pdFound) { throw 'The after-hours call flow was not found.' }
             return $pdFound
@@ -605,7 +628,10 @@ public static class ObjectEdit
             GetAa +
             "    $pdLink = @($pdAa.CallHandlingAssociations | Where-Object { \"$($_.Type)\" -eq 'AfterHours' }) | Select-Object -First 1\n" +
             "    if (-not $pdLink) { throw 'The auto attendant has no after-hours call handling.' }\n" +
-            "    $pdSchedule = Get-CsOnlineSchedule -Id ([string]$pdLink.ScheduleId) -ErrorAction Stop\n" +
+            "    if (\"$($pdLink.ScheduleId)\" -ne [string]$pdEdit.scopeScheduleId) { throw 'The auto attendant uses another schedule than when the change was checked. Nothing was saved to it.' }\n" +
+            "    $pdSchedule = Get-CsOnlineSchedule -Id ([string]$pdEdit.scopeScheduleId) -ErrorAction Stop\n" +
+            "    $pdUsers = (@($pdSchedule.AssociatedConfigurationIds | Where-Object { $_ } | ForEach-Object { [string]$_ } | Sort-Object) -join ',')\n" +
+            "    if ($pdUsers -ne [string]$pdEdit.scopeScheduleUsers) { throw 'Other auto attendants use the schedule than when the change was checked. Nothing was saved to it.' }\n" +
             "    $pdHours = ConvertFrom-Json ([string]$pdEdit.businessHoursJson)\n" +
             "    $pdDays = [ordered]@{ Mon = 'MondayHours'; Tue = 'TuesdayHours'; Wed = 'WednesdayHours'; Thu = 'ThursdayHours'; Fri = 'FridayHours'; Sat = 'SaturdayHours'; Sun = 'SundayHours' }\n" +
             "    foreach ($pdDay in $pdDays.Keys) {\n" +
@@ -667,6 +693,7 @@ public static class ObjectEdit
             $pdA = $pdFound[0]
             $pdLocked = [ordered]@{}
             $pdNotes = @()
+            $pdScope = [ordered]@{}
             $pdValues = [ordered]@{ language = [string]$pdA.LanguageId; timeZone = [string]$pdA.TimeZoneId }
             $pdFlowValues = {
                 param($pdFlow, $pdGreetingKey, $pdActionKey, $pdTargetKey, $pdWhere)
@@ -701,6 +728,9 @@ public static class ObjectEdit
             if ($pdAfter) {
                 & $pdFlowValues $pdAfter 'afterHoursGreetingText' 'afterHoursAction' 'afterHoursTarget' 'after hours'
                 $pdSchedule = Get-CsOnlineSchedule -Id ([string]$pdLink.ScheduleId) -ErrorAction Stop
+                $pdScope['scheduleId'] = [string]$pdLink.ScheduleId
+                $pdScope['callFlowId'] = [string]$pdLink.CallFlowId
+                $pdScope['scheduleUsers'] = (@($pdSchedule.AssociatedConfigurationIds | Where-Object { $_ } | ForEach-Object { [string]$_ } | Sort-Object) -join ',')
                 $pdDays = [ordered]@{ Mon = 'MondayHours'; Tue = 'TuesdayHours'; Wed = 'WednesdayHours'; Thu = 'ThursdayHours'; Fri = 'FridayHours'; Sat = 'SaturdayHours'; Sun = 'SundayHours' }
                 $pdParts = @()
                 foreach ($pdDay in $pdDays.Keys) {
@@ -722,7 +752,7 @@ public static class ObjectEdit
                     $pdLocked[$pdKey] = 'The auto attendant has no after-hours call handling.'
                 }
             }
-            $pdDocument = [ordered]@{ id = [string]$pdA.Identity; name = [string]$pdA.Name; values = $pdValues; locked = $pdLocked; notes = @($pdNotes) }
+            $pdDocument = [ordered]@{ id = [string]$pdA.Identity; name = [string]$pdA.Name; values = $pdValues; locked = $pdLocked; notes = @($pdNotes); scope = $pdScope }
             Write-Host ("PDEDIT_JSON: " + (ConvertTo-Json -InputObject $pdDocument -Depth 6 -Compress))
             Write-Host "SUCCESS: Auto attendant read"
         }

@@ -110,16 +110,30 @@ internal sealed class EditTools
         }
 
         // Read again in every case: after a part of the settings failed, the user must know what the object holds.
-        var after = await ReadAsync(kind, state.Id, cancellationToken);
-        var open = ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
-        return McpJson.With(result, "settings", outcomes.Select(outcome => new
+        EditObjectState? after = null;
+        string? readProblem = null;
+        try
+        {
+            after = await ReadAsync(kind, state.Id, cancellationToken);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+        {
+            // The change was sent. Without a new read nothing of it is confirmed, and that is said.
+            readProblem = ex.Message;
+        }
+
+        var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
+        result = McpJson.With(result, "settings", outcomes.Select(outcome => new
         {
             setting = outcome.Key,
             saved = outcome.Saved,
-            shownByTenant = !open.Contains(outcome.Key),
+            shownByTenant = open is null ? (bool?)null : !open.Contains(outcome.Key),
             message = outcome.Message,
-            now = after.Values.TryGetValue(outcome.Key, out var now) ? now : null
+            now = after is not null && after.Values.TryGetValue(outcome.Key, out var now) ? now : null
         }));
+        return readProblem is null
+            ? result
+            : McpJson.With(result, "notConfirmed", "The change was sent, but the object could not be read again, so no setting is confirmed: " + readProblem + " Read the settings again before you tell the user the result.");
     }
 
     private async Task<EditObjectState> ReadAsync(EditObjectKind kind, string target, CancellationToken cancellationToken)

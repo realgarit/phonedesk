@@ -1508,5 +1508,7 @@
   "EditLabelAaAfterHoursAction": "Action after hours",
   "EditHelpAaAfterHoursAction": "What happens to a call outside opening hours.",
   "EditLabelAaAfterHoursTarget": "Target after hours",
-  "EditHelpAaAfterHoursTarget": "Sign-in name or object ID of the account the call goes to."
+  "EditHelpAaAfterHoursTarget": "Sign-in name or object ID of the account the call goes to.",
+  "EditSettingsOutcomeUnverified": "Sent, but not confirmed because the object could not be read again: {setting}",
+  "EditSettingsUnverifiedStatus": "The change was sent, but the object could not be read again, so the result is not confirmed. Read the object to see what it holds."
 }

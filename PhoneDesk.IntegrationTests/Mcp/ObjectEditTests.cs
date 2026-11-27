@@ -133,6 +133,36 @@ public sealed class ObjectEditTests
         Assert.Equal("Willkommen", after.Values["greetingText"]);
     }
 
+    [Fact]
+    public void AutoAttendant_ApprovalHoldsOnlyForTheScheduleAndItsUsersThatWereChecked()
+    {
+        var state = ObjectEdit.Parse(EditObjectKind.AutoAttendant, Run(ObjectEdit.GetReadCommand(EditObjectKind.AutoAttendant, AttendantId)));
+        Assert.Equal("sched-1", state.Scope["scheduleId"]);
+        Assert.Equal("flow-after", state.Scope["callFlowId"]);
+        Assert.Contains("another-attendant", state.Scope["scheduleUsers"]);
+        var wanted = Wanted(("businessHours", "Mon 08:00-17:00"), ("afterHoursGreetingText", "Geschlossen."));
+        var assessment = ObjectEdit.Assess(state, wanted);
+        var approved = ObjectEdit.ApprovedState(assessment);
+        var script = ObjectEdit.GetApplyCommand(assessment);
+
+        // Another auto attendant starts to use the schedule: the same hours are another change now.
+        const string OneMoreUser = "$global:pdFakeSchedule.AssociatedConfigurationIds += 'third-attendant'";
+        var widened = ObjectEdit.Parse(EditObjectKind.AutoAttendant, Run(OneMoreUser, ObjectEdit.GetReadCommand(EditObjectKind.AutoAttendant, AttendantId)));
+        Assert.NotEqual(approved, ObjectEdit.ApprovedState(ObjectEdit.Assess(widened, wanted)));
+        // And a script that was approved before does not write to the schedule.
+        var refused = ObjectEdit.ParseOutcome(assessment, Run(OneMoreUser, script)).ToDictionary(outcome => outcome.Key, outcome => outcome);
+        Assert.False(refused["businessHours"].Saved);
+        Assert.Contains("Other auto attendants use the schedule", refused["businessHours"].Message);
+        Assert.True(refused["afterHoursGreetingText"].Saved);
+
+        // The auto attendant was given another schedule and call flow with the same hours.
+        const string OtherSchedule = "$global:pdFakeAttendant.CallHandlingAssociations = @([pscustomobject]@{ Type = 'AfterHours'; ScheduleId = 'sched-2'; CallFlowId = 'flow-other' })";
+        var moved = ObjectEdit.ParseOutcome(assessment, Run(OtherSchedule, script));
+        Assert.All(moved, outcome => Assert.False(outcome.Saved));
+        Assert.Contains(moved, outcome => outcome.Message.Contains("another schedule", StringComparison.Ordinal));
+        Assert.Contains(moved, outcome => outcome.Message.Contains("another after-hours call flow", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("Mon 08:00-17:10", "steps of 15 minutes")]
     [InlineData("Mon 17:00-08:00", "ends before it starts")]
@@ -184,6 +214,15 @@ public sealed class ObjectEditTests
         Assert.True(setting.GetProperty("saved").GetBoolean());
         Assert.True(setting.GetProperty("shownByTenant").GetBoolean());
         Assert.Equal("Serial", setting.GetProperty("now").GetString());
+
+        // The save went through, but the object cannot be read afterwards: nothing is reported as confirmed.
+        host.PowerShell.Respond(read, State("Serial"));
+        var third = McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "RoundRobin" }, cancellationToken: Cancellation));
+        host.PowerShell.Respond(readById, "ERROR: The service did not answer.");
+        var unconfirmed = McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "RoundRobin" }, third.GetProperty("planId").GetString(), Cancellation));
+        Assert.Contains("no setting is confirmed", unconfirmed.GetProperty("notConfirmed").GetString());
+        Assert.False(unconfirmed.GetProperty("settings")[0].TryGetProperty("shownByTenant", out _));
+        host.PowerShell.Respond(read, State("Attendant"));
 
         Assert.Contains("not one of", McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "Fastest" }, cancellationToken: Cancellation)).GetProperty("error").GetString());
         Assert.True(McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "Attendant" }, cancellationToken: Cancellation)).GetProperty("nothingToChange").GetBoolean());

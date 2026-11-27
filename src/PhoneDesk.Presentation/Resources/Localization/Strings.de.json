@@ -1350,5 +1350,9 @@
   "HolidayManagerCompareSameStart": "gleicher Beginn, anderes Ende",
   "HolidayManagerComparePartialOverlap": "überschneidet sich teilweise",
   "HolidayManagerCompareMissing": "fehlt",
-  "HolidayManagerCompareDisabled": "angehängt, aber ausgeschaltet"
+  "HolidayManagerCompareDisabled": "angehängt, aber ausgeschaltet",
+  "PlanTenantCheckAction": "Mandant prüfen",
+  "PlanTenantCheckTooltip": "Liest den Mandanten: welche Namen und Konten bereits vorhanden sind, ob genügend Lizenzen frei sind und ob die Telefonnummer frei ist. Ändert nichts.",
+  "PlanTenantCheckDoneStatus": "Mandant geprüft: {fail} Prüfung(en) würden fehlschlagen, {warning} Warnung(en).",
+  "PlanTenantCheckFailedStatus": "Der Mandant konnte für die Vorschau nicht gelesen werden: {details}"
 }

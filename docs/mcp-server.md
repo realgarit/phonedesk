@@ -21,7 +21,7 @@ with the app; there is nothing extra to download.
 | Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset` |
 | Single operations | `create_m365_group`, `lookup_m365_group_id`, `create_resource_account`, `set_resource_account_usage_location`, `assign_resource_account_license`, `assign_phone_number`, `create_call_queue`, `create_auto_attendant`, `associate_resource_account`, `create_holiday_schedule`, `verify_auto_attendant`, `attach_holiday_schedule`, `import_audio_file` |
 | Holiday schedules that exist | `list_holiday_schedules`, `holiday_call_handling`, `copy_holiday_call_handling` |
-| Bulk | `bulk_setup_template`, `bulk_setup` |
+| Bulk | `bulk_setup_template`, `bulk_setup_preview`, `bulk_setup` |
 | Delete | `delete_call_queue`, `delete_auto_attendant`, `delete_holiday_schedule`, `delete_resource_account`, `delete_m365_group`, `release_phone_number` |
 
 `release_phone_number` removes an unassigned Direct Routing number from the tenant's number inventory. Teams
@@ -130,6 +130,21 @@ Rules that hold for all four:
   stays (`uncheckedAuthorizedUsers` with its `kind`).
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
+
+### The preview against the tenant
+
+`guided_setup_preview` and `bulk_setup_preview` return the dry-run plan from the configuration or
+the CSV alone. With `checkTenant=true` they also read the tenant, for every entry:
+
+- which agent group, call queue, auto attendant and resource accounts exist already. The setup
+  uses what exists, so this is a warning, not a failure;
+- whether enough licenses are free, counted over all entries of the plan. An account that has
+  the license already needs none;
+- whether the phone number is in the tenant, has the configured type, and is free.
+
+A check with the status `Fail` means that step would fail. What could not be read is reported as
+`NotChecked` with the reason, never as a pass. The desktop app has the same check as **Check
+tenant** in Guided Setup and on the Bulk Operations page. The script only reads.
 
 ### A customer's holiday list and the change table
 

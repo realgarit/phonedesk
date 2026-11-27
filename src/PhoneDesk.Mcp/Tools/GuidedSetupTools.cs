@@ -17,6 +17,8 @@ internal sealed class GuidedSetupTools
     private readonly IDryRunPlanBuilder _planBuilder;
     private readonly IDryRunPlanExporter _planExporter;
     private readonly TenantConnectionService _connection;
+    private readonly TenantGateway _tenant;
+    private readonly IPowerShellCommandService _commands;
 
     public GuidedSetupTools(
         ConfigurationStore store,
@@ -26,8 +28,12 @@ internal sealed class GuidedSetupTools
         CreatedObjectGuard guard,
         IDryRunPlanBuilder planBuilder,
         IDryRunPlanExporter planExporter,
-        TenantConnectionService connection)
+        TenantConnectionService connection,
+        TenantGateway tenant,
+        IPowerShellCommandService commands)
     {
+        _tenant = tenant;
+        _commands = commands;
         _store = store;
         _progress = progress;
         _scripts = scripts;
@@ -70,10 +76,23 @@ internal sealed class GuidedSetupTools
         };
     });
 
-    [McpServerTool(Name = "guided_setup_preview", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Returns the dry-run plan of the whole Guided Setup: every object that would be created or assigned with its resolved settings, plus preflight checks. Built from the configuration only; nothing is sent to the tenant.")]
-    public string Preview() => McpJson.Run(() =>
-        (object)JsonNode.Parse(_planExporter.ToJson(_planBuilder.BuildWizardPlan(_store.Variables)))!);
+    [McpServerTool(Name = "guided_setup_preview", ReadOnly = true, Idempotent = true, OpenWorld = true)]
+    [Description("Returns the dry-run plan of the whole Guided Setup: every object that would be created or assigned with its resolved settings, plus preflight checks. Without checkTenant it is built from the configuration only and nothing is sent to the tenant. With checkTenant=true (needs both connections) it also reads the tenant: which of the names and accounts exist already (the setup reuses them: a warning), whether enough licenses are free, and whether the phone number is free. A check with the status Fail means that step would fail. Use checkTenant=true before the first step. Read-only.")]
+    public Task<string> Preview(
+        [Description("True to compare the plan with what the tenant holds. Needs both connections.")] bool checkTenant = false,
+        CancellationToken cancellationToken = default)
+        => McpJson.RunAsync(async () =>
+        {
+            var plan = _planBuilder.BuildWizardPlan(_store.Variables);
+            if (checkTenant)
+            {
+                var sources = new[] { _store.Variables };
+                var read = await _tenant.ReadAsync(_commands.GetTenantPreflightCommand(sources), "PreviewTenantCheck", cancellationToken);
+                plan = TenantPreflight.Apply(plan, sources, TenantPreflight.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput));
+            }
+
+            return (object)JsonNode.Parse(_planExporter.ToJson(plan))!;
+        });
 
     [McpServerTool(Name = "guided_setup_run_step", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = true)]
     [Description("Runs one Guided Setup step in the tenant. CHANGES THE TENANT. Call it first without planId: it returns the exact script as a plan and changes nothing. Show the plan to the user, then call it again with the planId to run it. Steps reuse objects that already exist, so running a step again does not create duplicates. Steps must run in order (1 to 8).")]

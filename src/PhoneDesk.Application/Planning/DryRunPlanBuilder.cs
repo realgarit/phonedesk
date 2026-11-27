@@ -197,9 +197,9 @@ namespace PhoneDesk.Planning
                 AddDuplicateCheck(checks, "Phone number unique in plan", v.RaaAnr, numberCounts);
 
                 checks.Add(new PreflightCheck(
-                    "Live tenant collision / license / number availability",
+                    PhoneDesk.Operations.TenantPreflight.NotCheckedName,
                     PreflightStatus.NotChecked,
-                    "Not verified during preview. Requires an authenticated tenant query; run the operation to validate against live state."));
+                    "The tenant was not read for this preview. Run the tenant check to compare the plan with what the tenant holds."));
 
                 built[i] = built[i] with { PreflightChecks = checks };
             }

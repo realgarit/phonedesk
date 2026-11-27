@@ -231,6 +231,8 @@ namespace PhoneDesk.Tests
             new("Wizard", true, "setup-wizard-progress-de.png", "ready-progress-de"),
             new("Wizard", true, "setup-wizard-plan.png", "ready-plan"),
             new("Wizard", true, "setup-wizard-plan-de.png", "ready-plan-de"),
+            new("Wizard", true, "setup-wizard-plan-live.png", "ready-plan-live"),
+            new("Wizard", true, "setup-wizard-plan-live-de.png", "ready-plan-live-de"),
             new("Wizard", true, "setup-wizard-callqueue-step.png", "ready-callqueue-step"),
             new("Wizard", true, "setup-wizard-callqueue-step-de.png", "ready-callqueue-step-de"),
             new("Wizard", true, "setup-wizard-last-step.png", "ready-last-step"),
@@ -738,6 +740,30 @@ namespace PhoneDesk.Tests
                     progressWizard.Steps[0].IsCompleted = true;
                     progressWizard.CurrentStep = 1;
                     progressWizard.GeneratePlanCommand.Execute(null);
+                    if (scenario.StartsWith("ready-plan-live", StringComparison.Ordinal) && progressWizard.Plan is not null)
+                    {
+                        // What a tenant check shows: one object exists, a license is free, the number is taken.
+                        var sources = new PhoneDesk.Models.IPhoneManagerVariables[] { progressWizard.Variables };
+                        progressWizard.Plan = PhoneDesk.Operations.TenantPreflight.Apply(progressWizard.Plan, sources, new PhoneDesk.Operations.PreflightTenantState
+                        {
+                            LicensesRead = true,
+                            Licenses = new[] { new PhoneDesk.Operations.PreflightLicense { SkuId = progressWizard.Variables.SkuId, Name = "PHONESYSTEM_VIRTUALUSER", Available = 3 } },
+                            Rows = new[]
+                            {
+                                new PhoneDesk.Operations.PreflightTenantRow
+                                {
+                                    Row = 1,
+                                    Groups = 1,
+                                    CallQueues = 0,
+                                    AutoAttendants = 0,
+                                    CallQueueAccount = new PhoneDesk.Operations.PreflightAccount(),
+                                    AutoAttendantAccount = new PhoneDesk.Operations.PreflightAccount(),
+                                    Number = new PhoneDesk.Operations.PreflightNumber { InInventory = true, Type = progressWizard.Variables.PhoneNumberType, AssignedToId = "1", AssignedTo = "anna.muster@contoso.com" }
+                                }
+                            }
+                        });
+                    }
+
                     return;
                 }
             }

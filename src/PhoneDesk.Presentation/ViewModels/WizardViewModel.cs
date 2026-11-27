@@ -980,6 +980,23 @@ namespace PhoneDesk.ViewModels
                 LogLevel.Info);
         }
 
+        /// <summary>The same plan, with the checks against what the tenant holds. Reads only.</summary>
+        [RelayCommand]
+        private async Task CheckPlanAgainstTenantAsync()
+        {
+            if (_planBuilder == null)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.WizardPlanPreviewUnavailable,
+                    "Plan preview is unavailable.");
+                return;
+            }
+
+            var sources = new List<IPhoneManagerVariables> { Variables };
+            var plan = _planBuilder.BuildWizardPlan(Variables);
+            await RunBusyAsync(async () => Plan = await CheckPlanAgainstTenantAsync(plan, sources), nameof(CheckPlanAgainstTenantAsync));
+        }
+
         [RelayCommand]
         private Task ExportPlanJsonAsync() => ExportPlanAsync(asJson: true);
 

@@ -335,6 +335,26 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
+                                                    <ItemsControl ItemsSource="{Binding PreflightChecks}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid ColumnDefinitions="Auto,*" Margin="8,1,0,1">
+                                                                    <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,1,8,0">
+                                                                        <fi:SymbolIcon Symbol="Checkmark" FontSize="12" Foreground="Green" IsVisible="{Binding IsPass}"/>
+                                                                        <fi:SymbolIcon Symbol="Warning" FontSize="12" Foreground="Orange" IsVisible="{Binding IsWarning}"/>
+                                                                        <fi:SymbolIcon Symbol="ErrorCircle" FontSize="12" Foreground="OrangeRed" IsVisible="{Binding IsFail}"/>
+                                                                        <fi:SymbolIcon Symbol="Question" FontSize="12" IsVisible="{Binding IsNotChecked}"/>
+                                                                    </Panel>
+                                                                    <TextBlock Grid.Column="1" FontSize="11"
+                                                                               TextWrapping="Wrap"
+                                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                                        <Run Text="{loc:Translate Key=BulkOperationsPreflightLabel}"/>
+                                                                        <Run Text="{Binding Detail}"/>
+                                                                    </TextBlock>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
                                                     <ItemsControl ItemsSource="{Binding Objects}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
@@ -465,6 +485,15 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="ClipboardTaskListLtr" FontSize="14"/>
                                     <TextBlock Text="{loc:Translate Key=WizardPreviewChangesAction}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CheckPlanAgainstTenantCommand}"
+                                    AutomationProperties.Name="{loc:Translate Key=PlanTenantCheckAction}"
+                                    IsEnabled="{Binding !IsBusy}"
+                                    ToolTip.Tip="{loc:Translate Key=PlanTenantCheckTooltip}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <fi:SymbolIcon Symbol="CloudCheckmark" FontSize="14"/>
+                                    <TextBlock Text="{loc:Translate Key=PlanTenantCheckAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                             <Button Command="{Binding ExportPlanJsonCommand}"

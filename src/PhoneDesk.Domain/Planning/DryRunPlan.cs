@@ -62,7 +62,16 @@ namespace PhoneDesk.Planning
     }
 
     /// <summary>A preflight check result attached to an entry.</summary>
-    public sealed record PreflightCheck(string Name, PreflightStatus Status, string Detail);
+    public sealed record PreflightCheck(string Name, PreflightStatus Status, string Detail)
+    {
+        public bool IsPass => Status == PreflightStatus.Pass;
+
+        public bool IsWarning => Status == PreflightStatus.Warning;
+
+        public bool IsFail => Status == PreflightStatus.Fail;
+
+        public bool IsNotChecked => Status == PreflightStatus.NotChecked;
+    }
 
     /// <summary>
     /// One complete setup in the plan. For the wizard this is the single configuration under review; for

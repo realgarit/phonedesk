@@ -1355,4 +1355,8 @@ public enum UiTextKey
     HolidayManagerComparePartialOverlap,
     HolidayManagerCompareMissing,
     HolidayManagerCompareDisabled,
+    PlanTenantCheckAction,
+    PlanTenantCheckTooltip,
+    PlanTenantCheckDoneStatus,
+    PlanTenantCheckFailedStatus,
 }

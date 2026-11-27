@@ -1350,5 +1350,9 @@
   "HolidayManagerCompareSameStart": "same start, another end",
   "HolidayManagerComparePartialOverlap": "overlaps partly",
   "HolidayManagerCompareMissing": "missing",
-  "HolidayManagerCompareDisabled": "attached but switched off"
+  "HolidayManagerCompareDisabled": "attached but switched off",
+  "PlanTenantCheckAction": "Check tenant",
+  "PlanTenantCheckTooltip": "Reads the tenant: which names and accounts exist already, whether enough licenses are free, and whether the phone number is free. Changes nothing.",
+  "PlanTenantCheckDoneStatus": "Tenant checked: {fail} check(s) would fail, {warning} warning(s).",
+  "PlanTenantCheckFailedStatus": "The tenant could not be read for the preview: {details}"
 }

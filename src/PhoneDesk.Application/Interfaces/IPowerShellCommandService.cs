@@ -20,6 +20,12 @@ public interface IPowerShellCommandService
     string GetDisconnectGraphCommand();
     string GetImportAudioFileCommand(string filePath);
     string GetImportAudioFileCommand(string filePath, string applicationId);
+
+    /// <summary>
+    /// The read-only script that compares the entries of a dry-run plan with the tenant. It looks
+    /// for the names as the provisioning scripts write them.
+    /// </summary>
+    string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries);
     string GetAssignLicenseCommand(string userId, string skuId);
 
     // M365 Groups

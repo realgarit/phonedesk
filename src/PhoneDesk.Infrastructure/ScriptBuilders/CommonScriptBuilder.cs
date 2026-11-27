@@ -230,6 +230,13 @@ catch {
 }";
         }
 
+        /// <summary>
+        /// The tenant read for a dry-run plan. The provisioning scripts write a name after
+        /// <c>SanitizeString</c>, so the read looks for that text, not for the configured one.
+        /// </summary>
+        public string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries)
+            => PhoneDesk.Operations.TenantPreflight.GetReadCommand(entries, _sanitizer.SanitizeString);
+
         public string GetImportAudioFileCommand(string filePath)
             => GetImportAudioFileCommand(filePath, PhoneDesk.Operations.AudioFiles.CallQueue);
 

@@ -36,6 +36,32 @@ public sealed class BothHeadsEditTests
         await SimulatedTenant.AssertExpectedStateAsync(tenant, Cancellation);
     }
 
+    [Fact]
+    public async Task McpPhoneNumberTools_LeaveTheInventoryInTheStateTheDesktopPageLeaves()
+    {
+        using var tenant = new SimulatedTenantPowerShell(SimulatedTenant.PhoneTenant);
+        using var host = new McpTestHost(powerShell: tenant).Connected();
+        var tools = host.Tool<PhoneNumberTools>();
+
+        var assignPlan = McpTestHost.Parse(await tools.SetPhoneNumberAssignment(SimulatedTenant.FreeNumber, SimulatedTenant.Ben, cancellationToken: Cancellation));
+        var assigned = McpTestHost.Parse(await tools.SetPhoneNumberAssignment(
+            SimulatedTenant.FreeNumber, SimulatedTenant.Ben, planId: PlanId(assignPlan), cancellationToken: Cancellation));
+        Assert.False(assigned.TryGetProperty("error", out _), assigned.ToString());
+
+        var removePlan = McpTestHost.Parse(await tools.RemovePhoneNumberAssignment(SimulatedTenant.AnnaNumber, cancellationToken: Cancellation));
+        var removed = McpTestHost.Parse(await tools.RemovePhoneNumberAssignment(SimulatedTenant.AnnaNumber, PlanId(removePlan), Cancellation));
+        Assert.False(removed.TryGetProperty("error", out _), removed.ToString());
+
+        await SimulatedTenant.AssertExpectedPhoneStateAsync(tenant, Cancellation);
+    }
+
+    private static string PlanId(System.Text.Json.JsonElement plan)
+    {
+        Assert.True(plan.TryGetProperty("plan", out var planned), plan.ToString());
+        Assert.Equal("planned", planned.GetProperty("status").GetString());
+        return planned.GetProperty("planId").GetString() ?? throw new InvalidOperationException(plan.ToString());
+    }
+
     private static void AssertEverySettingConfirmed(System.Text.Json.JsonElement applied)
     {
         Assert.Equal("applied", applied.GetProperty("status").GetString());

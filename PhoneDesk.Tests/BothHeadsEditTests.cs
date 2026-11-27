@@ -31,6 +31,35 @@ namespace PhoneDesk.Tests
             await SimulatedTenant.AssertExpectedStateAsync(tenant, Cancellation);
         }
 
+        [Fact]
+        public async Task DesktopPhoneNumbersPage_LeavesTheInventoryInTheStateTheMcpToolsLeave()
+        {
+            using var tenant = new SimulatedTenantPowerShell(SimulatedTenant.PhoneTenant);
+            var harness = new ViewModelTestHarness();
+            var page = new PhoneNumbersViewModel(
+                tenant, harness.PowerShellCommandService.Object, harness.LoggingService.Object,
+                harness.SessionManager.Object, harness.NavigationService.Object, harness.ErrorHandlingService.Object,
+                harness.ValidationService.Object, harness.SharedStateService.Object, harness.DialogService.Object,
+                translationService: harness.TranslationService);
+
+            await page.LoadCommand.ExecuteAsync(null);
+            page.SelectedNumber = page.Numbers.Single(row => row.Number == SimulatedTenant.FreeNumber);
+            page.OpenAssignCommand.Execute(null);
+            page.DialogTarget = SimulatedTenant.Ben;
+            await page.CheckCommand.ExecuteAsync(null);
+            Assert.True(page.CanApply, page.DialogPreview + " " + page.StatusMessage);
+            await page.ApplyCommand.ExecuteAsync(null);
+
+            await page.LoadCommand.ExecuteAsync(null);
+            page.SelectedNumber = page.Numbers.Single(row => row.Number == SimulatedTenant.AnnaNumber);
+            page.OpenUnassignCommand.Execute(null);
+            await page.CheckCommand.ExecuteAsync(null);
+            Assert.True(page.CanApply, page.DialogPreview + " " + page.StatusMessage);
+            await page.ApplyCommand.ExecuteAsync(null);
+
+            await SimulatedTenant.AssertExpectedPhoneStateAsync(tenant, Cancellation);
+        }
+
         private static async Task EditAsync(EditSettingsViewModel page, int kindIndex, string name, IReadOnlyDictionary<string, string> changes)
         {
             page.KindIndex = kindIndex;

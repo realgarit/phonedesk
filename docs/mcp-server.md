@@ -14,7 +14,7 @@ with the app; there is nothing extra to download.
 | Area | Tools |
 | --- | --- |
 | Session | `session_status`, `check_modules`, `connect_teams`, `connect_graph`, `disconnect` |
-| Configuration (local) | `configuration_get`, `configuration_options`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays`, `swiss_holidays_apply` |
+| Configuration (local) | `configuration_get`, `configuration_options`, `configuration_update`, `configuration_replace`, `configuration_reset`, `configuration_export`, `configuration_import`, `swiss_holidays`, `swiss_holidays_apply`, `public_holidays`, `public_holidays_apply`, `import_holiday_calendar` |
 | Read the tenant | `tenant_overview`, `list_auto_attendants`, `list_call_queues`, `list_resource_accounts`, `list_m365_groups`, `tenant_details`, `audit_history` |
 | Health check | `run_health_check`, `health_rules`, `health_rule_set`, `health_finding_set_suppressed` |
 | Backup and comparison | `backup_tenant`, `list_backups`, `compare_with_backup`, `created_objects` |
@@ -130,6 +130,30 @@ Rules that hold for all four:
   stays (`uncheckedAuthorizedUsers` with its `kind`).
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
+
+### Holidays of other countries and calendar files
+
+`public_holidays` lists the public holidays of a country and year, and `public_holidays_apply`
+adds them to the holiday entries of the configuration. The dates are computed from the legal
+rules:
+
+| Country | Regions | Notes |
+| --- | --- | --- |
+| Germany (DE) | the sixteen states; Bayern, Sachsen and Thüringen have a second region where a holiday applies to a part of the state | region needed |
+| Austria (AT) | none | the thirteen statutory holidays |
+| France (FR) | métropole, Alsace-Moselle | Alsace-Moselle has Good Friday and 26 December |
+| United Kingdom (GB) | England and Wales, Scotland, Northern Ireland | region needed; a holiday on a weekend is listed with its substitute day |
+| United States (US) | none | federal holidays; a holiday on a weekend is listed with its observed day |
+
+Days a business closes without a law (24 December, the day after Thanksgiving, a local custom,
+a bank holiday proclaimed for one occasion) are not in a list. Ask the user, and pass the dates
+the customer is open on as `excludeDates`.
+
+`import_holiday_calendar` reads an `.ics` file for everything else. It lists the events first
+(`apply=false`) and adds them with `apply=true`. An all-day event is a whole day or a range of
+days, a timed event keeps its times as written, and a repeating event is read with its first
+date only. The desktop holiday picker has the same countries, a check box per suggested date,
+and **Import a calendar file (.ics)**.
 
 ### The preview against the tenant
 

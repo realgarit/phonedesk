@@ -441,18 +441,18 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void ApplyPredefinedHolidays_NonSwitzerland_AddsNoHolidays()
+        public void ApplyPredefinedHolidays_CountryWithoutAList_AddsNoHolidays()
         {
             var harness = new ViewModelTestHarness();
             var vm = CreateViewModel(harness);
-            vm.SelectedCountry = "France";
+            vm.SelectedCountry = "Atlantis";
             vm.SelectedYear = 2026;
             vm.ShowPredefinedHolidaysWizard = true;
 
             vm.ApplyPredefinedHolidaysCommand.Execute(null);
 
             Assert.Empty(vm.Variables.HolidaySeries);
-            Assert.False(vm.ShowPredefinedHolidaysWizard);
+            Assert.True(vm.ShowPredefinedHolidaysWizard);
         }
 
         // ─────────────────────── Conditional visibility properties ───────────────────────

@@ -11,7 +11,15 @@ namespace PhoneDesk.Models
         [NotifyPropertyChangedFor(nameof(IsAdditionalCantonalRestDay))]
         [NotifyPropertyChangedFor(nameof(IsSundayObservance))]
         [NotifyPropertyChangedFor(nameof(IsCustom))]
+        [NotifyPropertyChangedFor(nameof(IsPublicHoliday))]
         private HolidayCategory _category;
+
+        [JsonIgnore] public bool IsPublicHoliday => Category == HolidayCategory.PublicHoliday;
+
+        /// <summary>In a list of suggested dates: false when the operator left this one out. Not saved.</summary>
+        [ObservableProperty]
+        [property: JsonIgnore]
+        private bool _isIncluded = true;
 
         [JsonIgnore] public bool IsStatutory => Category == HolidayCategory.Statutory;
         [JsonIgnore] public bool IsAdditionalCantonalRestDay => Category == HolidayCategory.AdditionalCantonalRestDay;

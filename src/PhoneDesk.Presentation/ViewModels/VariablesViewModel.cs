@@ -581,7 +581,167 @@ namespace PhoneDesk.ViewModels
         private bool _showAargauInfoDialog = false;
 
         [ObservableProperty]
-        private ObservableCollection<string> _countries = new ObservableCollection<string>(new[] { "Switzerland" });
+        private ObservableCollection<string> _countries = new ObservableCollection<string>(HolidayProviders.All.Select(provider => provider.CountryName));
+
+        /// <summary>The regions of the selected country, when it is not Switzerland (which has its own canton fields).</summary>
+        public ObservableCollection<HolidayRegion> ProviderRegions { get; } = new();
+
+        [ObservableProperty]
+        private HolidayRegion? _selectedProviderRegion;
+
+        /// <summary>What the list of the selected country does not cover, or what the calendar file reader noticed.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasHolidaySourceNote))]
+        private string _holidaySourceNote = string.Empty;
+
+        /// <summary>The events of a calendar file (.ics) the operator loaded. While set, they are the suggested dates.</summary>
+        private IReadOnlyList<IcsHoliday>? _calendarFile;
+
+        public bool HasProviderRegions => !IsCalendarFileLoaded && ProviderRegions.Count > 0;
+        public bool HasHolidaySourceNote => !string.IsNullOrWhiteSpace(HolidaySourceNote);
+        public bool IsCalendarFileLoaded => _calendarFile is not null;
+        public bool ShowSwissHolidayOptions => IsSwitzerlandSelected && !IsCalendarFileLoaded;
+
+        private IHolidayProvider? SelectedProvider => IsSwitzerlandSelected ? null : HolidayProviders.Find(SelectedCountry);
+
+        partial void OnSelectedProviderRegionChanged(HolidayRegion? value)
+        {
+            OnPropertyChanged(nameof(CanApplyPredefinedSelection));
+            RefreshHolidayPreview();
+        }
+
+        private void RefreshProviderRegions()
+        {
+            ProviderRegions.Clear();
+            var provider = SelectedProvider;
+            if (provider is not null)
+            {
+                foreach (var region in provider.Regions)
+                {
+                    ProviderRegions.Add(region);
+                }
+            }
+
+            // A country with one main list shows it at once; where the region decides, the operator chooses.
+            SelectedProviderRegion = provider is { RegionRequired: false } && ProviderRegions.Count > 0 ? ProviderRegions[0] : null;
+            RefreshHolidaySourceNote();
+            OnPropertyChanged(nameof(HasProviderRegions));
+            OnPropertyChanged(nameof(ShowSwissHolidayOptions));
+        }
+
+        private void RefreshHolidaySourceNote()
+        {
+            if (_calendarFile is not null)
+            {
+                return;
+            }
+
+            var provider = SelectedProvider;
+            HolidaySourceNote = provider is not null && Enum.TryParse<UiTextKey>("HolidayProviderNote" + provider.CountryCode, out var key)
+                ? GetText(key, provider.Note)
+                : string.Empty;
+        }
+
+        /// <summary>
+        /// Takes the events of a calendar file as the suggested dates. The operator reviews them and
+        /// leaves out what does not apply before anything is added.
+        /// </summary>
+        public void LoadHolidayCalendar(string content)
+        {
+            var result = IcsHolidayImport.Parse(content);
+            _calendarFile = result.Holidays;
+            var notes = new List<string>
+            {
+                GetText(
+                    UiTextKey.HolidayCalendarLoadedNote,
+                    "{count} event(s) read from the calendar file. The list shows the events of {year}.",
+                    new Dictionary<string, object?> { ["count"] = result.Holidays.Count, ["year"] = SelectedYear })
+            };
+            if (result.Skipped.Count > 0)
+            {
+                notes.Add(GetText(
+                    UiTextKey.HolidayCalendarSkippedNote,
+                    "{count} event(s) were not read (cancelled, or without a date that could be read).",
+                    new Dictionary<string, object?> { ["count"] = result.Skipped.Count }));
+            }
+
+            var repeating = result.Holidays.Where(holiday => holiday.Repeats).Select(holiday => holiday.Entry.Name).Distinct().Take(5).ToList();
+            if (repeating.Count > 0)
+            {
+                notes.Add(GetText(
+                    UiTextKey.HolidayCalendarRepeatsNote,
+                    "Repeating events were read with their first date only: {names}",
+                    new Dictionary<string, object?> { ["names"] = string.Join(", ", repeating) }));
+            }
+
+            if (result.Holidays.Any(holiday => holiday.IsUtc))
+            {
+                notes.Add(GetText(
+                    UiTextKey.HolidayCalendarUtcNote,
+                    "Some times are written in UTC and were kept as they are. Correct them for the time zone of the auto attendant."));
+            }
+            HolidaySourceNote = string.Join(Environment.NewLine, notes);
+            OnCalendarFileChanged();
+        }
+
+        private void OnCalendarFileChanged()
+        {
+            OnPropertyChanged(nameof(IsCalendarFileLoaded));
+            OnPropertyChanged(nameof(HasProviderRegions));
+            OnPropertyChanged(nameof(ShowSwissHolidayOptions));
+            OnPropertyChanged(nameof(CanApplyPredefinedSelection));
+            RefreshHolidayPreview();
+        }
+
+        [RelayCommand]
+        private void ClearHolidayCalendar()
+        {
+            _calendarFile = null;
+            RefreshHolidaySourceNote();
+            OnCalendarFileChanged();
+        }
+
+        [RelayCommand]
+        private async Task ImportHolidayCalendarAsync()
+        {
+            try
+            {
+                var window = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+                if (window?.MainWindow == null)
+                {
+                    return;
+                }
+
+                var files = await window.MainWindow.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+                {
+                    Title = GetText(UiTextKey.HolidayCalendarPickerTitle, "Select a calendar file"),
+                    FileTypeFilter = new[]
+                    {
+                        new Avalonia.Platform.Storage.FilePickerFileType(GetText(UiTextKey.HolidayCalendarFiles, "Calendar files")) { Patterns = new[] { "*.ics" } }
+                    }
+                });
+                if (files == null || files.Count == 0)
+                {
+                    return;
+                }
+
+                var path = files[0].Path.LocalPath;
+                if (new FileInfo(path).Length > 2 * 1024 * 1024)
+                {
+                    HolidaySourceNote = GetText(UiTextKey.HolidayCalendarTooLarge, "The calendar file is larger than 2 MB and was not read.");
+                    return;
+                }
+
+                LoadHolidayCalendar(await File.ReadAllTextAsync(path));
+            }
+            catch (Exception ex)
+            {
+                HolidaySourceNote = GetText(
+                    UiTextKey.HolidayCalendarReadFailed,
+                    "The calendar file could not be read: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
+        }
 
         [ObservableProperty]
         private string? _selectedCountry = "Switzerland";
@@ -641,7 +801,21 @@ namespace PhoneDesk.ViewModels
         private void RefreshHolidayPreview()
         {
             PredefinedHolidayPreview.Clear();
-            if (CanApplyPredefinedSelection && IsSwitzerlandSelected)
+            if (_calendarFile is not null)
+            {
+                foreach (var holiday in _calendarFile.Where(item => item.Entry.Date.Year == SelectedYear || item.Entry.EndDate?.Year == SelectedYear))
+                {
+                    PredefinedHolidayPreview.Add(new HolidayEntry(holiday.Entry.Date, holiday.Entry.Time, holiday.Entry.Name, holiday.Entry.EndDate, holiday.Entry.EndTime));
+                }
+            }
+            else if (CanApplyPredefinedSelection && SelectedProvider is { } provider)
+            {
+                foreach (var holiday in provider.GetHolidays(SelectedYear, SelectedProviderRegion?.Code))
+                {
+                    PredefinedHolidayPreview.Add(new HolidayEntry(holiday.Date, holiday.Time, holiday.Name) { Category = holiday.Category });
+                }
+            }
+            else if (CanApplyPredefinedSelection && IsSwitzerlandSelected)
             {
                 var result = new PhoneDesk.Services.Holidays.SwissHolidaysProvider()
                     .GetHolidaysDetailed(SelectedCountry!, SelectedCanton, HolidayRegionCode, SelectedYear);
@@ -666,6 +840,7 @@ namespace PhoneDesk.ViewModels
         partial void OnSelectedCountryChanged(string? value)
         {
             OnPropertyChanged(nameof(IsSwitzerlandSelected));
+            RefreshProviderRegions();
             OnPropertyChanged(nameof(CanApplyPredefinedSelection));
             OnPropertyChanged(nameof(HasAdditionalCantonalRestDays));
             RefreshHolidayPreview();
@@ -688,8 +863,13 @@ namespace PhoneDesk.ViewModels
         {
             get
             {
+                if (IsCalendarFileLoaded)
+                    return true;
+
                 if (!IsSwitzerlandSelected)
-                    return SelectedYear >= 2025 && SelectedYear <= 2030;
+                    return SelectedProvider is { } provider
+                        && (!provider.RegionRequired || SelectedProviderRegion != null)
+                        && SelectedYear >= 2025 && SelectedYear <= 2030;
 
                 if (IsAargauSelected)
                     return SelectedBezirk != null && Bezirke.Contains(SelectedBezirk) && SelectedYear >= 2025 && SelectedYear <= 2030;
@@ -717,7 +897,11 @@ namespace PhoneDesk.ViewModels
         {
             try
             {
+                _calendarFile = null;
+                HolidaySourceNote = string.Empty;
+                OnPropertyChanged(nameof(IsCalendarFileLoaded));
                 SelectedCountry = "Switzerland";
+                RefreshProviderRegions();
                 SelectedCanton = null;
                 SelectedBezirk = null;
                 SelectedHolidayRegionIndex = -1;
@@ -776,10 +960,11 @@ namespace PhoneDesk.ViewModels
 
                 // Check again in the command: a disabled button is not a validation boundary.
                 if (!CanApplyPredefinedSelection) return;
-                RefreshHolidayPreview();
+                // The list on the screen is what is added: the operator may have left dates out.
+                if (PredefinedHolidayPreview.Count == 0) RefreshHolidayPreview();
                 // Reopening the picker must not add an identical date/name/range twice. The MCP
                 // server uses the same merge.
-                foreach (var holiday in PhoneDesk.Operations.HolidaySeriesMerge.MissingFrom(variables.HolidaySeries, PredefinedHolidayPreview))
+                foreach (var holiday in PhoneDesk.Operations.HolidaySeriesMerge.MissingFrom(variables.HolidaySeries, PredefinedHolidayPreview.Where(entry => entry.IsIncluded).ToList()))
                 {
                     variables.HolidaySeries.Add(holiday);
                     LogLocalized(UiTextKey.VariablesPredefinedHolidayAddedLog,

@@ -471,7 +471,7 @@ internal sealed class ProvisioningTools
         => McpJson.RunAsync(async () =>
         {
             var app = AudioFiles.NormalizeApplication(application);
-            var fullPath = Path.GetFullPath(path);
+            var fullPath = McpFiles.LocalFullPath(path);
             if (!AudioExtensions.Contains(Path.GetExtension(fullPath), StringComparer.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only .wav, .mp3 and .wma files can be uploaded.");

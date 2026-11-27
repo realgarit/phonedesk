@@ -22,6 +22,7 @@
                 <TextBlock IsVisible="{Binding IsStatutory}" Text="{loc:Translate Key=HolidayCategoryStatutory}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                 <TextBlock IsVisible="{Binding IsAdditionalCantonalRestDay}" Text="{loc:Translate Key=HolidayCategoryAdditional}" FontSize="12" Foreground="{DynamicResource TeamsPrimaryBrush}" TextWrapping="Wrap"/>
                 <TextBlock IsVisible="{Binding IsSundayObservance}" Text="{loc:Translate Key=HolidayCategorySunday}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                <TextBlock IsVisible="{Binding IsPublicHoliday}" Text="{loc:Translate Key=HolidayCategoryPublic}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                 <TextBlock IsVisible="{Binding IsCustom}" Text="{loc:Translate Key=HolidayCategoryCustom}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
             </StackPanel>
         </DataTemplate>
@@ -999,7 +1000,23 @@
                                         <ComboBox ItemsSource="{Binding Years}" SelectedItem="{Binding SelectedYear}" HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </Grid>
-                                <StackPanel IsVisible="{Binding IsSwitzerlandSelected}" Spacing="8">
+                                <StackPanel IsVisible="{Binding HasProviderRegions}" Spacing="4">
+                                    <TextBlock Text="{loc:Translate Key=HolidayProviderRegionLabel}" FontWeight="SemiBold"/>
+                                    <ComboBox Name="ProviderHolidayRegion" ItemsSource="{Binding ProviderRegions}" SelectedItem="{Binding SelectedProviderRegion}" HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}" MaxWidth="500" TextWrapping="Wrap"/></DataTemplate></ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                                <TextBlock IsVisible="{Binding HasHolidaySourceNote}" Text="{Binding HolidaySourceNote}" FontSize="12" TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Command="{Binding ImportHolidayCalendarCommand}" ToolTip.Tip="{loc:Translate Key=HolidayCalendarImportTooltip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <fi:SymbolIcon Symbol="CalendarArrowDown" FontSize="14"/>
+                                            <TextBlock Text="{loc:Translate Key=HolidayCalendarImportAction}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding ClearHolidayCalendarCommand}" IsVisible="{Binding IsCalendarFileLoaded}" Content="{loc:Translate Key=HolidayCalendarClearAction}"/>
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding ShowSwissHolidayOptions}" Spacing="8">
                                     <TextBlock Text="{loc:Translate Key=VariablesCantonLabel}" FontWeight="SemiBold"/>
                                     <ComboBox ItemsSource="{Binding Cantons}" SelectedItem="{Binding SelectedCanton}" HorizontalAlignment="Stretch"/>
                                     <StackPanel IsVisible="{Binding IsAargauSelected}" Spacing="4">
@@ -1034,10 +1051,12 @@
                                     <ItemsControl ItemsSource="{Binding PredefinedHolidayPreview}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <StackPanel Margin="0,4">
-                                                    <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap"/>
-                                                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource HolidayCategoryLabel}"/>
-                                                </StackPanel>
+                                                <CheckBox IsChecked="{Binding IsIncluded}" Margin="0,2">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap" MaxWidth="520"/>
+                                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource HolidayCategoryLabel}"/>
+                                                    </StackPanel>
+                                                </CheckBox>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

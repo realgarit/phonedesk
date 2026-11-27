@@ -152,6 +152,11 @@ namespace PhoneDesk.Tests
             new("GetStarted", true, "get-started-identity-de.png", "ready-identity-de"),
             new("GetStarted", true, "get-started-identity-mismatch-en.png", "ready-identitymismatch-en"),
             new("GetStarted", true, "get-started-identity-mismatch-de.png", "ready-identitymismatch-de"),
+            new("Variables", true, "holiday-audit-de-by-en.png", "holiday-audit-de-by-en"),
+            new("Variables", true, "holiday-audit-de-by-de.png", "holiday-audit-de-by-de"),
+            new("Variables", true, "holiday-audit-gb-en.png", "holiday-audit-gb-en"),
+            new("Variables", true, "holiday-audit-ics-en.png", "holiday-audit-ics-en"),
+            new("Variables", true, "holiday-audit-ics-de.png", "holiday-audit-ics-de"),
             new("Variables", true, "holiday-audit-empty-en.png", "holiday-audit-empty-en"),
             new("Variables", true, "holiday-audit-empty-de.png", "holiday-audit-empty-de"),
             new("Variables", true, "holiday-audit-fr-required-en.png", "holiday-audit-fr-required-en"),
@@ -878,6 +883,29 @@ namespace PhoneDesk.Tests
                         holidaysVariables.SelectedCanton = "Tessin";
                     else if (scenario.Contains("-ge-", StringComparison.Ordinal))
                         holidaysVariables.SelectedCanton = "Genf";
+                    else if (scenario.Contains("-de-by-", StringComparison.Ordinal))
+                    {
+                        holidaysVariables.SelectedCountry = "Germany";
+                        holidaysVariables.SelectedProviderRegion = holidaysVariables.ProviderRegions.Single(region => region.Code == "BY-KATH");
+                    }
+                    else if (scenario.Contains("-gb-", StringComparison.Ordinal))
+                    {
+                        holidaysVariables.SelectedCountry = "United Kingdom";
+                    }
+                    else if (scenario.Contains("-ics-", StringComparison.Ordinal))
+                    {
+                        holidaysVariables.SelectedYear = 2027;
+                        holidaysVariables.LoadHolidayCalendar(string.Join('\n', new[]
+                        {
+                            "BEGIN:VCALENDAR",
+                            "BEGIN:VEVENT", "DTSTART;VALUE=DATE:20270101", "SUMMARY:Nieuwjaarsdag", "END:VEVENT",
+                            "BEGIN:VEVENT", "DTSTART;VALUE=DATE:20270427", "SUMMARY:Koningsdag", "RRULE:FREQ=YEARLY", "END:VEVENT",
+                            "BEGIN:VEVENT", "DTSTART:20271224T120000", "DTEND:20271224T180000", "SUMMARY:Kerstavond middag", "END:VEVENT",
+                            "BEGIN:VEVENT", "DTSTART;VALUE=DATE:20271227", "DTEND;VALUE=DATE:20280103", "SUMMARY:Bedrijfssluiting", "END:VEVENT",
+                            "BEGIN:VEVENT", "SUMMARY:Zonder datum", "END:VEVENT",
+                            "END:VCALENDAR"
+                        }));
+                    }
                     else if (scenario.Contains("-ag-open-", StringComparison.Ordinal))
                     {
                         holidaysVariables.SelectedCanton = "Aargau";

@@ -141,7 +141,7 @@ internal sealed class HolidayListTools
     /// </summary>
     private string RequireBackupOfThisTenant(string backupFile)
     {
-        var fullPath = Path.GetFullPath(backupFile.Trim());
+        var fullPath = McpFiles.LocalFullPath(backupFile.Trim());
         var directory = Path.GetFullPath(_environment.BackupDirectory(_tenant.TenantId));
         var name = Path.GetFileName(fullPath);
         var inFolder = string.Equals(

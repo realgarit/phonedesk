@@ -117,7 +117,7 @@ internal sealed class ConfigurationTools
         });
 
     [McpServerTool(Name = "swiss_holidays", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). Switzerland is the only country. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Each holiday has a 'label' like the desktop app shows: an additional cantonal rest day is not a statutory holiday, although most businesses of the canton are closed, so name these days to the user and ask whether the customer is closed on them ('review' lists them). Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich, are not in the list; add them with configuration_update when the customer is closed. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
+    [Description("Lists the public holidays of a Swiss canton for a year, with their legal category (statutory, additional cantonal rest day, Sunday observance). For Germany, Austria, France, the United Kingdom and the United States use public_holidays; for any other country import_holiday_calendar. In Aargau (AG), Fribourg (FR) and Solothurn (SO) the holidays depend on the region: call without 'region' to get the list of regions and the localities each one covers, ask the user which one applies, and call again with its code. Each holiday has a 'label' like the desktop app shows: an additional cantonal rest day is not a statutory holiday, although most businesses of the canton are closed, so name these days to the user and ask whether the customer is closed on them ('review' lists them). Customary days without a legal basis, such as Sechseläuten or Knabenschiessen in Zurich, are not in the list; add them with configuration_update when the customer is closed. Changes nothing; use swiss_holidays_apply to write the holidays to the configuration.")]
     public string SwissHolidays(
         [Description(CantonDescription)] string canton,
         [Description(YearDescription)] int year,
@@ -259,6 +259,7 @@ internal sealed class ConfigurationTools
         HolidayCategory.Statutory => "Statutory holiday (Art. 20a ArG)",
         HolidayCategory.AdditionalCantonalRestDay => "Additional cantonal rest day · confirm with customer",
         HolidayCategory.SundayObservance => "Sunday observance",
+        HolidayCategory.PublicHoliday => "Public holiday",
         _ => "Customer-specific / unclassified"
     };
 

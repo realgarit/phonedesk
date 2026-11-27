@@ -1431,4 +1431,11 @@ public enum UiTextKey
     WizardRunResumedStatus,
     WizardRunJournalFailedLog,
     SetupRunsOtherTenantStatus,
+    DocumentationRichReportAction,
+    DocumentationRichReportTooltip,
+    DocumentationRichReportFromFileAction,
+    DocumentationRichReportFromFileTooltip,
+    DocumentationRichReportFolderTitle,
+    DocumentationRichReportSavedStatus,
+    DocumentationRichReportFailedStatus,
 }

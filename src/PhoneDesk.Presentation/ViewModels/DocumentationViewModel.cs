@@ -146,6 +146,81 @@ namespace PhoneDesk.ViewModels
             }
         }
 
+        /// <summary>
+        /// Reads a full snapshot of the tenant and writes the readable report from it: one HTML file,
+        /// a workbook, and a call-flow diagram per auto attendant. The tenant is only read.
+        /// </summary>
+        [RelayCommand]
+        private Task ExportRichReportAsync() => WriteRichReportAsync(fromFile: false);
+
+        /// <summary>Writes the same report from a snapshot file that was saved before. The tenant is not read.</summary>
+        [RelayCommand]
+        private Task ExportRichReportFromFileAsync() => WriteRichReportAsync(fromFile: true);
+
+        private async Task WriteRichReportAsync(bool fromFile)
+        {
+            if (!HasSnapshotServices())
+            {
+                return;
+            }
+
+            try
+            {
+                IsBusy = true;
+                IsExporting = true;
+                TopologySnapshotDocument snapshot;
+                if (fromFile)
+                {
+                    var file = await _portabilityFileService!.OpenJsonAsync(
+                        GetText(UiTextKey.DocumentationRichReportFromFileAction, "Report from a snapshot file"));
+                    if (file is null)
+                    {
+                        return;
+                    }
+
+                    snapshot = _tenantAsCodeService!.DeserializeTopology(file.Content);
+                }
+                else
+                {
+                    StatusMessage = GetText(
+                        UiTextKey.DocumentationTopologyGatheringStatus,
+                        "Reading the complete tenant snapshot...");
+                    snapshot = await CollectLiveTopologySnapshotAsync();
+                }
+
+                // Checked before the folder is asked for: an older snapshot has no documentation part.
+                PhoneDesk.Operations.RichReport.Require(snapshot);
+                var folder = await _portabilityFileService!.PickFolderAsync(
+                    GetText(UiTextKey.DocumentationRichReportFolderTitle, "Choose the folder for the report"));
+                if (string.IsNullOrWhiteSpace(folder))
+                {
+                    return;
+                }
+
+                var language = _translationService?.CurrentLanguage == AppLanguage.German
+                    ? PhoneDesk.Operations.RichReport.German
+                    : PhoneDesk.Operations.RichReport.English;
+                var written = PhoneDesk.Operations.RichReport.WriteFiles(
+                    folder, snapshot, language, PhoneDesk.Services.CallFlowPictureRenderer.RenderPng);
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationRichReportSavedStatus,
+                    "Report saved: {count} files in {path}.",
+                    new Dictionary<string, object?> { ["count"] = written.Files.Count, ["path"] = written.Directory });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.DocumentationRichReportFailedStatus,
+                    "The report could not be written: {error}",
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
+            finally
+            {
+                IsBusy = false;
+                IsExporting = false;
+            }
+        }
+
         [RelayCommand]
         private async Task CompareTopologySnapshotAsync()
         {

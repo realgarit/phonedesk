@@ -13,13 +13,16 @@ internal sealed class HealthAndBackupTools
     private readonly TenantHealthCheckService _healthCheck;
     private readonly ITenantAsCodeService _tenantAsCode;
     private readonly CreatedObjectLedger _ledger;
+    private readonly McpEnvironment _environment;
 
     public HealthAndBackupTools(
         TenantGateway tenant,
         TenantHealthCheckService healthCheck,
         ITenantAsCodeService tenantAsCode,
-        CreatedObjectLedger ledger)
+        CreatedObjectLedger ledger,
+        McpEnvironment environment)
     {
+        _environment = environment;
         _tenant = tenant;
         _healthCheck = healthCheck;
         _tenantAsCode = tenantAsCode;
@@ -116,6 +119,39 @@ internal sealed class HealthAndBackupTools
             })
         };
     });
+
+    [McpServerTool(Name = "export_tenant_report", ReadOnly = true, Idempotent = true, OpenWorld = false)]
+    [Description("Writes the readable documentation of a tenant from a snapshot file: report.html (one self-contained file with a section per kind of object, links between related objects, and a call-flow diagram per auto attendant), report.xlsx (one sheet per kind of object, with filters), and one call-flow diagram per auto attendant as SVG. It is built from the snapshot alone: the tenant is not read, so take a snapshot with backup_tenant first when you want the current state. Without a file it uses the newest backup of the connected tenant. The files go into a new folder under 'reports' in the data folder of this server; nothing is overwritten, and the same snapshot gives the same files. The result lists the files; tell the user where they are. The desktop app writes the same report and also the diagrams as PNG pictures.")]
+    public string ExportTenantReport(
+        [Description("Full path of a snapshot file, from list_backups or backup_tenant. Omit to use the newest backup of the connected tenant.")] string? file = null,
+        [Description("Language of the headings: en or de.")] string language = "en")
+        => McpJson.Run(() =>
+        {
+            var path = string.IsNullOrWhiteSpace(file) ? _tenant.FindLatestBackupFile() : file;
+            if (path is null)
+            {
+                throw new InvalidOperationException("There is no backup for this tenant yet. Run backup_tenant first, or name a snapshot file.");
+            }
+
+            if (!string.Equals(language, RichReport.English, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(language, RichReport.German, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("The language is en or de.");
+            }
+
+            var snapshot = _tenantAsCode.DeserializeTopology(McpFiles.ReadJsonFile(path, maxBytes: 64 * 1024 * 1024));
+            var written = RichReport.WriteFiles(Path.Combine(_environment.DataDirectory, "reports"), snapshot, language.ToLowerInvariant());
+            return new
+            {
+                success = true,
+                snapshotFile = Path.GetFullPath(path),
+                snapshotTakenUtc = snapshot.RetrievedAtUtc,
+                folder = written.Directory,
+                files = written.Files,
+                autoAttendantDiagrams = written.Files.Count(name => name.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)),
+                note = "The report shows the tenant at the time of the snapshot."
+            };
+        });
 
     [McpServerTool(Name = "compare_with_backup", ReadOnly = true, Idempotent = true, OpenWorld = true)]
     [Description("Reads the live tenant again and compares it with a snapshot file: lists every object and property that was added, removed or changed since the snapshot. Without a file it uses the newest backup of the connected tenant, which can be one this session wrote; list_backups shows the older ones. Read-only.")]

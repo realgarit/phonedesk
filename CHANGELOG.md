@@ -1,5 +1,31 @@
 # Changelog
 
+## [3.39.0](https://github.com/realgarit/phonedesk/compare/v3.38.0...v3.39.0) (2026-11-27)
+
+
+### Features
+
+* check which tenant the sign-ins reached, and restart a Graph sign-in that hangs ([5947d09](https://github.com/realgarit/phonedesk/commit/5947d094db511d308809b34cd3715021554d884b))
+* check which tenant the sign-ins reached, and restart a Graph sign-in that hangs ([871b4d2](https://github.com/realgarit/phonedesk/commit/871b4d2dd4b13b8e3876bf53bbce3b0c8f20b51c))
+* compare a customer's holiday list with the tenant and write the change table ([eccb0e3](https://github.com/realgarit/phonedesk/commit/eccb0e336ab4b27d8bec628ec17781443b7e9e35))
+* compare a customer's holiday list with the tenant and write the change table ([be4ecb6](https://github.com/realgarit/phonedesk/commit/be4ecb657bc8d43c605f38d8a9a4642bd4e4fa7b))
+* manage holiday schedules that exist, in the app and the MCP server ([39001a7](https://github.com/realgarit/phonedesk/commit/39001a752c50cceaf090f753ef523dab5d90dec3))
+* manage holiday schedules that exist, in the app and the MCP server ([3cfa44f](https://github.com/realgarit/phonedesk/commit/3cfa44f85d3c780063ed7d07df66bc9e05c65837))
+* phone number inventory with assign, move and unassign, in the app and the MCP server ([b3c5c70](https://github.com/realgarit/phonedesk/commit/b3c5c70f81ad086ef013731227c3424cda76ae9c))
+* phone number inventory with assign, move and unassign, in the app and the MCP server ([575721f](https://github.com/realgarit/phonedesk/commit/575721faff7e84f85e675798dc80f15ce2aa93b1))
+* upload audio for the right Teams application and back up what a holiday change touches ([068915f](https://github.com/realgarit/phonedesk/commit/068915f59bc9a7d7edaaca6ba2cebaab5217cd1c))
+* upload audio for the right Teams application and back up what a holiday change touches ([b44168d](https://github.com/realgarit/phonedesk/commit/b44168d50467cbb6dbe6f075e76a4b7226365998))
+
+
+### Bug Fixes
+
+* back up only the rollout items that are saved ([5bd196e](https://github.com/realgarit/phonedesk/commit/5bd196e8c4a9918db01a89c78f07c25f229b6e90))
+* block every desktop page on an identity problem, and bind a Graph sign-in to its attempt ([8613a43](https://github.com/realgarit/phonedesk/commit/8613a436a0cfc5062e265ad6e2d2f35ff61aeeda))
+* do not count a switched-off holiday, a repeated line or an auto attendant the backup lacks ([c931237](https://github.com/realgarit/phonedesk/commit/c9312371fd60dd4f85bd3c530a544bde73933400))
+* read only a holiday backup of the connected tenant for the change table ([76ecbb7](https://github.com/realgarit/phonedesk/commit/76ecbb7ae9d3567e065e0f0dbb420945e1fc4c9b))
+* retry a retire run past schedules that are gone, and do not verify a rollout item without a source ([3b2aab1](https://github.com/realgarit/phonedesk/commit/3b2aab1fcba87d3d0eed253c26bada7ff184a820))
+* use the documented number search parameter, read the inventory page by page, and do not confirm an unread result ([fbf56c5](https://github.com/realgarit/phonedesk/commit/fbf56c53101a8d5901a3c133da4a1e399f90e783))
+
 ## [3.38.0](https://github.com/realgarit/phonedesk/compare/v3.37.2...v3.38.0) (2026-11-26)
 
 

@@ -118,6 +118,39 @@ public sealed class TenantPreflightTests
         Assert.Equal(PreflightStatus.NotChecked, unread.Entries[0].PreflightChecks.Single(check => check.Name == "License available").Status);
     }
 
+    [Theory]
+    // Free, usable for a resource account, not blocked.
+    [InlineData("", "VoiceApplicationAssignment", "", PreflightStatus.Pass, "not assigned")]
+    // Free, but Teams blocks the assignment.
+    [InlineData("", "VoiceApplicationAssignment", "BlockedForever", PreflightStatus.Fail, "blocks the number")]
+    // Free, but for users only.
+    [InlineData("", "UserAssignment", "", PreflightStatus.Fail, "cannot be used for a resource account")]
+    // Both conditions on one number: the block is named first.
+    [InlineData("", "UserAssignment", "BlockedForever", PreflightStatus.Fail, "blocks the number")]
+    // A number that reports no capability is not refused for that.
+    [InlineData("", "", "", PreflightStatus.Pass, "not assigned")]
+    // The auto attendant account of this plan has it already: the block and the capability do not matter.
+    [InlineData("aa-account", "UserAssignment", "BlockedForever", PreflightStatus.Pass, "already assigned")]
+    public void Number_IsAvailableOnlyWhenTeamsLetsAResourceAccountHaveIt(
+        string assignedTo, string capability, string blockedState, PreflightStatus expected, string detail)
+    {
+        using var host = new McpTestHost().Configured();
+        var variables = host.Get<ConfigurationStore>().Variables;
+        var sources = new IPhoneManagerVariables[] { variables };
+        var script = host.Get<IPowerShellCommandService>().GetTenantPreflightCommand(sources);
+        var tenant = FakeTenant(variables, freeLicenses: 2)
+            .Replace("AssignedPstnTargetId = 'employee-1'", $"AssignedPstnTargetId = '{assignedTo}'; Capability = @({(capability.Length == 0 ? string.Empty : "'" + capability + "'")}); AssignmentBlockedState = '{blockedState}'", StringComparison.Ordinal);
+        Assert.Contains("AssignmentBlockedState", tenant);
+
+        // The values come through the real script, not from a hand-made state.
+        var state = TenantPreflight.Parse(McpHolidayCallHandlingTests.RunPowerShell(tenant, script));
+        var plan = TenantPreflight.Apply(host.Get<IDryRunPlanBuilder>().BuildWizardPlan(variables), sources, state);
+        var check = plan.Entries[0].PreflightChecks.Single(item => item.Name == "Phone number available");
+
+        Assert.Equal(expected, check.Status);
+        Assert.Contains(detail, check.Detail);
+    }
+
     [Fact]
     public async Task Previews_ReadTheTenantOnlyWhenAsked()
     {

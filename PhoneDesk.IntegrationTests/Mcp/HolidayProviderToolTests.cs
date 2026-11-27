@@ -67,5 +67,12 @@ public sealed class HolidayProviderToolTests
         var other = Path.Combine(host.DataDirectory, "configuration.json");
         File.WriteAllText(other, "{}");
         Assert.Contains("Only .ics files", McpTestHost.Parse(tools.ImportHolidayCalendar(other)).GetProperty("error").GetString());
+
+        // A path on another computer is refused before anything is opened.
+        foreach (var remote in new[] { @"\\server\share\closures.ics", "//server/share/closures.ics", @"\\?\UNC\server\share\closures.ics", "file://server/share/closures.ics" })
+        {
+            Assert.True(McpFiles.IsNetworkOrDevicePath(remote));
+            Assert.Contains("not a network or device path", McpTestHost.Parse(tools.ImportHolidayCalendar(remote)).GetProperty("error").GetString());
+        }
     }
 }

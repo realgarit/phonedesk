@@ -903,6 +903,17 @@ namespace PhoneDesk.ViewModels
             }
         }
 
+        /// <summary>Opens the selected call queue on the Edit Settings page.</summary>
+        [RelayCommand]
+        private void EditCallQueue(string? callQueueName)
+        {
+            if (!string.IsNullOrWhiteSpace(callQueueName) && _sharedStateService is not null)
+            {
+                _sharedStateService.EditRequest = new EditRequest(PhoneDesk.Operations.EditObjectKind.CallQueue, callQueueName);
+                NavigateTo(ConstantsService.Pages.EditSettings);
+            }
+        }
+
         [RelayCommand]
         private async Task RemoveCallQueueAsync(string? callQueueName = null)
         {

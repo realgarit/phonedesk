@@ -175,6 +175,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
@@ -200,6 +201,18 @@
                                     </StackPanel>
                                 </Button>
 
+                                <Button Grid.Column="3" HorizontalAlignment="Left"
+                                        Command="{Binding EditCallQueueCommand}"
+                                        CommandParameter="{Binding #CallQueuesGrid.SelectedItem.Name}"
+                                        IsEnabled="{Binding #CallQueuesGrid.SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        ToolTip.Tip="{loc:Translate Key=EditSettingsOpenTooltip}"
+                                        Margin="0,0,16,0" Classes="IconText">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fi:SymbolIcon Symbol="Edit"/>
+                                        <TextBlock Text="{loc:Translate Key=EditSettingsOpenAction}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <Button Grid.Column="2"
                                         Command="{Binding RemoveCallQueueCommand}"
                                         CommandParameter="{Binding #CallQueuesGrid.SelectedItem.Name}"
@@ -213,7 +226,7 @@
                                     </StackPanel>
                                 </Button>
 
-                                <TextBox Grid.Column="3"
+                                <TextBox Grid.Column="4"
                                          Text="{Binding SearchCallQueuesText}"
                                          Watermark="{loc:Translate Key=CallQueuesSearchWatermark}"
                                          ToolTip.Tip="{loc:Translate Key=CallQueuesSearchTooltip}"

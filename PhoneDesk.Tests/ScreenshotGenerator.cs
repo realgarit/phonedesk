@@ -196,6 +196,12 @@ namespace PhoneDesk.Tests
             new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
             new("HolidayManager", true, "holiday-manager-compare-en.png", "holidaymanager-compare-en"),
             new("HolidayManager", true, "holiday-manager-compare-de.png", "holidaymanager-compare-de"),
+            new("EditSettings", true, "edit-settings-empty-en.png", "editsettings-empty-en"),
+            new("EditSettings", true, "edit-settings-empty-de.png", "editsettings-empty-de"),
+            new("EditSettings", true, "edit-settings-queue-en.png", "editsettings-queue-en"),
+            new("EditSettings", true, "edit-settings-queue-de.png", "editsettings-queue-de"),
+            new("EditSettings", true, "edit-settings-attendant-en.png", "editsettings-attendant-en"),
+            new("EditSettings", true, "edit-settings-attendant-de.png", "editsettings-attendant-de"),
             new("SetupRuns", true, "setup-runs-empty-en.png", "setupruns-empty-en"),
             new("SetupRuns", true, "setup-runs-empty-de.png", "setupruns-empty-de"),
             new("SetupRuns", true, "setup-runs-check-en.png", "ready-setupruns-check"),
@@ -1148,6 +1154,59 @@ namespace PhoneDesk.Tests
                         holidayManager.OpenRetireCommand.Execute(null);
                         holidayManager.CheckForDisplay();
                     }
+                    break;
+
+                case EditSettingsViewModel editSettings when scenario.StartsWith("editsettings-queue", StringComparison.Ordinal):
+                    editSettings.ObjectName = "cq-contoso-reception";
+                    editSettings.ShowForDisplay(
+                        new PhoneDesk.Operations.EditObjectState
+                        {
+                            Kind = PhoneDesk.Operations.EditObjectKind.CallQueue,
+                            Id = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43",
+                            Name = "cq-contoso-reception",
+                            Values = new Dictionary<string, string>
+                            {
+                                ["routingMethod"] = "Attendant", ["agentAlertTime"] = "30", ["language"] = "de-DE",
+                                ["greetingText"] = "Willkommen bei Contoso. Bitte bleiben Sie am Apparat.", ["allowOptOut"] = "true",
+                                ["presenceBasedRouting"] = "false", ["conferenceMode"] = "true", ["agentGroups"] = "2b7e0c8d-9a51-4c35-0d4b-6f1c2a9e1f43",
+                                ["overflowThreshold"] = "50", ["overflowAction"] = "DisconnectWithBusy", ["overflowTarget"] = "",
+                                ["timeoutThreshold"] = "1200", ["timeoutAction"] = "Disconnect", ["timeoutTarget"] = ""
+                            }
+                        },
+                        new Dictionary<string, string?>
+                        {
+                            ["routingMethod"] = "LongestIdle", ["agentAlertTime"] = "20", ["timeoutAction"] = "Forward",
+                            ["timeoutTarget"] = "racq-contoso-support@contoso.onmicrosoft.com"
+                        });
+                    break;
+
+                case EditSettingsViewModel editSettings when scenario.StartsWith("editsettings-attendant", StringComparison.Ordinal):
+                    editSettings.KindIndex = 1;
+                    editSettings.ObjectName = "aa-contoso-main-reception";
+                    editSettings.ShowForDisplay(
+                        new PhoneDesk.Operations.EditObjectState
+                        {
+                            Kind = PhoneDesk.Operations.EditObjectKind.AutoAttendant,
+                            Id = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43",
+                            Name = "aa-contoso-main-reception",
+                            Values = new Dictionary<string, string>
+                            {
+                                ["language"] = "de-DE", ["timeZone"] = "W. Europe Standard Time", ["greetingText"] = "Willkommen bei Contoso.",
+                                ["businessHours"] = "Mon 08:00-12:00,13:00-17:00; Tue 08:00-12:00,13:00-17:00; Wed 08:00-12:00,13:00-17:00; Thu 08:00-12:00,13:00-17:00; Fri 08:00-16:00; Sat closed; Sun closed",
+                                ["afterHoursGreetingText"] = "Unser Büro ist zurzeit geschlossen.", ["afterHoursAction"] = "Disconnect", ["afterHoursTarget"] = ""
+                            },
+                            Locked = new Dictionary<string, string>
+                            {
+                                ["defaultAction"] = "The call flow in opening hours has a menu with keys. A menu is changed in the Teams admin center.",
+                                ["defaultTarget"] = "The call flow in opening hours has a menu with keys. A menu is changed in the Teams admin center."
+                            },
+                            Notes = new[] { "The schedule of the opening hours ('After Hours Schedule') is shared with other auto attendants." }
+                        },
+                        new Dictionary<string, string?>
+                        {
+                            ["businessHours"] = "Mon 08:00-17:00; Tue 08:00-17:00; Wed 08:00-17:00; Thu 08:00-17:00; Fri 08:00-16:00; Sat 09:00-12:00",
+                            ["afterHoursGreetingText"] = "Wir sind von Montag bis Freitag von 8 bis 17 Uhr für Sie da."
+                        });
                     break;
 
                 case SetupRunsViewModel setupRuns when scenario.Contains("setupruns-check", StringComparison.Ordinal):

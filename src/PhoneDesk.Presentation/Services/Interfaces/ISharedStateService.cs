@@ -28,4 +28,10 @@ public interface ISharedStateService : INotifyPropertyChanged
 
     /// <summary>The record of the Guided Setup run in progress, kept while the operator visits other pages.</summary>
     PhoneDesk.Operations.RunRecord? SetupRun { get; set; }
+
+    /// <summary>The object a list page asked the Edit Settings page to open. The page takes it and clears it.</summary>
+    EditRequest? EditRequest { get; set; }
 }
+
+/// <summary>A call queue or an auto attendant to open on the Edit Settings page.</summary>
+public sealed record EditRequest(PhoneDesk.Operations.EditObjectKind Kind, string Name);

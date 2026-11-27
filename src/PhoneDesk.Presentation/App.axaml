@@ -15,6 +15,7 @@
             <!-- Value Converters -->
             <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <converters:DayNameConverter x:Key="DayNameConverter"/>
 
             <!-- Typography assets -->
             <FontFamily x:Key="DisplayFontFamily">avares://PhoneDesk.Presentation/Resources/Fonts#Sora</FontFamily>

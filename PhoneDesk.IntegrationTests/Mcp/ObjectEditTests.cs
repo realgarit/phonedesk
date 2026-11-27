@@ -18,7 +18,7 @@ public sealed class ObjectEditTests
 
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
 
-    private static string Run(params string[] scripts) => McpHolidayCallHandlingTests.RunPowerShell(scripts.Prepend(FakeTeams).ToArray());
+    private static string Run(params string[] scripts) => McpHolidayCallHandlingTests.RunPowerShell(scripts.Prepend(PhoneDesk.TestShared.SimulatedTenant.Teams).ToArray());
 
     private static Dictionary<string, string?> Wanted(params (string Key, string Value)[] values)
         => values.ToDictionary(value => value.Key, value => (string?)value.Value);
@@ -69,6 +69,10 @@ public sealed class ObjectEditTests
         Assert.Equal(AccountId, after.Values["timeoutTarget"]);
         Assert.Equal("30", after.Values["agentAlertTime"]);
         Assert.Equal(new[] { "agentAlertTime", "timeoutTarget" }, ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key));
+        // With the script output the resolved ID is known: the target was saved as wanted, and only
+        // the alert time the stand-in refused is still open.
+        Assert.Equal(AccountId, ObjectEdit.ResolvedTargets(output)["support@contoso.com"]);
+        Assert.Equal(new[] { "agentAlertTime" }, ObjectEdit.NotAsWanted(assessment, after, output).Select(change => change.Key));
     }
 
     [Fact]
@@ -227,63 +231,4 @@ public sealed class ObjectEditTests
         Assert.Contains("not one of", McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "Fastest" }, cancellationToken: Cancellation)).GetProperty("error").GetString());
         Assert.True(McpTestHost.Parse(await tools.EditCallQueue("Support CQ", new() { ["routingMethod"] = "Attendant" }, cancellationToken: Cancellation)).GetProperty("nothingToChange").GetBoolean());
     }
-
-    /// <summary>Stand-ins for the Teams cmdlets. They keep one call queue and one auto attendant and change them like Teams does.</summary>
-    private const string FakeTeams = """
-        $global:pdFakeQueue = [pscustomobject]@{
-            Identity = 'aaaaaaaa-1111-2222-3333-444444444444'; Name = 'Support CQ'; RoutingMethod = 'Attendant'; AgentAlertTime = 30; LanguageId = 'de-DE'
-            WelcomeTextToSpeechPrompt = 'Willkommen'; WelcomeMusicAudioFileId = $null; AllowOptOut = $true; PresenceBasedRouting = $false; ConferenceMode = $true
-            DistributionLists = @('dddddddd-1111-2222-3333-444444444444'); OverflowThreshold = 50; OverflowAction = 'DisconnectWithBusy'; OverflowActionTarget = $null
-            TimeoutThreshold = 1200; TimeoutAction = 'Disconnect'; TimeoutActionTarget = $null
-        }
-        function Get-CsCallQueue { [CmdletBinding()] param($Identity, $NameFilter)
-            if ($Identity -eq $global:pdFakeQueue.Identity -or $NameFilter -eq 'Support CQ') { return $global:pdFakeQueue }
-            if ($NameFilter -eq 'Twin CQ') { return @([pscustomobject]@{ Name = 'Twin CQ'; Identity = '1' }, [pscustomobject]@{ Name = 'Twin CQ'; Identity = '2' }) }
-        }
-        function Set-CsCallQueue { [CmdletBinding()] param($Identity, $RoutingMethod, $AgentAlertTime, $LanguageId, $WelcomeTextToSpeechPrompt, $AllowOptOut, $PresenceBasedRouting, $ConferenceMode, $DistributionLists, $OverflowThreshold, $OverflowAction, $OverflowActionTarget, $TimeoutThreshold, $TimeoutAction, $TimeoutActionTarget)
-            if ($PSBoundParameters.ContainsKey('AgentAlertTime') -and $AgentAlertTime -eq 99) { throw 'The agent alert time 99 is not accepted.' }
-            foreach ($pdKey in @($PSBoundParameters.Keys)) {
-                if ($pdKey -in @('Identity', 'WarningAction', 'ErrorAction')) { continue }
-                $pdNew = $PSBoundParameters[$pdKey]
-                if ($pdKey -like '*ActionTarget') { $pdNew = [pscustomobject]@{ Id = [string]$pdNew } }
-                $global:pdFakeQueue.$pdKey = $pdNew
-            }
-        }
-        function Get-CsOnlineUser { [CmdletBinding()] param($Identity)
-            if ($Identity -in @('support@contoso.com', 'cccccccc-1111-2222-3333-444444444444')) {
-                return [pscustomobject]@{ Identity = 'cccccccc-1111-2222-3333-444444444444'; UserPrincipalName = 'support@contoso.com'; AccountType = 'ResourceAccount' }
-            }
-            throw "The account '$Identity' was not found."
-        }
-        function New-CsAutoAttendantPrompt { [CmdletBinding()] param($TextToSpeechPrompt, $AudioFilePrompt) [pscustomobject]@{ TextToSpeechPrompt = $TextToSpeechPrompt; AudioFilePrompt = $AudioFilePrompt } }
-        function New-CsAutoAttendantCallableEntity { [CmdletBinding()] param($Identity, $Type) [pscustomobject]@{ Id = $Identity; Type = $Type } }
-        function New-CsAutoAttendantMenuOption { [CmdletBinding()] param($Action, $DtmfResponse, $CallTarget) [pscustomobject]@{ Action = $Action; DtmfResponse = $DtmfResponse; CallTarget = $CallTarget } }
-        function New-CsAutoAttendantMenu { [CmdletBinding()] param($Name, $MenuOptions) [pscustomobject]@{ Name = $Name; MenuOptions = @($MenuOptions) } }
-        function New-CsOnlineTimeRange { [CmdletBinding()] param($Start, $End) [pscustomobject]@{ Start = [TimeSpan]$Start; End = [TimeSpan]$End } }
-        $global:pdFakeSchedule = [pscustomobject]@{
-            Id = 'sched-1'; Name = 'After Hours Schedule'; AssociatedConfigurationIds = @('bbbbbbbb-1111-2222-3333-444444444444', 'another-attendant')
-            WeeklyRecurrentSchedule = [pscustomobject]@{
-                MondayHours = @((New-CsOnlineTimeRange -Start '08:00' -End '12:00'), (New-CsOnlineTimeRange -Start '13:00' -End '17:00'))
-                TuesdayHours = @((New-CsOnlineTimeRange -Start '08:00' -End '17:00'))
-                WednesdayHours = @(); ThursdayHours = @(); FridayHours = @(); SaturdayHours = @(); SundayHours = @()
-            }
-        }
-        function Get-CsOnlineSchedule { [CmdletBinding()] param($Id) $global:pdFakeSchedule }
-        function Set-CsOnlineSchedule { [CmdletBinding()] param($Instance) $global:pdFakeSchedule = $Instance }
-        $global:pdFakeAttendant = [pscustomobject]@{
-            Identity = 'bbbbbbbb-1111-2222-3333-444444444444'; Name = 'Main AA'; LanguageId = 'de-DE'; TimeZoneId = 'W. Europe Standard Time'
-            DefaultCallFlow = [pscustomobject]@{
-                Id = 'flow-default'; Greetings = @((New-CsAutoAttendantPrompt -TextToSpeechPrompt 'Willkommen'))
-                Menu = [pscustomobject]@{ Name = 'Main menu'; MenuOptions = @(
-                    (New-CsAutoAttendantMenuOption -Action TransferCallToTarget -DtmfResponse Tone1 -CallTarget ([pscustomobject]@{ Id = 'x' })),
-                    (New-CsAutoAttendantMenuOption -Action TransferCallToTarget -DtmfResponse Tone2 -CallTarget ([pscustomobject]@{ Id = 'y' }))) }
-            }
-            CallFlows = @([pscustomobject]@{ Id = 'flow-after'; Greetings = @(); Menu = [pscustomobject]@{ Name = 'Closed'; MenuOptions = @((New-CsAutoAttendantMenuOption -Action DisconnectCall -DtmfResponse Automatic)) } })
-            CallHandlingAssociations = @([pscustomobject]@{ Type = 'AfterHours'; ScheduleId = 'sched-1'; CallFlowId = 'flow-after' })
-        }
-        function Get-CsAutoAttendant { [CmdletBinding()] param($Identity, $NameFilter)
-            if ($Identity -eq $global:pdFakeAttendant.Identity -or $NameFilter -eq 'Main AA') { return $global:pdFakeAttendant }
-        }
-        function Set-CsAutoAttendant { [CmdletBinding()] param($Instance) $global:pdFakeAttendant = $Instance }
-        """;
 }

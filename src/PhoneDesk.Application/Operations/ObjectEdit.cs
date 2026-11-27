@@ -87,6 +87,9 @@ public static class ObjectEdit
     public const string ReadMarker = "PDEDIT_JSON: ";
     public const string PropertyMarker = "PDEDIT_PROP: ";
 
+    /// <summary>A sign-in name the script resolved, with the object ID Teams stores for it.</summary>
+    public const string TargetMarker = "PDEDIT_TARGET: ";
+
     public const string Disconnect = "Disconnect";
     public const string Transfer = "Transfer";
 
@@ -375,10 +378,59 @@ public static class ObjectEdit
 
     /// <summary>The settings a new read of the object does not show as wanted. Empty when all were saved.</summary>
     public static IReadOnlyList<EditChange> NotAsWanted(EditAssessment assessment, EditObjectState after)
-        => assessment.Changes
-            .Where(change => !after.Values.TryGetValue(change.Key, out var now) ||
-                             !string.Equals(now, change.New, StringComparison.OrdinalIgnoreCase))
+        => NotAsWanted(assessment, after, null);
+
+    /// <summary>
+    /// The settings a new read of the object does not show as wanted. A target can be given as a
+    /// sign-in name, and Teams stores and returns the object ID of that account. The save script
+    /// reports the ID it resolved (<see cref="TargetMarker"/>), so a target counts as shown when the
+    /// tenant holds that ID. Without the script output only an equal text counts.
+    /// </summary>
+    public static IReadOnlyList<EditChange> NotAsWanted(EditAssessment assessment, EditObjectState after, string? scriptOutput)
+    {
+        ArgumentNullException.ThrowIfNull(assessment);
+        ArgumentNullException.ThrowIfNull(after);
+        var resolved = ResolvedTargets(scriptOutput);
+        return assessment.Changes
+            .Where(change =>
+            {
+                if (!after.Values.TryGetValue(change.Key, out var now))
+                {
+                    return true;
+                }
+
+                if (string.Equals(now, change.New, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                return !(change.Key.EndsWith("Target", StringComparison.Ordinal)
+                         && resolved.TryGetValue(change.New.Trim(), out var id)
+                         && string.Equals(now, id, StringComparison.OrdinalIgnoreCase));
+            })
             .ToList();
+    }
+
+    /// <summary>The sign-in names the save script resolved, each with the object ID it found.</summary>
+    public static IReadOnlyDictionary<string, string> ResolvedTargets(string? scriptOutput)
+    {
+        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in (scriptOutput ?? string.Empty).Split('\n').Select(line => line.Trim()))
+        {
+            if (!line.StartsWith(TargetMarker, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var separator = line.LastIndexOf('|');
+            if (separator > TargetMarker.Length && separator < line.Length - 1)
+            {
+                resolved[line[TargetMarker.Length..separator].Trim()] = line[(separator + 1)..].Trim();
+            }
+        }
+
+        return resolved;
+    }
 
     private static string StepOf(EditField field)
         => field.SentWith is null ? field.Key : field.Type == EditFieldType.Choice ? field.Key : field.SentWith;
@@ -551,12 +603,14 @@ public static class ObjectEdit
             if ($pdText -match $pdGuid) { return $pdText }
             $pdUser = Get-CsOnlineUser -Identity $pdText -ErrorAction Stop
             if (-not $pdUser) { throw "The account '$pdText' was not found." }
+            Write-Host "PDEDIT_TARGET: $pdText|$([string]$pdUser.Identity)"
             return [string]$pdUser.Identity
         }
         $pdEntity = {
             param($pdTarget)
             $pdUser = Get-CsOnlineUser -Identity ([string]$pdTarget).Trim() -ErrorAction Stop
             if (-not $pdUser) { throw "The account '$pdTarget' was not found." }
+            Write-Host "PDEDIT_TARGET: $(([string]$pdTarget).Trim())|$([string]$pdUser.Identity)"
             $pdType = if ("$($pdUser.AccountType)" -eq 'ResourceAccount') { 'ApplicationEndpoint' } else { 'User' }
             return (New-CsAutoAttendantCallableEntity -Identity ([string]$pdUser.Identity) -Type $pdType -ErrorAction Stop)
         }

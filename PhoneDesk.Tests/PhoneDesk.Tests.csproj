@@ -29,6 +29,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The simulated tenant both heads are tested against: one file in PhoneDesk.IntegrationTests, compiled into this project too. -->
+    <Compile Include="..\PhoneDesk.IntegrationTests\Shared\SimulatedTenant.cs" Link="Shared\SimulatedTenant.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

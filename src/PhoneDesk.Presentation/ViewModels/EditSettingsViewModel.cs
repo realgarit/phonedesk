@@ -183,9 +183,10 @@ namespace PhoneDesk.ViewModels
                 return;
             }
 
-            var outcomes = ObjectEdit.ParseOutcome(assessment, string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput);
+            var scriptOutput = string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput;
+            var outcomes = ObjectEdit.ParseOutcome(assessment, scriptOutput);
             var after = await ReadAsync();
-            var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
+            var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after, scriptOutput).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
             var lines = new List<string>();
             var confirmed = 0;
             foreach (var outcome in outcomes)

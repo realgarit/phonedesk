@@ -27,7 +27,7 @@ internal sealed class McpTestHost : IDisposable
     private readonly bool _keepDataDirectory;
 
     /// <param name="keepDataDirectory">True to leave the data directory in place, for a test that starts a second server on it.</param>
-    public McpTestHost(bool skipBackup = true, bool allowDeleteExisting = false, string? dataDirectory = null, bool keepDataDirectory = false)
+    public McpTestHost(bool skipBackup = true, bool allowDeleteExisting = false, string? dataDirectory = null, bool keepDataDirectory = false, IPowerShellContextService? powerShell = null)
     {
         _keepDataDirectory = keepDataDirectory;
         DataDirectory = dataDirectory ?? Path.Combine(Path.GetTempPath(), "phonedesk-mcp-tests", Guid.NewGuid().ToString("N"));
@@ -37,7 +37,8 @@ internal sealed class McpTestHost : IDisposable
         services.AddLogging();
         services.AddPhoneDeskMcp();
         Replace<McpEnvironment>(services, new McpEnvironment(DataDirectory, skipBackup, allowDeleteExisting));
-        Replace<IPowerShellContextService>(services, PowerShell);
+        // A test can bring a host that runs the scripts in a real engine; the scripted one is the default.
+        Replace<IPowerShellContextService>(services, powerShell ?? PowerShell);
         Replace<IMsalGraphAuthenticationService>(services, GraphAuthentication);
         Replace<IAuditLog>(services, new FileAuditLog(Path.Combine(DataDirectory, "audit")));
         Replace<ITenantHealthPreferencesStore>(services, new TenantHealthPreferencesStore(DataDirectory));

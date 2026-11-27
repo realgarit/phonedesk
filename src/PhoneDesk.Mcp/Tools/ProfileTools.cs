@@ -87,6 +87,22 @@ internal sealed class ProfileTools
             }
 
             var current = _store.ToJson();
+            if (_profiles.Active?.Id == target.Id)
+            {
+                // Already in use: the configuration in place is the newest one of this customer. It is
+                // saved into the profile, not replaced by the older copy, and the connections stay.
+                _profiles.SaveConfiguration(target.Id, current);
+                _connection.Identity.SetExpectation(target.ExpectedTenant, target.ExpectedAccount);
+                return new
+                {
+                    success = true,
+                    activeProfile = View(_profiles.Find(target.Id)!, true),
+                    alreadyInUse = true,
+                    signedOut = false,
+                    next = "This profile was already in use. Its configuration was saved from the current one; nothing was reloaded and the connections stay."
+                };
+            }
+
             // The configuration of the profile is put in place before the switch is written: one that
             // cannot be read stops here, and the profile in use stays as it is.
             if (!string.IsNullOrWhiteSpace(target.ConfigurationJson))

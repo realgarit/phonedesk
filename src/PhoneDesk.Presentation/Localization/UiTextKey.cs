@@ -1547,4 +1547,5 @@ public enum UiTextKey
     ProfilesDeletedStatus,
     ProfilesFailedStatus,
     ProfilesFooter,
+    ProfilesSignInOpenStatus,
 }

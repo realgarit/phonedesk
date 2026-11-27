@@ -89,6 +89,22 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
+        public async Task Switch_WaitsForASignInThatIsStillOpen()
+        {
+            var page = Page();
+            page.ProfileName = "Contoso";
+            page.CreateCommand.Execute(null);
+            page.SelectedProfile = page.Profiles.Single();
+            _harness.SharedStateService.SetupGet(state => state.OpenSignIns).Returns(1);
+
+            await page.SwitchCommand.ExecuteAsync(null);
+
+            Assert.Empty(_scripts);
+            Assert.Null(_profiles.Active);
+            Assert.Contains("still open", page.StatusMessage);
+        }
+
+        [Fact]
         public async Task Switch_LoadsTheOtherCustomerSetsTheExpectedTenantAndSignsOut()
         {
             var page = Page();

@@ -1542,5 +1542,6 @@
   "ProfilesDeleteMessage": "The profile '{name}' and its saved configuration are removed from this computer. The tenant of the customer is not touched.",
   "ProfilesDeletedStatus": "Profile '{name}' was deleted.",
   "ProfilesFailedStatus": "Not done: {details}",
-  "ProfilesFooter": "Profiles are kept on this computer. A switch signs you out of Microsoft Teams and Microsoft Graph, and you sign in again for the other customer."
+  "ProfilesFooter": "Profiles are kept on this computer. A switch signs you out of Microsoft Teams and Microsoft Graph, and you sign in again for the other customer.",
+  "ProfilesSignInOpenStatus": "A sign-in is still open. Finish it or give it up on the Readiness Check page, then switch the profile."
 }

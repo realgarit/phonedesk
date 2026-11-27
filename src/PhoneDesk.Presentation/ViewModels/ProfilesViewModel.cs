@@ -173,6 +173,15 @@ namespace PhoneDesk.ViewModels
                 return;
             }
 
+            // A sign-in window that is still open would connect the customer before after the switch.
+            if (_sharedStateService.OpenSignIns > 0)
+            {
+                StatusMessage = GetText(
+                    UiTextKey.ProfilesSignInOpenStatus,
+                    "A sign-in is still open. Finish it or give it up on the Readiness Check page, then switch the profile.");
+                return;
+            }
+
             TenantProfile profile;
             try
             {

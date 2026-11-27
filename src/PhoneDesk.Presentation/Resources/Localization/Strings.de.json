@@ -1542,5 +1542,6 @@
   "ProfilesDeleteMessage": "Das Profil «{name}» und seine gespeicherte Konfiguration werden von diesem Computer entfernt. Der Mandant des Kunden wird nicht verändert.",
   "ProfilesDeletedStatus": "Profil «{name}» wurde gelöscht.",
   "ProfilesFailedStatus": "Nicht ausgeführt: {details}",
-  "ProfilesFooter": "Profile werden auf diesem Computer gespeichert. Ein Wechsel meldet Sie von Microsoft Teams und Microsoft Graph ab, und Sie melden sich für den anderen Kunden neu an."
+  "ProfilesFooter": "Profile werden auf diesem Computer gespeichert. Ein Wechsel meldet Sie von Microsoft Teams und Microsoft Graph ab, und Sie melden sich für den anderen Kunden neu an.",
+  "ProfilesSignInOpenStatus": "Eine Anmeldung ist noch offen. Schliessen Sie sie ab oder brechen Sie sie auf der Seite «Bereitschaftsprüfung» ab, und wechseln Sie dann das Profil."
 }

@@ -53,6 +53,44 @@ public sealed class ProfileToolTests
     }
 
     [Fact]
+    public async Task ARestartedServerChecksTheSignInsAgainstTheProfileInUse()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "phonedesk-profile-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using (var host = new McpTestHost(dataDirectory: directory, keepDataDirectory: true).Connected().Configured())
+            {
+                var tools = host.Tool<ProfileTools>();
+                tools.Save("Contoso", "contoso.com", "admin@contoso.com");
+                await tools.Switch("Contoso", Cancellation);
+
+                // Switching to the profile in use keeps the edits made since: nothing older is loaded.
+                host.Get<ConfigurationStore>().Patch(new Dictionary<string, JsonElement> { ["general.customerGroupName"] = McpTestHost.Json("hotline") });
+                host.Connected();
+                var again = McpTestHost.Parse(await tools.Switch("Contoso", Cancellation));
+                Assert.True(again.GetProperty("alreadyInUse").GetBoolean());
+                Assert.False(again.GetProperty("signedOut").GetBoolean());
+                Assert.Equal("hotline", host.Get<ConfigurationStore>().Variables.CustomerGroupName);
+                Assert.True(host.Get<TenantConnectionService>().IsReady);
+                Assert.Contains("hotline", host.Get<TenantProfileService>().Find("Contoso")!.ConfigurationJson);
+            }
+
+            // A new server on the same data: the expected tenant is in place before the first sign-in.
+            using var restarted = new McpTestHost(dataDirectory: directory, keepDataDirectory: true);
+            var expectation = restarted.Get<TenantConnectionService>().Identity.Expectation;
+            Assert.Equal("contoso.com", expectation.Tenant);
+            Assert.Equal("admin@contoso.com", expectation.Account);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task APlanNamesTheTenantItIsFor()
     {
         using var host = new McpTestHost().Connected().Configured();

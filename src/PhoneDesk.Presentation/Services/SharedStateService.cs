@@ -36,4 +36,7 @@ public partial class SharedStateService : ObservableObject, ISharedStateService
 
     [ObservableProperty]
     private string _activeProfileLabel = string.Empty;
+
+    [ObservableProperty]
+    private int _openSignIns;
 }

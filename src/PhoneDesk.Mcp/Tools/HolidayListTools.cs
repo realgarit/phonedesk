@@ -26,7 +26,7 @@ internal sealed class HolidayListTools
     }
 
     [McpServerTool(Name = "compare_holiday_list", ReadOnly = true, Idempotent = true, OpenWorld = true)]
-    [Description("Compares a customer's holiday list with the holidays the auto attendants have, whatever the schedules are called. For every entry and auto attendant it says: match (a schedule has exactly this range), covered (a longer range of a schedule contains it, for example company holidays that include New Year), sameStart (a schedule starts at the same time and ends at another; Teams refuses a second holiday with this start), partialOverlap, or missing. It also lists ranges the tenant has in the period of the list that the customer did not name, lines that could not be read, entries whose year was assumed, and whether the list spans more than one year. Each row shows what callers get on the matching schedule, so different greetings for the same holiday on different auto attendants are visible. Use it before you create or change schedules. Read-only.")]
+    [Description("Compares a customer's holiday list with the holidays the auto attendants have, whatever the schedules are called. For every entry and auto attendant it says: match (a schedule has exactly this range), covered (a longer range of a schedule contains it, for example company holidays that include New Year), sameStart (a schedule starts at the same time and ends at another; Teams refuses a second holiday with this start), partialOverlap, disabled (a schedule with this range is attached but its link is switched off, so callers do not get it), or missing. It also lists ranges the tenant has in the period of the list that the customer did not name, lines that could not be read, entries whose year was assumed, and whether the list spans more than one year. Each row shows what callers get on the matching schedule, so different greetings for the same holiday on different auto attendants are visible. Use it before you create or change schedules. Read-only.")]
     public Task<string> CompareHolidayList(
         [Description(ListDescription)] string list,
         [Description(YearDescription)] int defaultYear,
@@ -70,12 +70,12 @@ internal sealed class HolidayListTools
         });
 
     [McpServerTool(Name = "holiday_change_table", ReadOnly = true, Idempotent = true, OpenWorld = true)]
-    [Description("Writes the table of holiday changes for the customer record, after the work is done. It compares a backup from before the work with the tenant as it is now, for the customer's list: 'done' only when the tenant did not have the range before and has it now, 'no change' when it was there already, 'pending' when it is still missing. So only changes that a new read of the tenant confirms are reported as done. Each row keeps the customer's wording and the time range, and the marker letters (G, B, R, H, and W for a range that a longer existing schedule covers). The result has the rows and the same table as tab-separated text to paste. The 'before' state is a holiday backup file: take one with backup_holiday_call_handling BEFORE the work, or name the backup a holiday change wrote. Without a file the newest holiday backup of the tenant is used. Read-only.")]
+    [Description("Writes the table of holiday changes for the customer record, after the work is done. It compares a backup from before the work with the tenant as it is now, for the customer's list: 'done' only when the tenant did not have the range before and has it now, 'no change' when it was there already, 'pending' when it is still missing or its schedule is attached but switched off. So only changes that a new read of the tenant confirms are reported as done. Each row keeps the customer's wording and the time range, and the marker letters (G, B, R, H, and W for a range that a longer existing schedule covers). The result has the rows and the same table as tab-separated text to paste. The 'before' state is a holiday backup file: take one with backup_holiday_call_handling BEFORE the work, or name the backup a holiday change wrote. Without a file the newest holiday backup of the tenant is used. Read-only.")]
     public Task<string> HolidayChangeTable(
         [Description(ListDescription)] string list,
         [Description(YearDescription)] int defaultYear,
         [Description("Full path of the holiday backup from before the work, as backup_holiday_call_handling or a holiday change returned it. Only a holiday backup in the backup folder of the connected tenant is read. Omit to use the newest one.")] string? backupFile = null,
-        [Description("IDs of the auto attendants to report. Omit to report every auto attendant of the backup.")] string[]? autoAttendantIds = null,
+        [Description("IDs of the auto attendants to report. Each must be in the backup. Omit to report every auto attendant of the backup.")] string[]? autoAttendantIds = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
@@ -92,6 +92,17 @@ internal sealed class HolidayListTools
             var document = HolidayBackup.Deserialize(McpFiles.ReadJsonFile(file, maxBytes: 64 * 1024 * 1024));
             var before = new HolidayCallHandlingState { AutoAttendants = document.AutoAttendants, Schedules = document.Schedules };
             var ids = Ids(autoAttendantIds);
+            // Without a "before" of an auto attendant every holiday it has now would count as done.
+            var notInBackup = ids
+                .Where(id => !document.AutoAttendants.Any(attendant => HolidayCallHandling.SameId(attendant.Id, id)))
+                .ToList();
+            if (notInBackup.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"The backup '{file}' does not hold the auto attendant(s) {string.Join(", ", notInBackup)}, so it cannot show what they had before the work. " +
+                    "Name a backup that holds them, or leave them out.");
+            }
+
             var scope = ids.Count == 0 ? document.AutoAttendants.Select(attendant => attendant.Id).ToList() : ids;
             if (scope.Count == 0)
             {

@@ -1349,5 +1349,6 @@
   "HolidayManagerCompareCovered": "durch einen längeren Plan abgedeckt",
   "HolidayManagerCompareSameStart": "gleicher Beginn, anderes Ende",
   "HolidayManagerComparePartialOverlap": "überschneidet sich teilweise",
-  "HolidayManagerCompareMissing": "fehlt"
+  "HolidayManagerCompareMissing": "fehlt",
+  "HolidayManagerCompareDisabled": "angehängt, aber ausgeschaltet"
 }

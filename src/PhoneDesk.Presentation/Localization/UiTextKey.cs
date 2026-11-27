@@ -1354,4 +1354,5 @@ public enum UiTextKey
     HolidayManagerCompareSameStart,
     HolidayManagerComparePartialOverlap,
     HolidayManagerCompareMissing,
+    HolidayManagerCompareDisabled,
 }

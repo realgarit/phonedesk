@@ -1349,5 +1349,6 @@
   "HolidayManagerCompareCovered": "covered by a longer schedule",
   "HolidayManagerCompareSameStart": "same start, another end",
   "HolidayManagerComparePartialOverlap": "overlaps partly",
-  "HolidayManagerCompareMissing": "missing"
+  "HolidayManagerCompareMissing": "missing",
+  "HolidayManagerCompareDisabled": "attached but switched off"
 }

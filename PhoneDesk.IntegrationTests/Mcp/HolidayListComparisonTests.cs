@@ -123,6 +123,25 @@ public sealed class HolidayListComparisonTests
     }
 
     [Fact]
+    public void ALinkThatIsSwitchedOffDoesNotCountAndALineTwiceIsOneEntry()
+    {
+        var list = HolidayListComparer.Parse("25.12.2027 Weihnachten\n25.12.2027 Weihnachten\n15.08.2027 Mariä Himmelfahrt", 2027);
+        Assert.Equal(2, list.Entries.Count);
+
+        var json = State(afterWork: false);
+        Assert.Contains("\"enabled\":true", json);
+        var off = HolidayCallHandling.ParseState(json.Replace("\"enabled\":true", "\"enabled\":false"));
+        var status = HolidayListComparer.Compare(off, list, new[] { Main }).Rows.ToDictionary(row => row.Entry.Wording, row => row);
+        Assert.Equal(HolidayListStatus.Disabled, status["Weihnachten"].Status);
+        Assert.NotNull(status["Weihnachten"].Schedule);
+        Assert.Equal(HolidayListStatus.Missing, status["Mariä Himmelfahrt"].Status);
+
+        // Attached but switched off after the work is not done.
+        var rows = HolidayListComparer.Changes(off, off, list, new[] { Main });
+        Assert.All(rows, row => Assert.Equal(HolidayChangeResult.Pending, row.Result));
+    }
+
+    [Fact]
     public async Task Tools_CompareTheListAndWriteTheChangeTableFromABackup()
     {
         using var host = McpHolidayCallHandlingTests.HostWith(State(afterWork: false));
@@ -157,6 +176,10 @@ public sealed class HolidayListComparisonTests
         var named = McpTestHost.Parse(await tools.HolidayChangeTable(
             list, 2027, backupFile: backup.GetProperty("backup").GetProperty("file").GetString(), cancellationToken: Cancellation));
         Assert.Equal(1, named.GetProperty("done").GetInt32());
+
+        // The backup holds the main auto attendant only: it is no "before" for the branch.
+        var branch = McpTestHost.Parse(await tools.HolidayChangeTable(list, 2027, autoAttendantIds: new[] { Branch }, cancellationToken: Cancellation));
+        Assert.Contains("does not hold the auto attendant", branch.GetProperty("error").GetString());
 
         Assert.Equal(backup.GetProperty("backup").GetProperty("file").GetString(), table.GetProperty("before").GetProperty("file").GetString());
         Assert.Equal(1, table.GetProperty("done").GetInt32());

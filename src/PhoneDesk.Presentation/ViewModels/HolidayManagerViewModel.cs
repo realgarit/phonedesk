@@ -847,6 +847,7 @@ namespace PhoneDesk.ViewModels
                 HolidayListStatus.Covered => GetText(UiTextKey.HolidayManagerCompareCovered, "covered by a longer schedule"),
                 HolidayListStatus.SameStart => GetText(UiTextKey.HolidayManagerCompareSameStart, "same start, another end"),
                 HolidayListStatus.PartialOverlap => GetText(UiTextKey.HolidayManagerComparePartialOverlap, "overlaps partly"),
+                HolidayListStatus.Disabled => GetText(UiTextKey.HolidayManagerCompareDisabled, "attached but switched off"),
                 _ => GetText(UiTextKey.HolidayManagerCompareMissing, "missing")
             };
 

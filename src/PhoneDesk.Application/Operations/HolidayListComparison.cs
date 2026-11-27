@@ -52,6 +52,12 @@ public enum HolidayListStatus
     /// <summary>A schedule overlaps a part of this date range.</summary>
     PartialOverlap,
 
+    /// <summary>
+    /// A schedule with this date range (or a longer one) is attached, but the link is switched off:
+    /// callers do not get it.
+    /// </summary>
+    Disabled,
+
     /// <summary>No holiday of the auto attendant applies in this date range.</summary>
     Missing
 }
@@ -198,6 +204,12 @@ public static partial class HolidayListComparer
                     marker = IsPartOfADay(window) ? "H" : end - start > TimeSpan.FromDays(1) ? "B" : string.Empty;
                 }
 
+                // The same line twice in a list is one entry.
+                if (entries.Any(entry => entry.Window == window && string.Equals(entry.Original, line, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
                 entries.Add(new CustomerHolidayEntry
                 {
                     Original = line,
@@ -238,10 +250,23 @@ public static partial class HolidayListComparer
                           let schedule = state.FindSchedule(link.ScheduleId)
                           where schedule is not null
                           from window in schedule.Windows
-                          select (Schedule: schedule, Window: window, Flow: attendant.FindCallFlow(link.CallFlowId))).ToList();
+                          select (Schedule: schedule, Window: window, Flow: attendant.FindCallFlow(link.CallFlowId), link.Enabled)).ToList();
+            var active = ranges.Where(range => range.Enabled).Select(range => (range.Schedule, range.Window)).ToList();
+            var switchedOff = ranges.Where(range => !range.Enabled).Select(range => (range.Schedule, range.Window)).ToList();
             foreach (var entry in list.Entries)
             {
-                var found = Find(entry.Window, ranges.Select(range => (range.Schedule, range.Window)).ToList());
+                var found = Find(entry.Window, active);
+                if (found.Status == HolidayListStatus.Missing)
+                {
+                    // A link that is switched off does not close the day. It is named, so that
+                    // nobody attaches the same schedule a second time.
+                    var off = Find(entry.Window, switchedOff);
+                    if (off.Status is HolidayListStatus.Match or HolidayListStatus.Covered)
+                    {
+                        found = (HolidayListStatus.Disabled, off.Schedule, off.Window);
+                    }
+                }
+
                 var flow = found.Schedule is null ? null : ranges.First(range => ReferenceEquals(range.Schedule, found.Schedule)).Flow;
                 rows.Add(new HolidayListRow
                 {
@@ -281,8 +306,12 @@ public static partial class HolidayListComparer
         CustomerHolidayList list,
         IReadOnlyCollection<string>? autoAttendantIds = null)
     {
-        var earlier = Compare(before, list, autoAttendantIds).Rows
-            .ToDictionary(row => (row.AutoAttendantId.ToUpperInvariant(), row.Entry.Original, row.Entry.Window));
+        var earlier = new Dictionary<(string, string, ScheduleWindow), HolidayListRow>();
+        foreach (var row in Compare(before, list, autoAttendantIds).Rows)
+        {
+            earlier.TryAdd((row.AutoAttendantId.ToUpperInvariant(), row.Entry.Original, row.Entry.Window), row);
+        }
+
         var rows = new List<HolidayChangeRow>();
         foreach (var row in Compare(now, list, autoAttendantIds).Rows)
         {

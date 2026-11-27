@@ -151,7 +151,8 @@ without a year takes the year you give and is flagged.
 
 - `compare_holiday_list` compares every entry with the holidays each auto attendant has, whatever
   the schedules are called: match, covered (a longer range of a schedule contains it), sameStart
-  (Teams refuses a second holiday with this start), partialOverlap, or missing. It also lists
+  (Teams refuses a second holiday with this start), partialOverlap, disabled (attached but
+  switched off, so callers do not get it), or missing. It also lists
   ranges only the tenant has, lines it could not read, and whether the list spans several years.
 - `holiday_change_table` writes the table for the customer record after the work. It compares a
   holiday backup from before the work with the tenant now: `done` only when the tenant did not

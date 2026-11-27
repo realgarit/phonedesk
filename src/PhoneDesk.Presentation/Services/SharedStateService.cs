@@ -33,4 +33,7 @@ public partial class SharedStateService : ObservableObject, ISharedStateService
 
     [ObservableProperty]
     private EditRequest? _editRequest;
+
+    [ObservableProperty]
+    private string _activeProfileLabel = string.Empty;
 }

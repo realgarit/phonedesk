@@ -535,15 +535,30 @@ namespace PhoneDesk.ViewModels
         /// Shows a script preview dialog and executes the command if the user confirms.
         /// Returns the execution result, or null if the user cancelled.
         /// </summary>
+        /// <summary>
+        /// Adds the tenant a change goes to, so an operator who works for several customers sees it
+        /// in every confirmation. Without a connection the title stays as it is.
+        /// </summary>
+        protected string WithTenant(string title)
+        {
+            var tenant = string.IsNullOrWhiteSpace(_sessionManager.TenantName) ? _sessionManager.TenantId : _sessionManager.TenantName;
+            return string.IsNullOrWhiteSpace(tenant)
+                ? title
+                : GetText(
+                    UiTextKey.DialogTitleWithTenant,
+                    "{title} (tenant: {tenant})",
+                    new Dictionary<string, object?> { ["title"] = title, ["tenant"] = tenant });
+        }
+
         protected async Task<OperationResult<string>?> PreviewAndExecuteAsync(string command, string context = "", Dictionary<string, string>? environmentVariables = null)
         {
             if (_dialogService != null && !(_sharedStateService?.SkipScriptPreview ?? false))
             {
                 var confirmed = await _dialogService.ShowScriptPreviewAsync(
-                    GetText(
+                    WithTenant(GetText(
                         UiTextKey.DialogPreviewTitle,
                         "Preview: {context}",
-                        new Dictionary<string, object?> { ["context"] = context }),
+                        new Dictionary<string, object?> { ["context"] = context })),
                     command);
                 if (!confirmed)
                 {
@@ -568,10 +583,10 @@ namespace PhoneDesk.ViewModels
             if (_dialogService != null && !(_sharedStateService?.SkipDeleteConfirmation ?? false))
             {
                 var confirmed = await _dialogService.ShowConfirmationWithPreviewAsync(
-                    GetText(
+                    WithTenant(GetText(
                         UiTextKey.DialogConfirmTitle,
                         "Confirm: {context}",
-                        new Dictionary<string, object?> { ["context"] = context }),
+                        new Dictionary<string, object?> { ["context"] = context })),
                     confirmMessage,
                     command);
                 if (!confirmed)

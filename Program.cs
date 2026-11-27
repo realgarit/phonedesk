@@ -127,6 +127,10 @@ class Program
         services.AddTransient<PhoneNumbersViewModel>();
         services.AddTransient<SetupRunsViewModel>();
         services.AddTransient<EditSettingsViewModel>();
+        services.AddTransient<ProfilesViewModel>();
+        services.AddSingleton<PhoneDesk.Operations.ITenantProfileStore>(_ => new FileTenantProfileStore());
+        services.AddSingleton<PhoneDesk.Operations.TenantProfileService>(provider =>
+            new PhoneDesk.Operations.TenantProfileService(provider.GetRequiredService<PhoneDesk.Operations.ITenantProfileStore>()));
         services.AddSingleton<PhoneDesk.Operations.IRunJournalStore>(_ => new FileRunJournalStore());
         services.AddSingleton<PhoneDesk.Operations.RunJournalService>(provider => new PhoneDesk.Operations.RunJournalService(
             provider.GetRequiredService<PhoneDesk.Operations.IRunJournalStore>(),

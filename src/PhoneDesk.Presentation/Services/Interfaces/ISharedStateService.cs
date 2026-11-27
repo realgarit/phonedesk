@@ -31,6 +31,9 @@ public interface ISharedStateService : INotifyPropertyChanged
 
     /// <summary>The object a list page asked the Edit Settings page to open. The page takes it and clears it.</summary>
     EditRequest? EditRequest { get; set; }
+
+    /// <summary>The name of the profile in use, for the shell. Empty when no profile is in use.</summary>
+    string ActiveProfileLabel { get; set; }
 }
 
 /// <summary>A call queue or an auto attendant to open on the Edit Settings page.</summary>

@@ -99,6 +99,7 @@ namespace PhoneDesk.Services
             public const string PhoneNumbers = "Phone Numbers";
             public const string SetupRuns = "Setup Runs";
             public const string EditSettings = "Edit Settings";
+            public const string Profiles = "Profiles";
             public const string GetStarted = "Get Started";
             public const string Variables = "Variables";
             public const string M365Groups = "M365 Groups";

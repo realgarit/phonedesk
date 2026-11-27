@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:loc="clr-namespace:PhoneDesk.Localization"
+             xmlns:controls="clr-namespace:PhoneDesk.Controls"
+             x:Class="PhoneDesk.Views.ProfilesView"
+             mc:Ignorable="d"
+             d:DesignWidth="1100" d:DesignHeight="760">
+    <Grid>
+        <Border Classes="card" Margin="0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Row="0" Margin="24,24,24,16" Spacing="14">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <Border Classes="icon-badge" VerticalAlignment="Top">
+                            <fi:SymbolIcon Symbol="Building"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:Translate Key=ProfilesTitle}" Classes="page-title" Margin="0"/>
+                            <controls:InfoButton Name="PageHelp" HelpTitle="{loc:Translate Key=ProfilesTitle}" HelpText="{loc:Translate Key=ProfilesSubtitle}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsEnabled="{Binding !IsBusy}">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=ProfilesNameLabel}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ProfileName}" Watermark="{loc:Translate Key=ProfilesNameWatermark}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=ProfilesTenantLabel}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <TextBox Text="{Binding ExpectedTenant}" Watermark="{loc:Translate Key=ProfilesTenantWatermark}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="4">
+                            <TextBlock Text="{loc:Translate Key=ProfilesAccountLabel}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <TextBox Text="{Binding ExpectedAccount}" Watermark="{loc:Translate Key=ProfilesAccountWatermark}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <WrapPanel Orientation="Horizontal" IsEnabled="{Binding !IsBusy}">
+                        <Button Command="{Binding CreateCommand}" Classes="accent IconText" Margin="0,0,12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="Add"/>
+                                <TextBlock Text="{loc:Translate Key=ProfilesCreateAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding SwitchCommand}" Classes="IconText" Margin="0,0,12,8" IsEnabled="{Binding CanSwitch}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowSwap"/>
+                                <TextBlock Text="{loc:Translate Key=ProfilesSwitchAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding SaveDetailsCommand}" Classes="IconText" Margin="0,0,12,8" IsEnabled="{Binding HasSelection}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="Save"/>
+                                <TextBlock Text="{loc:Translate Key=ProfilesSaveDetailsAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding SaveConfigurationCommand}" Classes="IconText" Margin="0,0,12,8" IsEnabled="{Binding HasProfiles}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="DocumentSave"/>
+                                <TextBlock Text="{loc:Translate Key=ProfilesSaveConfigurationAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteCommand}" Classes="IconText" Margin="0,0,12,8" IsEnabled="{Binding HasSelection}">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="Delete" Foreground="OrangeRed"/>
+                                <TextBlock Text="{loc:Translate Key=ProfilesDeleteAction}" VerticalAlignment="Center" Foreground="OrangeRed"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}"/>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <Border Grid.Row="1" Classes="sunken" Margin="24,0,24,8" Padding="24" IsVisible="{Binding ShowEmptyState}">
+                    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <fi:SymbolIcon Symbol="Building" FontSize="30" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{loc:Translate Key=ProfilesEmptyTitle}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{loc:Translate Key=ProfilesEmptyDescription}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="560"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Classes="sunken" Margin="24,0,24,8" Padding="16" IsVisible="{Binding HasProfiles}">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,*,*,110" ColumnSpacing="12" Margin="12,4,12,0">
+                            <TextBlock Grid.Column="0" Text="{loc:Translate Key=ProfilesNameLabel}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="1" Text="{loc:Translate Key=ProfilesColumnTenant}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="2" Text="{loc:Translate Key=ProfilesColumnAccount}" FontSize="12" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="3" Text="{loc:Translate Key=SetupRunsColumnState}" FontSize="12" FontWeight="SemiBold"/>
+                        </Grid>
+                        <ListBox Grid.Row="1" x:Name="ProfileList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                                 Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,*,*,110" ColumnSpacing="12">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Tenant}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Account}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding State}" Foreground="{DynamicResource TeamsPrimaryBrush}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" Background="{DynamicResource SurfaceSunkenBrush}"
+                        CornerRadius="0,0,12,12" Padding="24,12" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <fi:SymbolIcon Symbol="Info" FontSize="14"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{loc:Translate Key=ProfilesFooter}" FontSize="12"
+                                   TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

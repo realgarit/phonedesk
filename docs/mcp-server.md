@@ -132,6 +132,24 @@ Rules that hold for all four:
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
 
+### Customer profiles
+
+An operator who works for several customers keeps one profile per customer: the organization the
+sign-ins must reach, the sign-in account, and the configuration of that customer.
+
+- `list_profiles` lists them and names the one in use.
+- `save_profile` saves the current configuration as a profile, or updates one.
+- `switch_profile` saves the current configuration into the profile that was in use, loads the
+  configuration of the other profile, sets the expected organization and account, clears the
+  Guided Setup progress, and signs out. Sign in again afterwards; a sign-in that reaches another
+  organization than the profile expects blocks every read and change.
+- `remove_profile` removes a profile from this computer. No tenant is touched.
+
+Every plan of a change names the tenant it is for (`tenant`). A profile holds no password and no
+token: after a switch the user signs in again in the browser. The desktop app has the same on its
+**Profiles** page, shows the profile in use in the sidebar, and names the tenant in the title of
+every confirmation.
+
 ### Changing a call queue or an auto attendant that exists
 
 `get_call_queue_settings` and `get_auto_attendant_settings` read the settings that can be changed,

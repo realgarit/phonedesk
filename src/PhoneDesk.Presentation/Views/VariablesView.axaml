@@ -343,8 +343,17 @@
                                                     <Grid ColumnDefinitions="100,Auto,120,120,Auto,120,120">
                                                         <ToggleSwitch Grid.Column="0"
                                                                       IsChecked="{Binding IsEnabled}"
-                                                                      Content="{Binding DayName}"
-                                                                      Margin="0,0,12,0"/>
+                                                                      OnContent="{loc:Translate Key=CommonOn}"
+                                                                      OffContent="{loc:Translate Key=CommonOff}"
+                                                                      Margin="0,0,12,0">
+                                                            <!-- The stored day name stays English; the page shows it in the interface language. -->
+                                                            <ToggleSwitch.Content>
+                                                                <MultiBinding Converter="{StaticResource DayNameConverter}">
+                                                                    <Binding Path="DayName"/>
+                                                                    <loc:Translate Key="DayMonday"/>
+                                                                </MultiBinding>
+                                                            </ToggleSwitch.Content>
+                                                        </ToggleSwitch>
                                                         <TextBlock Grid.Column="1" Text="{loc:Translate Key=VariablesHours1Label}" 
                                                                  VerticalAlignment="Center" Margin="0,0,8,0"
                                                                  FontSize="12" Opacity="0.7"/>

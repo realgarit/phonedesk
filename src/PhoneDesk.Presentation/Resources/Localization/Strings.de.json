@@ -1525,5 +1525,12 @@
   "AutoAttendantsAssociateDetailsRequiredError": "Fehler: UPN des Ressourcenkontos und Name der automatischen Telefonzentrale dürfen nicht leer sein.",
   "AutoAttendantsAssociateSuccess": "Ressourcenkonto '{upn}' wurde der automatischen Telefonzentrale '{name}' zugeordnet.",
   "AutoAttendantsAssociateError": "Fehler beim Zuordnen des Ressourcenkontos zur automatischen Telefonzentrale: {details}",
-  "AutoAttendantsAssignLicenseContext": "Lizenz dem Ressourcenkonto der automatischen Telefonzentrale zuweisen"
+  "AutoAttendantsAssignLicenseContext": "Lizenz dem Ressourcenkonto der automatischen Telefonzentrale zuweisen",
+  "DayMonday": "Montag",
+  "DayTuesday": "Dienstag",
+  "DayWednesday": "Mittwoch",
+  "DayThursday": "Donnerstag",
+  "DayFriday": "Freitag",
+  "DaySaturday": "Samstag",
+  "DaySunday": "Sonntag"
 }

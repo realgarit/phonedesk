@@ -1530,4 +1530,11 @@ public enum UiTextKey
     AutoAttendantsAssociateSuccess,
     AutoAttendantsAssociateError,
     AutoAttendantsAssignLicenseContext,
+    DayMonday,
+    DayTuesday,
+    DayWednesday,
+    DayThursday,
+    DayFriday,
+    DaySaturday,
+    DaySunday,
 }

@@ -84,6 +84,7 @@ internal sealed class EditTools
         }
 
         IReadOnlyList<EditOutcome>? outcomes = null;
+        string? scriptOutput = null;
         var result = await _changes.PlanOrApplyAsync(
             new ChangeRequest(
                 kind == EditObjectKind.CallQueue ? "EditCallQueue" : "EditAutoAttendant",
@@ -96,7 +97,8 @@ internal sealed class EditTools
                 // Each setting reports on its own: the change succeeded when every one was saved.
                 IsSuccess = scriptResult =>
                 {
-                    outcomes = ObjectEdit.ParseOutcome(assessment, string.IsNullOrEmpty(scriptResult.RawOutput) ? scriptResult.Value : scriptResult.RawOutput);
+                    scriptOutput = string.IsNullOrEmpty(scriptResult.RawOutput) ? scriptResult.Value : scriptResult.RawOutput;
+                    outcomes = ObjectEdit.ParseOutcome(assessment, scriptOutput);
                     return outcomes.All(outcome => outcome.Saved);
                 }
             },
@@ -122,7 +124,7 @@ internal sealed class EditTools
             readProblem = ex.Message;
         }
 
-        var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
+        var open = after is null ? null : ObjectEdit.NotAsWanted(assessment, after, scriptOutput).Select(change => change.Key).ToHashSet(StringComparer.Ordinal);
         result = McpJson.With(result, "settings", outcomes.Select(outcome => new
         {
             setting = outcome.Key,

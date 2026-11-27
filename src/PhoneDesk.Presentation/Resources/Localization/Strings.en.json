@@ -1525,5 +1525,12 @@
   "AutoAttendantsAssociateDetailsRequiredError": "Error: Resource account UPN and auto attendant name cannot be empty.",
   "AutoAttendantsAssociateSuccess": "Resource account '{upn}' was assigned to auto attendant '{name}'.",
   "AutoAttendantsAssociateError": "Error assigning the resource account to the auto attendant: {details}",
-  "AutoAttendantsAssignLicenseContext": "Assign license to the auto attendant resource account"
+  "AutoAttendantsAssignLicenseContext": "Assign license to the auto attendant resource account",
+  "DayMonday": "Monday",
+  "DayTuesday": "Tuesday",
+  "DayWednesday": "Wednesday",
+  "DayThursday": "Thursday",
+  "DayFriday": "Friday",
+  "DaySaturday": "Saturday",
+  "DaySunday": "Sunday"
 }

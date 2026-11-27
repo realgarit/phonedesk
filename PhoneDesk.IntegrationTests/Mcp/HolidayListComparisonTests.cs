@@ -141,10 +141,22 @@ public sealed class HolidayListComparisonTests
         var noBackup = McpTestHost.Parse(await tools.HolidayChangeTable(list, 2027, cancellationToken: Cancellation));
         Assert.Contains("No holiday backup from before the work was found", noBackup.GetProperty("error").GetString());
 
+        // A file that is not a holiday backup of this tenant is not read, wherever it is.
+        var other = Path.Combine(host.DataDirectory, "configuration.json");
+        await File.WriteAllTextAsync(other, "{}", Cancellation);
+        foreach (var path in new[] { other, Path.Combine(host.DataDirectory, "backups", "..", "configuration.json"), @"C:\Windows\win.ini" })
+        {
+            var refused = McpTestHost.Parse(await tools.HolidayChangeTable(list, 2027, backupFile: path, cancellationToken: Cancellation));
+            Assert.Contains("is not a holiday backup of the connected tenant", refused.GetProperty("error").GetString());
+        }
+
         // A backup before the work, then the work, then the table.
         var backup = McpTestHost.Parse(await host.Tool<HolidayChangeTools>().BackupHolidayCallHandling(new[] { Main }, Cancellation));
         Respond(host, State(afterWork: true));
         var table = McpTestHost.Parse(await tools.HolidayChangeTable(list, 2027, cancellationToken: Cancellation));
+        var named = McpTestHost.Parse(await tools.HolidayChangeTable(
+            list, 2027, backupFile: backup.GetProperty("backup").GetProperty("file").GetString(), cancellationToken: Cancellation));
+        Assert.Equal(1, named.GetProperty("done").GetInt32());
 
         Assert.Equal(backup.GetProperty("backup").GetProperty("file").GetString(), table.GetProperty("before").GetProperty("file").GetString());
         Assert.Equal(1, table.GetProperty("done").GetInt32());

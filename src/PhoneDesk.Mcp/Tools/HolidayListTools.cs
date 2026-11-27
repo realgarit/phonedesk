@@ -74,14 +74,14 @@ internal sealed class HolidayListTools
     public Task<string> HolidayChangeTable(
         [Description(ListDescription)] string list,
         [Description(YearDescription)] int defaultYear,
-        [Description("Full path of the holiday backup from before the work. Omit to use the newest holiday backup of this tenant.")] string? backupFile = null,
+        [Description("Full path of the holiday backup from before the work, as backup_holiday_call_handling or a holiday change returned it. Only a holiday backup in the backup folder of the connected tenant is read. Omit to use the newest one.")] string? backupFile = null,
         [Description("IDs of the auto attendants to report. Omit to report every auto attendant of the backup.")] string[]? autoAttendantIds = null,
         CancellationToken cancellationToken = default)
         => McpJson.RunAsync(async () =>
         {
             var parsed = HolidayListComparer.Parse(list, RequireYear(defaultYear));
             _tenant.RequireReady();
-            var file = string.IsNullOrWhiteSpace(backupFile) ? NewestBackup() : Path.GetFullPath(backupFile);
+            var file = string.IsNullOrWhiteSpace(backupFile) ? NewestBackup() : RequireBackupOfThisTenant(backupFile);
             if (file is null || !File.Exists(file))
             {
                 throw new InvalidOperationException(
@@ -89,7 +89,7 @@ internal sealed class HolidayListTools
                     "for work that is done already, name the backup file a holiday change wrote (backupFile in its result).");
             }
 
-            var document = HolidayBackup.Deserialize(await File.ReadAllTextAsync(file, cancellationToken));
+            var document = HolidayBackup.Deserialize(McpFiles.ReadJsonFile(file, maxBytes: 64 * 1024 * 1024));
             var before = new HolidayCallHandlingState { AutoAttendants = document.AutoAttendants, Schedules = document.Schedules };
             var ids = Ids(autoAttendantIds);
             var scope = ids.Count == 0 ? document.AutoAttendants.Select(attendant => attendant.Id).ToList() : ids;
@@ -122,6 +122,31 @@ internal sealed class HolidayListTools
                 table = HolidayListComparer.ToTable(rows)
             };
         });
+
+    /// <summary>
+    /// A file an AI client names is read only when it is a holiday backup in the backup folder of
+    /// the connected tenant. So the tool cannot be used to read another file of the computer, and
+    /// the backup of another customer is not taken by mistake.
+    /// </summary>
+    private string RequireBackupOfThisTenant(string backupFile)
+    {
+        var fullPath = Path.GetFullPath(backupFile.Trim());
+        var directory = Path.GetFullPath(_environment.BackupDirectory(_tenant.TenantId));
+        var name = Path.GetFileName(fullPath);
+        var inFolder = string.Equals(
+            Path.GetDirectoryName(fullPath)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        if (!inFolder ||
+            !name.StartsWith("phonedesk-holiday-backup-", StringComparison.OrdinalIgnoreCase) ||
+            !name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"'{backupFile}' is not a holiday backup of the connected tenant. Only files named phonedesk-holiday-backup-*.json in '{directory}' are read.");
+        }
+
+        return fullPath;
+    }
 
     private string? NewestBackup()
     {

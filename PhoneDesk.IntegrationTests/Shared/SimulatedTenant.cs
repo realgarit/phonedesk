@@ -67,6 +67,78 @@ public static class SimulatedTenant
         return string.Join("; ", lines);
     }
 
+    public const string FreeNumber = "+41441110002";
+    public const string AnnaNumber = "+41441110001";
+    public const string Ben = "ben@contoso.com";
+
+    /// <summary>
+    /// What the number inventory holds after both heads gave the free number to Ben and took
+    /// Anna's number off her: number, status and owner per row.
+    /// </summary>
+    public const string ExpectedPhoneState =
+        "+41441110001|Unassigned|; +41441110002|UserAssigned|22222222-bbbb-0000-0000-000000000002; +41441110003|Unassigned|";
+
+    /// <summary>Fails with the whole inventory text when it is not <see cref="ExpectedPhoneState"/>.</summary>
+    public static async Task AssertExpectedPhoneStateAsync(IPowerShellContextService tenant, CancellationToken cancellationToken)
+    {
+        var result = await tenant.ExecuteCommandWithDetailsAsync(PhoneNumbers.GetListCommand(), null, null, cancellationToken);
+        var actual = string.Join("; ", PhoneNumbers.ParseList(result.Output)
+            .OrderBy(row => row.Number, StringComparer.Ordinal)
+            .Select(row => $"{row.Number}|{row.Status}|{row.AssignedToId}"));
+        Assert.True(string.Equals(ExpectedPhoneState, actual, StringComparison.Ordinal), "The inventory holds: " + actual);
+    }
+
+    /// <summary>A tenant with two employees, one resource account and three numbers.</summary>
+    public const string PhoneTenant = """
+        $global:pdFakeUsers = @(
+            [pscustomobject]@{ Identity = '11111111-aaaa-0000-0000-000000000001'; UserPrincipalName = 'anna@contoso.com'; DisplayName = 'Anna Muster'; AccountType = 'User'; LineUri = 'tel:+41441110001'; FeatureTypes = @('Teams', 'PhoneSystem') },
+            [pscustomobject]@{ Identity = '22222222-bbbb-0000-0000-000000000002'; UserPrincipalName = 'ben@contoso.com'; DisplayName = 'Ben Beispiel'; AccountType = 'User'; LineUri = ''; FeatureTypes = @('Teams', 'PhoneSystem') },
+            [pscustomobject]@{ Identity = '33333333-cccc-0000-0000-000000000003'; UserPrincipalName = 'raaa-contoso-main@contoso.com'; DisplayName = 'raaa-contoso-main'; AccountType = 'ResourceAccount'; LineUri = ''; FeatureTypes = @('VoiceApp') }
+        )
+        $global:pdFakeNumbers = @(
+            [pscustomobject]@{ TelephoneNumber = '+41441110001'; NumberType = 'CallingPlan'; PstnAssignmentStatus = 'UserAssigned'; AssignedPstnTargetId = '11111111-aaaa-0000-0000-000000000001'; City = 'Zürich'; Capability = @('UserAssignment') },
+            [pscustomobject]@{ TelephoneNumber = '+41441110002'; NumberType = 'CallingPlan'; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = 'Zürich'; Capability = @('UserAssignment') },
+            [pscustomobject]@{ TelephoneNumber = '+41441110003'; NumberType = 'OperatorConnect'; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = ''; Capability = @('VoiceApplicationAssignment') }
+        )
+        $global:pdFailSetFor = @()
+        function global:Get-CsOnlineUser {
+            [CmdletBinding()] param([string]$Identity)
+            $pdFound = $global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity -or $_.UserPrincipalName -eq $Identity } | Select-Object -First 1
+            if (-not $pdFound) { throw "User $Identity not found" }
+            $pdFound
+        }
+        function global:Get-CsPhoneNumberAssignment {
+            # The parameters of the real cmdlet: an unknown name fails the call, as it does in Teams.
+            [CmdletBinding(PositionalBinding = $false)] param([string]$TelephoneNumber, [string]$TelephoneNumberContain, [string]$PstnAssignmentStatus, [int]$Top = 500, [int]$Skip = 0)
+            if ($Top -gt 1000) { throw "Top cannot be greater than 1000." }
+            $pdResult = @($global:pdFakeNumbers)
+            if ($TelephoneNumber) { $pdResult = @($pdResult | Where-Object { $_.TelephoneNumber -eq $TelephoneNumber }) }
+            if ($TelephoneNumberContain) { $pdResult = @($pdResult | Where-Object { ($_.TelephoneNumber -replace '\D', '') -like "*$TelephoneNumberContain*" }) }
+            if ($PstnAssignmentStatus) { $pdResult = @($pdResult | Where-Object { $_.PstnAssignmentStatus -eq $PstnAssignmentStatus }) }
+            $pdResult | Select-Object -Skip $Skip -First $Top
+        }
+        function global:Set-CsPhoneNumberAssignment {
+            [CmdletBinding()] param([string]$Identity, [string]$PhoneNumber, [string]$PhoneNumberType)
+            if ($global:pdFailSetFor -contains $Identity) { throw "The user lacks appropriate licenses." }
+            $pdUser = $global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity }
+            $pdRow = $global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
+            if (-not $pdRow) {
+                $pdRow = [pscustomobject]@{ TelephoneNumber = $PhoneNumber; NumberType = $PhoneNumberType; PstnAssignmentStatus = 'Unassigned'; AssignedPstnTargetId = $null; City = ''; Capability = @() }
+                $global:pdFakeNumbers += $pdRow
+            }
+            $pdRow.AssignedPstnTargetId = $Identity
+            $pdRow.PstnAssignmentStatus = if ($pdUser.AccountType -eq 'User') { 'UserAssigned' } else { 'VoiceApplicationAssigned' }
+            $pdUser.LineUri = "tel:$PhoneNumber"
+        }
+        function global:Remove-CsPhoneNumberAssignment {
+            [CmdletBinding()] param([string]$Identity, [string]$PhoneNumber, [string]$PhoneNumberType)
+            $pdRow = $global:pdFakeNumbers | Where-Object { $_.TelephoneNumber -eq $PhoneNumber }
+            $pdRow.AssignedPstnTargetId = $null
+            $pdRow.PstnAssignmentStatus = 'Unassigned'
+            ($global:pdFakeUsers | Where-Object { $_.Identity -eq $Identity }).LineUri = ''
+        }
+        """;
+
     /// <summary>Stand-ins for the Teams cmdlets. They keep one call queue and one auto attendant and change them like Teams does.</summary>
     public const string Teams = """
         $global:pdFakeQueue = [pscustomobject]@{
@@ -137,9 +209,10 @@ public sealed class SimulatedTenantPowerShell : IPowerShellContextService
     private readonly PowerShell _shell = PowerShell.Create();
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public SimulatedTenantPowerShell()
+    /// <param name="tenant">The stand-ins to load. Without it: the call queue and auto attendant of <see cref="SimulatedTenant.Teams"/>.</param>
+    public SimulatedTenantPowerShell(string? tenant = null)
     {
-        _shell.AddScript(SimulatedTenant.Teams).Invoke();
+        _shell.AddScript(tenant ?? SimulatedTenant.Teams).Invoke();
         Assert.True(_shell.Streams.Error.Count == 0, string.Join("; ", _shell.Streams.Error.Select(error => error.ToString())));
     }
 

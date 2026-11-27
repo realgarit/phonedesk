@@ -173,48 +173,22 @@ public sealed class TenantConnectionService
             _pendingGraphSignIn = null;
         }
 
-        _host?.UseSession(profileKey);
-        _graphAuthentication.UseProfile(profileKey);
-        ForgetConnections();
-        await AdoptConnectionsAsync(cancellationToken);
+        await ProfileSession.UseAsync(
+            profileKey, _host, _graphAuthentication, _session, _identity,
+            async script =>
+            {
+                var outcome = await _runner.RunAsync(
+                    new TenantCommandRequest(script, "ReadConnectionIdentity") { IsIdempotentRead = true }, cancellationToken);
+                return string.IsNullOrEmpty(outcome.Result.RawOutput) ? outcome.Result.Value : outcome.Result.RawOutput;
+            },
+            () =>
+            {
+                _topologyCache.Clear();
+                _healthCheckCache.Clear();
+            });
         return Ok(_session.TeamsConnected || _session.GraphConnected
             ? "The profile's connections are in use again."
             : "The profile has no connection yet. Sign in to Microsoft Teams and Microsoft Graph.");
-    }
-
-    /// <summary>
-    /// Reads which connections the PowerShell session in use has, and sets the session state from
-    /// that read alone. A read that fails leaves both connections off.
-    /// </summary>
-    private async Task AdoptConnectionsAsync(CancellationToken cancellationToken)
-    {
-        var outcome = await _runner.RunAsync(
-            new TenantCommandRequest(TenantIdentity.GetReadCommand(), "ReadConnectionIdentity") { IsIdempotentRead = true }, cancellationToken);
-        TenantIdentityInfo identity;
-        try
-        {
-            identity = TenantIdentity.Parse(string.IsNullOrEmpty(outcome.Result.RawOutput) ? outcome.Result.Value : outcome.Result.RawOutput);
-        }
-        catch (InvalidDataException)
-        {
-            return;
-        }
-
-        if (identity.TeamsKnown)
-        {
-            _session.UpdateTeamsConnection(true);
-            _session.UpdateTenantInfo(identity.TeamsTenantId, identity.TeamsTenantName);
-        }
-
-        if (identity.GraphKnown)
-        {
-            _session.UpdateGraphConnection(true, identity.GraphAccount);
-        }
-
-        if (identity.TeamsKnown || identity.GraphKnown)
-        {
-            _identity.Update(identity);
-        }
     }
 
     /// <summary>Forgets the connection state and everything read from the tenant. The module check stays.</summary>
@@ -294,6 +268,13 @@ public sealed class TenantConnectionService
 
         lock (_gate)
         {
+            // The attempt was given up while this call waited: its result belongs to a session that
+            // is gone, and a newer attempt may be open. Neither is touched.
+            if (!ReferenceEquals(_pendingTeamsSignIn, signIn))
+            {
+                return Fail("The Microsoft Teams sign-in was given up. Call connect_teams to sign in again.", null);
+            }
+
             _pendingTeamsSignIn = null;
         }
 

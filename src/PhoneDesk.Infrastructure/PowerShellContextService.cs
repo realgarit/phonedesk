@@ -220,7 +220,35 @@ namespace PhoneDesk.Services
             if (_disposed)
                 throw new ObjectDisposedException(nameof(PowerShellContextService));
 
-            var session = ActiveSession();
+            Session session;
+            lock (_sessionGate)
+            {
+                // A change checked for one profile is never sent to the session of another.
+                var expected = PhoneDesk.Operations.SessionScope.Expected;
+                if (expected is not null && !string.Equals(expected, _activeKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _loggingService.Log("A command was refused: another profile was taken into use after its change was checked", LogLevel.Warning);
+                    return new PowerShellExecutionResult
+                    {
+                        Output = PhoneDesk.Operations.SessionScope.SwitchedMessage,
+                        HadErrors = true,
+                        Errors = new List<PowerShellErrorInfo>
+                        {
+                            new()
+                            {
+                                ExceptionType = nameof(InvalidOperationException),
+                                Message = PhoneDesk.Operations.SessionScope.SwitchedMessage,
+                                FailingCommand = string.Empty,
+                                CategoryInfo = string.Empty,
+                                RawText = PhoneDesk.Operations.SessionScope.SwitchedMessage
+                            }
+                        }
+                    };
+                }
+
+                session = _active;
+            }
+
             await session.Semaphore.WaitAsync(cancellationToken);
             try
             {

@@ -122,6 +122,26 @@ public sealed class ProfileToolTests
     }
 
     [Fact]
+    public async Task APlanMadeForOneProfileIsNotAppliedToAnother()
+    {
+        using var host = new McpTestHost().Connected().Configured();
+        var profiles = host.Tool<ProfileTools>();
+        profiles.Save("Contoso", "contoso.com");
+        profiles.Save("Fabrikam", "fabrikam.com");
+        await profiles.Switch("Contoso", Cancellation);
+        host.Connected();
+        var plan = McpTestHost.Parse(await host.Tool<GuidedSetupTools>().RunStep(1, cancellationToken: Cancellation));
+
+        await profiles.Switch("Fabrikam", Cancellation);
+        host.Connected();
+        var executedBefore = host.PowerShell.Executed.Count;
+        var refused = McpTestHost.Parse(await host.Tool<GuidedSetupTools>().RunStep(1, plan.GetProperty("planId").GetString(), Cancellation));
+
+        Assert.Contains("Another profile was taken into use", refused.GetProperty("error").GetString());
+        Assert.Equal(executedBefore, host.PowerShell.Executed.Count);
+    }
+
+    [Fact]
     public async Task APlanNamesTheTenantItIsFor()
     {
         using var host = new McpTestHost().Connected().Configured();

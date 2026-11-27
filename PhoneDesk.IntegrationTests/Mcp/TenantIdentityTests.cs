@@ -241,6 +241,24 @@ public sealed class TenantIdentityTests
         Assert.False(connection.GetStatus().GraphConnected);
         Assert.True(connection.GetStatus().ModulesChecked);
 
+        // A connect call that was still waiting when the sign-in was given up does not take its result.
+        var commandsHeld = host.PowerShell.Hold(commands.GetConnectTeamsCommand());
+        var slowConnection = new TenantConnectionService(
+            host.Get<ITenantCommandRunner>(), commands, host.GraphAuthentication, session,
+            host.Get<ITenantTopologyCache>(), host.Get<ITenantHealthCheckCache>(), host.Get<TenantIdentityGuard>(), host.PowerShell)
+        {
+            SignInWait = TimeSpan.FromSeconds(30)
+        };
+        host.PowerShell.Respond(commands.GetConnectTeamsCommand(), "Connected to tenant: Fabrikam (" + Fabrikam + ")" + Environment.NewLine + "SUCCESS: Connected to Microsoft Teams");
+        var waitingCall = slowConnection.ConnectTeamsAsync(Cancellation);
+        Assert.True(slowConnection.TeamsSignInOpen);
+        Assert.True(slowConnection.AbandonTeamsSignIn());
+        commandsHeld.SetResult();
+        var late = await waitingCall;
+        Assert.False(late.Success);
+        Assert.Contains("was given up", late.Message);
+        Assert.False(session.TeamsConnected);
+
         // A new sign-in starts at once, and the old window that finishes later connects nothing.
         host.PowerShell.Respond(commands.GetConnectTeamsCommand(), "Connected to tenant: Contoso AG (" + Contoso + ")\nSUCCESS: Connected to Microsoft Teams");
         var fresh = await connection.ConnectTeamsAsync(Cancellation);

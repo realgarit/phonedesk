@@ -79,6 +79,28 @@ public sealed class PowerShellContextServiceIntegrationTests
     }
 
     [Fact]
+    public async Task AChangeCheckedForOneProfileIsNotSentAfterASwitch()
+    {
+        using var service = CreateService();
+        var token = TestContext.Current.CancellationToken;
+        using (PhoneDesk.Operations.SessionScope.Expect(service.SessionKey))
+        {
+            // The profile is switched between the check of the change and its command.
+            service.UseSession("fabrikam");
+            var refused = await service.ExecuteCommandWithDetailsAsync("$global:pdSent = 'yes'", null, null, token);
+            Assert.True(refused.HadErrors);
+            Assert.Contains("Nothing was sent", refused.Output, StringComparison.Ordinal);
+        }
+
+        // Outside a change the command runs, and the refused one left no trace in either session.
+        var check = await service.ExecuteCommandWithDetailsAsync("Write-Host \"sent=[$global:pdSent]\"", null, null, token);
+        Assert.Contains("sent=[]", check.Output, StringComparison.Ordinal);
+        service.UseSession(string.Empty);
+        var first = await service.ExecuteCommandWithDetailsAsync("Write-Host \"sent=[$global:pdSent]\"", null, null, token);
+        Assert.Contains("sent=[]", first.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ACommandThatCannotBeStoppedIsGivenUpWithItsSession()
     {
         // Like a Microsoft Teams sign-in whose window was closed: a .NET wait that the pipeline

@@ -38,6 +38,8 @@ namespace PhoneDesk.ViewModels
         private readonly ITenantAsCodeService? _tenantAsCode;
         private readonly TenantIdentityGuard? _identityGuard;
         private readonly IMsalGraphAuthenticationService? _graphAuthentication;
+        private readonly ITenantTopologyCache? _topologyCache;
+        private readonly ITenantHealthCheckCache? _healthCheckCache;
 
         public ObservableCollection<ProfileRow> Profiles { get; } = new();
 
@@ -68,7 +70,9 @@ namespace PhoneDesk.ViewModels
             TenantProfileService? profiles = null,
             ITenantAsCodeService? tenantAsCode = null,
             TenantIdentityGuard? identityGuard = null,
-            IMsalGraphAuthenticationService? graphAuthentication = null)
+            IMsalGraphAuthenticationService? graphAuthentication = null,
+            ITenantTopologyCache? topologyCache = null,
+            ITenantHealthCheckCache? healthCheckCache = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
@@ -76,6 +80,8 @@ namespace PhoneDesk.ViewModels
             _tenantAsCode = tenantAsCode;
             _identityGuard = identityGuard;
             _graphAuthentication = graphAuthentication;
+            _topologyCache = topologyCache;
+            _healthCheckCache = healthCheckCache;
             Refresh();
         }
 
@@ -279,42 +285,24 @@ namespace PhoneDesk.ViewModels
         /// </summary>
         private async Task UseSessionAsync(TenantProfile profile)
         {
-            _powerShellContextService.UseSession(profile.Id);
-            _graphAuthentication?.UseProfile(profile.Id);
-            var modulesChecked = _sessionManager.ModulesChecked;
-            _sessionManager.ResetSession();
-            _sessionManager.UpdateModulesChecked(modulesChecked);
-            _identityGuard?.ClearIdentity();
             if (_sharedStateService is not null)
             {
                 _sharedStateService.WizardProgress = null;
                 _sharedStateService.SetupRun = null;
             }
 
-            var read = await ExecutePowerShellCommandAsync(TenantIdentity.GetReadCommand(), null, "ReadConnectionIdentity");
-            try
-            {
-                var identity = TenantIdentity.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput);
-                if (identity.TeamsKnown)
+            await ProfileSession.UseAsync(
+                profile.Id, _powerShellContextService, _graphAuthentication, _sessionManager, _identityGuard ?? new TenantIdentityGuard(),
+                async script =>
                 {
-                    _sessionManager.UpdateTeamsConnection(true);
-                    _sessionManager.UpdateTenantInfo(identity.TeamsTenantId, identity.TeamsTenantName);
-                }
-
-                if (identity.GraphKnown)
+                    var read = await ExecutePowerShellCommandAsync(script, null, "ReadConnectionIdentity");
+                    return string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput;
+                },
+                () =>
                 {
-                    _sessionManager.UpdateGraphConnection(true, identity.GraphAccount);
-                }
-
-                if (identity.TeamsKnown || identity.GraphKnown)
-                {
-                    _identityGuard?.Update(identity);
-                }
-            }
-            catch (System.IO.InvalidDataException)
-            {
-                // The connections could not be read: both stay off, and the operator signs in.
-            }
+                    _topologyCache?.Clear();
+                    _healthCheckCache?.Clear();
+                });
         }
 
         private void Try(Action action)

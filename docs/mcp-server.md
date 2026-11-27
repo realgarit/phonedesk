@@ -18,7 +18,8 @@ with the app; there is nothing extra to download.
 | Read the tenant | `tenant_overview`, `list_auto_attendants`, `list_call_queues`, `list_resource_accounts`, `list_m365_groups`, `tenant_details`, `audit_history` |
 | Health check | `run_health_check`, `health_rules`, `health_rule_set`, `health_finding_set_suppressed` |
 | Backup and comparison | `backup_tenant`, `list_backups`, `compare_with_backup`, `created_objects` |
-| Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset` |
+| Guided Setup | `guided_setup_status`, `guided_setup_preview`, `guided_setup_run_step`, `guided_setup_skip_step`, `guided_setup_reset`, `guided_setup_resume` |
+| Setup runs | `list_setup_runs`, `rollback_setup_run` |
 | Single operations | `create_m365_group`, `lookup_m365_group_id`, `create_resource_account`, `set_resource_account_usage_location`, `assign_resource_account_license`, `assign_phone_number`, `create_call_queue`, `create_auto_attendant`, `associate_resource_account`, `create_holiday_schedule`, `verify_auto_attendant`, `attach_holiday_schedule`, `import_audio_file` |
 | Holiday schedules that exist | `list_holiday_schedules`, `holiday_call_handling`, `copy_holiday_call_handling` |
 | Bulk | `bulk_setup_template`, `bulk_setup_preview`, `bulk_setup` |
@@ -130,6 +131,27 @@ Rules that hold for all four:
   stays (`uncheckedAuthorizedUsers` with its `kind`).
 - When an expired schedule is taken off an auto attendant at the call flow limit, its call flow
   goes only when no other link of the auto attendant uses it.
+
+### Setup runs: resume and rollback
+
+Every Guided Setup and every bulk run writes a record to this computer after each step: what the
+run was for, how far it got, and which objects it created. An object is recorded only when the
+output of the script has its own "created" line, so an object the run reused is never in a record.
+
+- `list_setup_runs` shows the records. A run in the state `running` was interrupted; `failed`
+  names the step.
+- `guided_setup_resume` takes an unfinished Guided Setup up again, also in a new session. A step
+  counts as completed again when its script is the one the current configuration gives.
+- `rollback_setup_run` removes what one run created, in reverse order: auto attendant, call queue,
+  resource accounts, agent group. It reads the tenant first and removes an object only while the
+  tenant shows exactly one object with the name and that object has the ID the run recorded. A
+  run is rolled back only in its own tenant. The first call returns the plan; the second call
+  with the `planId` runs it, and a tenant that changed in between refuses the plan.
+- A phone number is never removed by a rollback. Removing the resource account takes the number
+  off it; a Direct Routing number this server added is released with `release_phone_number`.
+
+The desktop app has the same records on its **Setup Runs** page, an offer to resume in Guided
+Setup, and **Roll back this run** after a failed step. Each head keeps its own records.
 
 ### Holidays of other countries and calendar files
 

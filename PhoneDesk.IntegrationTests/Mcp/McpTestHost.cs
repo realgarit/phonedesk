@@ -24,8 +24,12 @@ internal sealed class McpTestHost : IDisposable
 
     private readonly ServiceProvider _services;
 
-    public McpTestHost(bool skipBackup = true, bool allowDeleteExisting = false, string? dataDirectory = null)
+    private readonly bool _keepDataDirectory;
+
+    /// <param name="keepDataDirectory">True to leave the data directory in place, for a test that starts a second server on it.</param>
+    public McpTestHost(bool skipBackup = true, bool allowDeleteExisting = false, string? dataDirectory = null, bool keepDataDirectory = false)
     {
+        _keepDataDirectory = keepDataDirectory;
         DataDirectory = dataDirectory ?? Path.Combine(Path.GetTempPath(), "phonedesk-mcp-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(DataDirectory);
 
@@ -106,6 +110,11 @@ internal sealed class McpTestHost : IDisposable
     public void Dispose()
     {
         _services.Dispose();
+        if (_keepDataDirectory)
+        {
+            return;
+        }
+
         try
         {
             Directory.Delete(DataDirectory, recursive: true);

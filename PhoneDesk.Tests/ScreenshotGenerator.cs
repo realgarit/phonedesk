@@ -196,6 +196,14 @@ namespace PhoneDesk.Tests
             new("HolidayManager", true, "holiday-manager-retire-de.png", "holidaymanager-retire-de"),
             new("HolidayManager", true, "holiday-manager-compare-en.png", "holidaymanager-compare-en"),
             new("HolidayManager", true, "holiday-manager-compare-de.png", "holidaymanager-compare-de"),
+            new("SetupRuns", true, "setup-runs-empty-en.png", "setupruns-empty-en"),
+            new("SetupRuns", true, "setup-runs-empty-de.png", "setupruns-empty-de"),
+            new("SetupRuns", true, "setup-runs-check-en.png", "ready-setupruns-check"),
+            new("SetupRuns", true, "setup-runs-check-de.png", "ready-setupruns-check-de"),
+            new("Wizard", true, "setup-wizard-pending-run.png", "ready-pending-run"),
+            new("Wizard", true, "setup-wizard-pending-run-de.png", "ready-pending-run-de"),
+            new("Wizard", true, "setup-wizard-rollback-offer.png", "failed-step-error-rollback"),
+            new("Wizard", true, "setup-wizard-rollback-offer-de.png", "failed-step-error-rollback-de"),
             new("PhoneNumbers", true, "phone-numbers-empty-en.png", "phonenumbers-empty-en"),
             new("PhoneNumbers", true, "phone-numbers-empty-de.png", "phonenumbers-empty-de"),
             new("PhoneNumbers", true, "phone-numbers-loaded-en.png", "phonenumbers-loaded-en"),
@@ -466,6 +474,11 @@ namespace PhoneDesk.Tests
 
             // Guided Setup progress lives in the shared state; every shot starts without it.
             sharedState.WizardProgress = null;
+            sharedState.SetupRun = null;
+            if (Directory.Exists(ScreenshotRunDirectory))
+            {
+                Directory.Delete(ScreenshotRunDirectory, recursive: true);
+            }
 
             if (scenario.StartsWith("ready", StringComparison.Ordinal)
                 || scenario.StartsWith("failed", StringComparison.Ordinal)
@@ -492,11 +505,59 @@ namespace PhoneDesk.Tests
                 session.UpdateModulesChecked(true);
                 session.UpdateTeamsConnection(true, "operator@contoso.com");
                 session.UpdateGraphConnection(true, "operator@contoso.com");
+                SeedRuns(provider, scenario);
                 return;
             }
 
             sharedState.Variables = new PhoneManagerVariables();
             session.ResetSession();
+        }
+
+        /// <summary>The run records live in a folder of their own, never in the folder of the real application.</summary>
+        private static readonly string ScreenshotRunDirectory =
+            Path.Combine(Path.GetTempPath(), "phonedesk-screenshot-runs-" + Guid.NewGuid().ToString("N"));
+
+        private static PhoneDesk.Operations.RunRecord SampleRun(ServiceProvider provider, PhoneDesk.Operations.RunState state, DateTime started, string label, PhoneDesk.Operations.RunKind kind)
+        {
+            var session = provider.GetRequiredService<ISessionManager>();
+            var record = PhoneDesk.Operations.RunJournal.Start(kind, "desktop", session.TenantId, "Contoso AG", label, started);
+            record.State = state;
+            return record;
+        }
+
+        /// <summary>Puts the runs a scenario shows into the store before the page is created.</summary>
+        private static void SeedRuns(ServiceProvider provider, string scenario)
+        {
+            var store = provider.GetRequiredService<PhoneDesk.Operations.IRunJournalStore>();
+            var day = new DateTime(2027, 3, 1, 8, 30, 0, DateTimeKind.Utc);
+            var failed = SampleRun(provider, PhoneDesk.Operations.RunState.Failed, day, "contoso - reception", PhoneDesk.Operations.RunKind.GuidedSetup);
+            failed.FailedStep = 4;
+            failed.Error = "The call queue could not be created: the agent group was not found.";
+            failed.CompletedSteps[1] = "a";
+            failed.CompletedSteps[2] = "b";
+            failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.M365Group, Name = "ttgrp-contoso-reception", ObjectId = "6f1c2a9e-0d4b-4c35-9a51-2b7e0c8d1f43", Step = 1 });
+            failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.ResourceAccount, Name = "racq-contoso-reception@contoso.onmicrosoft.com", ObjectId = "a1", Step = 2 });
+            failed.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.CallQueue, Name = "cq-contoso-reception", ObjectId = "c1", Step = 4 });
+
+            if (scenario.Contains("pending-run", StringComparison.Ordinal))
+            {
+                store.Save(failed);
+            }
+            else if (scenario.Contains("-rollback", StringComparison.Ordinal))
+            {
+                store.Save(failed);
+                provider.GetRequiredService<ISharedStateService>().SetupRun = failed;
+            }
+            else if (scenario.Contains("setupruns-check", StringComparison.Ordinal))
+            {
+                store.Save(failed);
+                var bulk = SampleRun(provider, PhoneDesk.Operations.RunState.Completed, day.AddDays(-3), "fabrikam - support, fabrikam - sales", PhoneDesk.Operations.RunKind.Bulk);
+                bulk.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.CallQueue, Name = "cq-fabrikam-support", ObjectId = "c2", Step = 1 });
+                store.Save(bulk);
+                var undone = SampleRun(provider, PhoneDesk.Operations.RunState.RolledBack, day.AddDays(-9), "contoso - hotline", PhoneDesk.Operations.RunKind.GuidedSetup);
+                undone.Objects.Add(new PhoneDesk.Operations.RunObject { Type = PhoneDesk.Operations.RunObjectType.M365Group, Name = "ttgrp-contoso-hotline", ObjectId = "g3", Step = 1, Removed = true });
+                store.Save(undone);
+            }
         }
 
         private static void ApplyPostNavigationScenario(ServiceProvider provider, MainWindow window, MainWindowViewModel mainWindowViewModel, string scenario)
@@ -1017,6 +1078,22 @@ namespace PhoneDesk.Tests
                         holidayManager.CheckForDisplay();
                     }
                     break;
+
+                case SetupRunsViewModel setupRuns when scenario.Contains("setupruns-check", StringComparison.Ordinal):
+                    {
+                    var shown = provider.GetRequiredService<PhoneDesk.Operations.RunJournalService>().List().First(record => record.IsOpen);
+                    var ordered = PhoneDesk.Operations.RunJournal.RollbackOrder(shown);
+                    setupRuns.ShowCheckForDisplay(new PhoneDesk.Operations.RollbackPlan
+                    {
+                        Items = new[]
+                        {
+                            new PhoneDesk.Operations.RollbackItem(ordered[0], PhoneDesk.Operations.RollbackAction.Delete, PhoneDesk.Operations.RunJournal.ReasonOk, string.Empty),
+                            new PhoneDesk.Operations.RollbackItem(ordered[1], PhoneDesk.Operations.RollbackAction.AlreadyGone, PhoneDesk.Operations.RunJournal.ReasonGone, string.Empty),
+                            new PhoneDesk.Operations.RollbackItem(ordered[2], PhoneDesk.Operations.RollbackAction.Blocked, PhoneDesk.Operations.RunJournal.ReasonAmbiguous, string.Empty)
+                        }
+                    });
+                    break;
+                    }
 
                 case PhoneNumbersViewModel phoneNumbers when scenario.StartsWith("phonenumbers-", StringComparison.Ordinal) && !scenario.Contains("-empty-", StringComparison.Ordinal):
                     {
@@ -1617,6 +1694,7 @@ namespace PhoneDesk.Tests
             // Swap the only services that would touch PowerShell / MSAL-Graph / the network.
             ReplaceSingleton<IUserPreferencesStore>(services, new ScreenshotPreferences());
             ReplaceSingleton<IAuditLog>(services, new ScreenshotAuditLog());
+            ReplaceSingleton<PhoneDesk.Operations.IRunJournalStore>(services, new FileRunJournalStore(ScreenshotRunDirectory));
             ReplaceSingleton<IUpdateCheckService>(services, new StubUpdateCheckService());
             ReplaceSingleton<IPowerShellContextService>(services, new StubPowerShellContextService());
             ReplaceSingleton<IMsalGraphAuthenticationService>(services, new StubMsalGraphAuthenticationService());

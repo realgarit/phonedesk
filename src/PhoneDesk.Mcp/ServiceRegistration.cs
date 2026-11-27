@@ -62,6 +62,13 @@ internal static class ServiceRegistration
         services.AddSingleton<IBundledModuleVersionService, BundledModuleVersionService>();
         services.AddSingleton<ChangeGate>();
         services.AddSingleton<CreatedObjectGuard>();
+        services.AddSingleton<PhoneDesk.Operations.IRunJournalStore>(provider =>
+            new FileRunJournalStore(Path.Combine(provider.GetRequiredService<McpEnvironment>().DataDirectory, "runs")));
+        services.AddSingleton(provider => new PhoneDesk.Operations.RunJournalService(
+            provider.GetRequiredService<PhoneDesk.Operations.IRunJournalStore>(),
+            provider.GetRequiredService<IPowerShellCommandService>(),
+            provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<McpRunJournal>();
         services.AddSingleton<HolidayCallHandlingReader>();
         services.AddSingleton<HolidayBackupWriter>();
         services.AddSingleton<AudioUploadLog>();

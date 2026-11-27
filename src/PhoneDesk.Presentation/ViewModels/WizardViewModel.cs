@@ -301,12 +301,14 @@ namespace PhoneDesk.ViewModels
             IDryRunPlanBuilder? planBuilder = null,
             IDryRunPlanExporter? planExporter = null,
             IAuditLog? auditLog = null,
-            ITranslationService? translationService = null)
+            ITranslationService? translationService = null,
+            RunJournalService? journal = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
             _planBuilder = planBuilder;
             _planExporter = planExporter;
+            _journal = journal;
             LogLocalized(
                 UiTextKey.WizardPageLoadedLog,
                 "Guided setup page loaded",
@@ -318,6 +320,143 @@ namespace PhoneDesk.ViewModels
             InitializeSteps();
             RestoreProgress();
             UpdateCurrentStep();
+            FindPendingRun();
+        }
+
+        private readonly RunJournalService? _journal;
+        private RunRecord? _runOfThisPage;
+        private RunRecord? _pendingRun;
+
+        /// <summary>The record of the run in progress. It lives in the shared state, because this page is created anew on every visit.</summary>
+        private RunRecord? Run
+        {
+            get => _sharedStateService?.SetupRun ?? _runOfThisPage;
+            set
+            {
+                _runOfThisPage = value;
+                if (_sharedStateService is not null)
+                {
+                    _sharedStateService.SetupRun = value;
+                }
+
+                OnPropertyChanged(nameof(CanRollBackRun));
+            }
+        }
+
+        /// <summary>True when the run in progress created something a rollback could remove.</summary>
+        public bool CanRollBackRun => Run?.CanRollBack == true;
+
+        /// <summary>True on a failed step when the run created something: the place to offer the rollback.</summary>
+        public bool ShowRollbackAction => StepFailed && CanRollBackRun;
+
+        /// <summary>True when an earlier run for this tenant did not finish and none is in progress now.</summary>
+        public bool HasPendingRun => _pendingRun is not null;
+
+        public string PendingRunText => _pendingRun is null
+            ? string.Empty
+            : GetText(
+                UiTextKey.WizardPendingRunBanner,
+                "An earlier Guided Setup for this tenant did not finish ({label}, {started}). Resume it, or roll it back under Setup Runs.",
+                new Dictionary<string, object?>
+                {
+                    ["label"] = _pendingRun.Label,
+                    ["started"] = _pendingRun.StartedUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)
+                });
+
+        private void FindPendingRun()
+        {
+            _pendingRun = _journal is null || Run is not null
+                ? null
+                : _journal.Open(_sessionManager.TenantId, RunKind.GuidedSetup).FirstOrDefault();
+            OnPropertyChanged(nameof(HasPendingRun));
+            OnPropertyChanged(nameof(PendingRunText));
+        }
+
+        /// <summary>
+        /// Takes an unfinished run up again: the steps it completed count as completed when their
+        /// script is the one the current configuration gives. A step that ran with other values
+        /// stays open, so it runs again.
+        /// </summary>
+        [RelayCommand]
+        private void ResumePendingRun()
+        {
+            if (_pendingRun is null)
+            {
+                return;
+            }
+
+            var restored = 0;
+            foreach (var (index, fingerprint) in _pendingRun.CompletedSteps)
+            {
+                if (index >= 1 && index < Steps.Count - 1 &&
+                    string.Equals(fingerprint, ComputeStepFingerprint(index), StringComparison.Ordinal))
+                {
+                    Steps[index].IsCompleted = true;
+                    Steps[index].IsFailed = false;
+                    Steps[index].IsSkipped = false;
+                    Steps[index].ConfigurationFingerprint = fingerprint;
+                    restored++;
+                }
+            }
+
+            Run = _pendingRun;
+            _pendingRun = null;
+            OnPropertyChanged(nameof(HasPendingRun));
+            OnPropertyChanged(nameof(PendingRunText));
+            OnStepStateChanged();
+            StatusMessage = GetText(
+                UiTextKey.WizardRunResumedStatus,
+                "Resumed: {count} completed step(s) restored. A step that ran with other configuration values must run again.",
+                new Dictionary<string, object?> { ["count"] = restored });
+        }
+
+        [RelayCommand]
+        private void OpenSetupRuns() => NavigateTo(ConstantsService.Pages.SetupRuns);
+
+        /// <summary>
+        /// Writes the result of a provisioning step to the run record, and reads the ID of a new
+        /// object while this session still knows which object it is. A journal that cannot be
+        /// written never fails the step.
+        /// </summary>
+        private async Task RecordStepAsync(int stepIndex, bool succeeded, string? output, string? error)
+        {
+            if (_journal is null || stepIndex < 1 || stepIndex >= Steps.Count - 1)
+            {
+                return;
+            }
+
+            try
+            {
+                var run = Run ??= _journal.Begin(
+                    RunKind.GuidedSetup, "desktop", _sessionManager.TenantId, _sessionManager.TenantName,
+                    Variables.Customer + " - " + Variables.CustomerGroupName);
+                var step = (GuidedSetupStep)stepIndex;
+                if (succeeded)
+                {
+                    _journal.StepSucceeded(run, step, Variables, ComputeStepFingerprint(stepIndex), output);
+                }
+                else
+                {
+                    _journal.StepFailed(run, step, Variables, error, output);
+                }
+
+                await _journal.StoreIdsAsync(run, async script =>
+                {
+                    var read = await ExecutePowerShellCommandAsync(script, null, "ReadRunObjects", allowThrottleRetry: true);
+                    return string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput;
+                });
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+            {
+                LogLocalized(
+                    UiTextKey.WizardRunJournalFailedLog,
+                    "The run record could not be written: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
+
+            OnPropertyChanged(nameof(CanRollBackRun));
+            OnPropertyChanged(nameof(ShowRollbackAction));
         }
 
         /// <summary>
@@ -695,6 +834,12 @@ namespace PhoneDesk.ViewModels
 
                 step.IsCompleted = true;
                 StepCompleted = true;
+                if (Run is { } finished && _journal is not null)
+                {
+                    _journal.Complete(finished);
+                    Run = null;
+                }
+
                 SetLocalizedStepResult(UiTextKey.WizardSetupCompleteResult, "Setup complete!");
                 step.Result = StepResult;
                 OnStepStateChanged();
@@ -735,6 +880,8 @@ namespace PhoneDesk.ViewModels
             }
 
             var output = result.Value ?? string.Empty;
+            await RecordStepAsync(
+                CurrentStep, result.IsSuccess, string.IsNullOrEmpty(result.RawOutput) ? output : result.RawOutput, result.ErrorMessage);
 
             // Any error record fails the step, even when the script printed its own SUCCESS line first.
             if (!result.IsSuccess)
@@ -914,6 +1061,9 @@ namespace PhoneDesk.ViewModels
                 CurrentStep = 0;
             }
 
+            // The record of the run stays on disk: what it created can still be rolled back under Setup Runs.
+            Run = null;
+            FindPendingRun();
             LogLocalized(UiTextKey.WizardStartedOverLog, "Guided setup progress was reset", LogLevel.Info);
         }
 
@@ -1045,6 +1195,7 @@ namespace PhoneDesk.ViewModels
 
         partial void OnStepFailedChanged(bool value)
         {
+            OnPropertyChanged(nameof(ShowRollbackAction));
             OnPropertyChanged(nameof(CanExecuteStep));
             OnPropertyChanged(nameof(CanGoNext));
             OnPropertyChanged(nameof(HasStepError));

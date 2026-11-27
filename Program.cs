@@ -125,6 +125,11 @@ class Program
         services.AddTransient<HealthCheckViewModel>();
         services.AddTransient<HolidayManagerViewModel>();
         services.AddTransient<PhoneNumbersViewModel>();
+        services.AddTransient<SetupRunsViewModel>();
+        services.AddSingleton<PhoneDesk.Operations.IRunJournalStore>(_ => new FileRunJournalStore());
+        services.AddSingleton<PhoneDesk.Operations.RunJournalService>(provider => new PhoneDesk.Operations.RunJournalService(
+            provider.GetRequiredService<PhoneDesk.Operations.IRunJournalStore>(),
+            provider.GetRequiredService<IPowerShellCommandService>()));
         services.AddSingleton<PhoneDesk.Operations.IHolidayBackupStore>(_ => new FileHolidayBackupStore());
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<GetStartedViewModel>();

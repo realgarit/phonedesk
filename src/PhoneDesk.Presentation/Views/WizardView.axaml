@@ -178,6 +178,15 @@
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  Margin="44,4,0,0"
                                  TextWrapping="Wrap"/>
+                        <!-- An earlier run that did not finish: resume it or roll it back. -->
+                        <Border IsVisible="{Binding HasPendingRun}" Classes="sunken" CornerRadius="8" Padding="12,8" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                                <fi:SymbolIcon Grid.Column="0" Symbol="History" FontSize="16" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding PendingRunText}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                <Button Grid.Column="2" Command="{Binding ResumePendingRunCommand}" Content="{loc:Translate Key=WizardResumeRunAction}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="3" Command="{Binding OpenSetupRunsCommand}" Content="{loc:Translate Key=SetupRunsOpenAction}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
 
                     <!-- Progress Bar -->
@@ -516,6 +525,16 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <fi:SymbolIcon Symbol="ArrowSync" FontSize="14"/>
                                     <TextBlock Text="{Binding RetryActionText}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <!-- After a failure: remove what this run created -->
+                            <Button Command="{Binding OpenSetupRunsCommand}"
+                                    AutomationProperties.Name="{loc:Translate Key=WizardRollbackRunAction}"
+                                    IsVisible="{Binding ShowRollbackAction}"
+                                    IsEnabled="{Binding !IsBusy}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <fi:SymbolIcon Symbol="ArrowUndo" FontSize="14"/>
+                                    <TextBlock Text="{loc:Translate Key=WizardRollbackRunAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 

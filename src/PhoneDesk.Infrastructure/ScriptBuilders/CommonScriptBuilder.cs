@@ -234,6 +234,10 @@ catch {
         /// The tenant read for a dry-run plan. The provisioning scripts write a name after
         /// <c>SanitizeString</c>, so the read looks for that text, not for the configured one.
         /// </summary>
+        /// <summary>The identity read for the objects of a run. It looks for the names as the provisioning scripts wrote them.</summary>
+        public string GetRunIdentityCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Operations.RunObject> objects)
+            => PhoneDesk.Operations.RunJournal.GetIdentityCommand(objects, _sanitizer.SanitizeString);
+
         public string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries)
             => PhoneDesk.Operations.TenantPreflight.GetReadCommand(entries, _sanitizer.SanitizeString);
 

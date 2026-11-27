@@ -16,6 +16,7 @@ internal sealed class BulkTools
     private readonly IDryRunPlanExporter _planExporter;
     private readonly TenantGateway _tenant;
     private readonly IPowerShellCommandService _commands;
+    private readonly McpRunJournal _runs;
 
     public BulkTools(
         BulkSetupScriptBuilder bulk,
@@ -24,8 +25,10 @@ internal sealed class BulkTools
         CreatedObjectGuard guard,
         IDryRunPlanExporter planExporter,
         TenantGateway tenant,
-        IPowerShellCommandService commands)
+        IPowerShellCommandService commands,
+        McpRunJournal runs)
     {
+        _runs = runs;
         _commands = commands;
         _planExporter = planExporter;
         _tenant = tenant;
@@ -117,6 +120,7 @@ internal sealed class BulkTools
                     IsSuccess = result => result.IsSuccess && !result.HasErrorMarker,
                     OnSuccessAsync = async (result, token) =>
                     {
+                        await _runs.BulkAsync(entries, string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput, true, null, token);
                         if (!CreatedObjectGuard.ReusedExistingObject(result.RawOutput))
                         {
                             // Nothing was reused: every object of every row is new.
@@ -138,6 +142,7 @@ internal sealed class BulkTools
                     // For the other objects the guard records only those a new read confirms.
                     OnFailureAsync = async (result, token) =>
                     {
+                        await _runs.BulkAsync(entries, result.RawOutput + Environment.NewLine + result.ErrorMessage, false, result.ErrorMessage, token);
                         var proven = await ClaimProvenAsync(entries, result.RawOutput + "\n" + result.ErrorMessage, token);
                         foreach (var item in entries.SelectMany(CreatedObjects).Where(item => !proven.Contains(item)))
                         {

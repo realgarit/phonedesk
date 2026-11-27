@@ -19,6 +19,7 @@ internal sealed class GuidedSetupTools
     private readonly TenantConnectionService _connection;
     private readonly TenantGateway _tenant;
     private readonly IPowerShellCommandService _commands;
+    private readonly McpRunJournal _runs;
 
     public GuidedSetupTools(
         ConfigurationStore store,
@@ -30,10 +31,12 @@ internal sealed class GuidedSetupTools
         IDryRunPlanExporter planExporter,
         TenantConnectionService connection,
         TenantGateway tenant,
-        IPowerShellCommandService commands)
+        IPowerShellCommandService commands,
+        McpRunJournal runs)
     {
         _tenant = tenant;
         _commands = commands;
+        _runs = runs;
         _store = store;
         _progress = progress;
         _scripts = scripts;
@@ -130,10 +133,21 @@ internal sealed class GuidedSetupTools
                         state.Error = null;
                         state.Fingerprint = GuidedSetupScriptFactory.ComputeFingerprint(script);
                     },
-                    OnSuccessAsync = created is null
-                        ? null
-                        : (result, token) => _guard.ClaimAsync(
-                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput, token),
+                    OnSuccessAsync = async (result, token) =>
+                    {
+                        if (created is not null)
+                        {
+                            await _guard.ClaimAsync(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result.RawOutput, token);
+                        }
+
+                        await _runs.StepAsync(
+                            (GuidedSetupStep)step, true, variables, GuidedSetupScriptFactory.ComputeFingerprint(script),
+                            string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput, null, token);
+                        if (_progress.AllCompleted)
+                        {
+                            _runs.Complete();
+                        }
+                    },
                     OnFailure = result =>
                     {
                         state.Status = GuidedStepStatus.Failed;
@@ -141,10 +155,17 @@ internal sealed class GuidedSetupTools
                         state.Fingerprint = null;
                     },
                     // A failed script can still have created the object; the guard then confirms it in the tenant.
-                    OnFailureAsync = created is null
-                        ? null
-                        : (result, token) => _guard.ClaimAfterFailureAsync(
-                            created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result, token),
+                    OnFailureAsync = async (result, token) =>
+                    {
+                        if (created is not null)
+                        {
+                            await _guard.ClaimAfterFailureAsync(created.Value.Type, created.Value.Key, $"GuidedSetupStep{step}", result, token);
+                        }
+
+                        await _runs.StepAsync(
+                            (GuidedSetupStep)step, false, variables, string.Empty,
+                            string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput, result.ErrorMessage, token);
+                    },
                     ChangeWasMadeDespiteError = lateErrorCheck
                 },
                 planId,
@@ -176,8 +197,70 @@ internal sealed class GuidedSetupTools
     public string Reset() => McpJson.Run(() =>
     {
         _progress.Reset();
+        _runs.Reset();
         return new { success = true, nextStep = _progress.NextStep };
     });
+
+    [McpServerTool(Name = "guided_setup_resume", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
+    [Description("Takes up a Guided Setup run that did not finish, for example after the server was restarted or a step failed in an earlier session. The steps the run completed count as completed again when their script is the one the current configuration gives; a step that ran with other configuration values stays open and must run again. Nothing is sent to the tenant. Without runId it takes the newest unfinished Guided Setup run of the connected tenant. Use list_setup_runs to see the runs, and guided_setup_status afterwards for the next step. To remove what a run created instead, use rollback_setup_run.")]
+    public string Resume(
+        [Description("The id of the run, from list_setup_runs. Omit for the newest unfinished run of the connected tenant.")] string? runId = null)
+        => McpJson.Run(() =>
+        {
+            _tenant.RequireReady();
+            var record = string.IsNullOrWhiteSpace(runId)
+                ? _runs.Journal.Open(_tenant.TenantId, RunKind.GuidedSetup).FirstOrDefault()
+                : _runs.Journal.Find(runId);
+            if (record is null || record.Kind != RunKind.GuidedSetup)
+            {
+                throw new InvalidOperationException("There is no unfinished Guided Setup run to resume. Use list_setup_runs.");
+            }
+
+            if (!string.Equals(record.TenantId, _tenant.TenantId, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"The run '{record.Label}' belongs to another tenant ({record.TenantName} {record.TenantId}).");
+            }
+
+            if (!record.IsOpen)
+            {
+                throw new InvalidOperationException($"The run '{record.Label}' is {record.State}; only a run that did not finish can be resumed.");
+            }
+
+            _progress.Reset();
+            var variables = _store.Variables;
+            var restored = new List<int>();
+            var mustRunAgain = new List<int>();
+            foreach (var (step, fingerprint) in record.CompletedSteps.OrderBy(entry => entry.Key))
+            {
+                if (step < GuidedSetupScriptFactory.FirstProvisioningStep || step > GuidedSetupScriptFactory.LastProvisioningStep)
+                {
+                    continue;
+                }
+
+                if (string.Equals(fingerprint, GuidedSetupScriptFactory.ComputeFingerprint(ScriptFor(step, variables)), StringComparison.Ordinal))
+                {
+                    var state = _progress.Get(step);
+                    state.Status = GuidedStepStatus.Completed;
+                    state.Fingerprint = fingerprint;
+                    restored.Add(step);
+                }
+                else
+                {
+                    mustRunAgain.Add(step);
+                }
+            }
+
+            _runs.Adopt(record);
+            return new
+            {
+                success = true,
+                run = RunTools.View(record),
+                restoredSteps = restored,
+                stepsThatMustRunAgain = mustRunAgain,
+                note = mustRunAgain.Count == 0 ? null : "These steps ran with other configuration values. They reuse objects that exist, so running them again creates no duplicates.",
+                nextStep = _progress.NextStep
+            };
+        });
 
     /// <summary>
     /// The script of a step. The call queue step gets the agent group check in front of it, so it

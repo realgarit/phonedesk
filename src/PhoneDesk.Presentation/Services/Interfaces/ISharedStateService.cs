@@ -25,4 +25,7 @@ public interface ISharedStateService : INotifyPropertyChanged
 
     /// <summary>Guided Setup progress, kept while the operator visits other pages. Null until the setup starts.</summary>
     WizardProgressState? WizardProgress { get; set; }
+
+    /// <summary>The record of the Guided Setup run in progress, kept while the operator visits other pages.</summary>
+    PhoneDesk.Operations.RunRecord? SetupRun { get; set; }
 }

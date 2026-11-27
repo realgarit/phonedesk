@@ -27,4 +27,7 @@ public partial class SharedStateService : ObservableObject, ISharedStateService
 
     [ObservableProperty]
     private WizardProgressState? _wizardProgress;
+
+    [ObservableProperty]
+    private PhoneDesk.Operations.RunRecord? _setupRun;
 }

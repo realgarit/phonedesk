@@ -83,6 +83,7 @@ internal static class ServiceRegistration
             provider.GetRequiredService<IPowerShellCommandService>(),
             provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<McpRunJournal>();
+        services.AddSingleton<ICallFlowPictureRenderer, PhoneDesk.Services.Reports.SkiaCallFlowPictureRenderer>();
         services.AddSingleton<PhoneDesk.Operations.ITenantProfileStore>(provider =>
             new FileTenantProfileStore(Path.Combine(provider.GetRequiredService<McpEnvironment>().DataDirectory, "profiles.json")));
         services.AddSingleton(provider => new PhoneDesk.Operations.TenantProfileService(

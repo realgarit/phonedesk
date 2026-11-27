@@ -598,7 +598,7 @@ namespace PhoneDesk.Tests
                 Array.Empty<TopologyAutoAttendantSnapshot>(), Array.Empty<TopologyCallQueueSnapshot>(), Array.Empty<TopologyResourceAccountSnapshot>(),
                 new[] { new TopologyGroupSnapshot("ttgrp-contoso-reception", "g1", "ttgrp-contoso-reception", "Agents of the reception") },
                 documentation);
-            PhoneDesk.Operations.RichReport.WriteFiles(outDir, snapshot, PhoneDesk.Operations.RichReport.German, PhoneDesk.Services.CallFlowPictureRenderer.RenderPng);
+            PhoneDesk.Operations.RichReport.WriteFiles(outDir, snapshot, PhoneDesk.Operations.RichReport.German, new PhoneDesk.Services.Reports.SkiaCallFlowPictureRenderer().RenderPng);
         }
 
         /// <summary>The run records live in a folder of their own, never in the folder of the real application.</summary>

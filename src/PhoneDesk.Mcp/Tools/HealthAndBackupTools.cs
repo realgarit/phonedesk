@@ -14,15 +14,18 @@ internal sealed class HealthAndBackupTools
     private readonly ITenantAsCodeService _tenantAsCode;
     private readonly CreatedObjectLedger _ledger;
     private readonly McpEnvironment _environment;
+    private readonly ICallFlowPictureRenderer _pictures;
 
     public HealthAndBackupTools(
         TenantGateway tenant,
         TenantHealthCheckService healthCheck,
         ITenantAsCodeService tenantAsCode,
         CreatedObjectLedger ledger,
-        McpEnvironment environment)
+        McpEnvironment environment,
+        ICallFlowPictureRenderer pictures)
     {
         _environment = environment;
+        _pictures = pictures;
         _tenant = tenant;
         _healthCheck = healthCheck;
         _tenantAsCode = tenantAsCode;
@@ -121,7 +124,7 @@ internal sealed class HealthAndBackupTools
     });
 
     [McpServerTool(Name = "export_tenant_report", ReadOnly = true, Idempotent = true, OpenWorld = false)]
-    [Description("Writes the readable documentation of a tenant from a snapshot file: report.html (one self-contained file with a section per kind of object, links between related objects, and a call-flow diagram per auto attendant), report.xlsx (one sheet per kind of object, with filters), and one call-flow diagram per auto attendant as SVG. It is built from the snapshot alone: the tenant is not read, so take a snapshot with backup_tenant first when you want the current state. Without a file it uses the newest backup of the connected tenant. The files go into a new folder under 'reports' in the data folder of this server; nothing is overwritten, and the same snapshot gives the same files. The result lists the files; tell the user where they are. The desktop app writes the same report and also the diagrams as PNG pictures.")]
+    [Description("Writes the readable documentation of a tenant from a snapshot file: report.html (one self-contained file with a section per kind of object, links between related objects, and a call-flow diagram per auto attendant), report.xlsx (one sheet per kind of object, with filters), and one call-flow diagram per auto attendant as SVG and as PNG. It is built from the snapshot alone: the tenant is not read, so take a snapshot with backup_tenant first when you want the current state. Without a file it uses the newest backup of the connected tenant. The files go into a new folder under 'reports' in the data folder of this server; nothing is overwritten, and the same snapshot gives the same files. The result lists the files; tell the user where they are. The desktop app writes the same files.")]
     public string ExportTenantReport(
         [Description("Full path of a snapshot file, from list_backups or backup_tenant. Omit to use the newest backup of the connected tenant.")] string? file = null,
         [Description("Language of the headings: en or de.")] string language = "en")
@@ -140,7 +143,8 @@ internal sealed class HealthAndBackupTools
             }
 
             var snapshot = _tenantAsCode.DeserializeTopology(McpFiles.ReadJsonFile(path, maxBytes: 64 * 1024 * 1024));
-            var written = RichReport.WriteFiles(Path.Combine(_environment.DataDirectory, "reports"), snapshot, language.ToLowerInvariant());
+            var written = RichReport.WriteFiles(
+                Path.Combine(_environment.DataDirectory, "reports"), snapshot, language.ToLowerInvariant(), _pictures.RenderPng);
             return new
             {
                 success = true,
@@ -149,6 +153,7 @@ internal sealed class HealthAndBackupTools
                 folder = written.Directory,
                 files = written.Files,
                 autoAttendantDiagrams = written.Files.Count(name => name.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)),
+                pictures = written.Files.Count(name => name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)),
                 note = "The report shows the tenant at the time of the snapshot."
             };
         });

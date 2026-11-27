@@ -185,13 +185,13 @@ queue and auto attendant lists.
 the tenant: `report.html` (one file with its styles and diagrams inside, a section per kind of
 object and links between related objects), `report.xlsx` (one sheet per kind of object, with a
 header row that stays in view and a filter on every column) and one call-flow diagram per auto
-attendant as SVG. The diagram shows the menu in opening hours, the other call flows with their
+attendant as SVG and as PNG. The diagram shows the menu in opening hours, the other call flows with their
 options, and the after-hours and holiday schedules; a target that is a resource account is shown
 as the call queue or auto attendant it serves. The same snapshot gives the same files. Take a
 snapshot with `backup_tenant` first when the current state is wanted.
 
 The desktop app writes the same report on the Tenant Report page (from the tenant, or from a
-snapshot file) and adds each diagram as a PNG picture.
+snapshot file) and writes the same files.
 
 ### Setup runs: resume and rollback
 

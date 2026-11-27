@@ -26,7 +26,8 @@ public sealed class AudioAndScopedBackupTests
     {
         using var host = new McpTestHost();
         var commands = host.Get<IPowerShellCommandService>();
-        const string path = @"C:\audio\weihnachten.wav";
+        // Built for the system the test runs on: a Windows path has no file name part on Linux and macOS.
+        var path = Path.Combine(Path.GetTempPath(), "audio", "weihnachten.wav");
 
         var callQueue = commands.GetImportAudioFileCommand(path);
         var attendant = commands.GetImportAudioFileCommand(path, AudioFiles.AutoAttendant);

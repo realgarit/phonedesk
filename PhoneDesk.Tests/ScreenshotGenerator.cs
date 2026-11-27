@@ -239,6 +239,12 @@ namespace PhoneDesk.Tests
             new("AutoAttendants", true, "auto-attendants.png"),
             new("AutoAttendants", true, "task5-auto-attendants-filter-en.png", "task5-autoattendants-filter-en"),
             new("AutoAttendants", true, "task5-auto-attendants-filter-de.png", "task5-autoattendants-filter-de"),
+            new("AutoAttendants", true, "auto-attendants-steps-en.png", "ready-aasteps-en"),
+            new("AutoAttendants", true, "auto-attendants-steps-de.png", "ready-aasteps-de"),
+            new("AutoAttendants", true, "auto-attendants-create-en.png", "ready-aacreate-en"),
+            new("AutoAttendants", true, "auto-attendants-create-de.png", "ready-aacreate-de"),
+            new("Variables", true, "config-per-day-hours-en.png", "ready-perday-en"),
+            new("Variables", true, "config-per-day-hours-de.png", "ready-perday-de"),
             new("Holidays", true, "holidays.png"),
             new("Holidays", true, "task5-holidays-dialog-en.png", "task5-holidays-dialog-en"),
             new("Holidays", true, "task5-holidays-dialog-de.png", "task5-holidays-dialog-de"),
@@ -974,12 +980,6 @@ namespace PhoneDesk.Tests
                     autoAttendants.ShowCreateResourceAccountDialog = false;
                     autoAttendants.ShowCreateAutoAttendantDialog = false;
                     autoAttendants.ShowAssociateDialog = false;
-                    autoAttendants.ShowValidateCallQueueDialog = false;
-                    autoAttendants.ShowCreateCallTargetDialog = false;
-                    autoAttendants.ShowCreateDefaultCallFlowDialog = false;
-                    autoAttendants.ShowCreateAfterHoursCallFlowDialog = false;
-                    autoAttendants.ShowCreateAfterHoursScheduleDialog = false;
-                    autoAttendants.ShowCreateCallHandlingAssociationDialog = false;
                     autoAttendants.StatusMessage = translation.Get(
                         UiTextKey.AutoAttendantsLoadResourceAccountsSuccess,
                         new Dictionary<string, object?> { ["count"] = 2, ["prefix"] = "raaa-" });
@@ -1086,6 +1086,56 @@ namespace PhoneDesk.Tests
                     window.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Name == "CallQueueCallerIdToggle")
                         .GetVisualAncestors().OfType<ScrollViewer>().First().ScrollToEnd();
                     break;
+
+                case VariablesViewModel perDay when scenario.StartsWith("ready-perday", StringComparison.Ordinal):
+                    {
+                    // Monday has a lunch break (second range on), Tuesday has times typed but the range
+                    // off: its fields must look disabled, because the scripts ignore them.
+                    perDay.Variables.UsePerDaySchedule = true;
+                    var days = perDay.Variables.WeeklySchedule;
+                    days[0].HasSecondRange = true;
+                    days[1].HasSecondRange = false;
+                    days[5].IsEnabled = false;
+                    days[6].IsEnabled = false;
+                    PumpRender();
+                    var tabs = window.GetVisualDescendants().OfType<TabControl>().First();
+                    tabs.SelectedIndex = 2;
+                    PumpRender();
+                    var toggles = window.GetVisualDescendants().OfType<CheckBox>()
+                        .Where(c => c.DataContext is PhoneDesk.Models.DaySchedule).ToList();
+                    Assert.Equal(7, toggles.Count);
+                    toggles[0].GetVisualAncestors().OfType<ScrollViewer>().First().ScrollToEnd();
+                    PumpRender();
+                    var hours2 = window.GetVisualDescendants().OfType<TextBox>()
+                        .Where(t => t.DataContext == days[1]).ToList();
+                    Assert.Equal(4, hours2.Count);
+                    Assert.True(hours2[0].IsEnabled);
+                    Assert.False(hours2[2].IsEnabled);
+                    Assert.False(hours2[3].IsEnabled);
+                    break;
+                    }
+
+                case AutoAttendantsViewModel steps when scenario.StartsWith("ready-aasteps", StringComparison.Ordinal)
+                    || scenario.StartsWith("ready-aacreate", StringComparison.Ordinal):
+                    {
+                    var tabs = window.GetVisualDescendants().OfType<TabControl>().First();
+                    tabs.SelectedIndex = 2;
+                    PumpRender();
+                    if (scenario.StartsWith("ready-aacreate", StringComparison.Ordinal))
+                    {
+                        steps.OpenCreateAutoAttendantDialogCommand.Execute(null);
+                        PumpRender();
+                        var name = window.GetVisualDescendants().OfType<TextBox>().Single(t => t.IsEffectivelyVisible && t.IsReadOnly);
+                        Assert.Equal(steps.AutoAttendantName, name.Text);
+                    }
+                    else
+                    {
+                        // The last two steps (create, assign) are the ones this page changed.
+                        window.GetVisualDescendants().OfType<ScrollViewer>().Where(v => v.IsEffectivelyVisible).Last().ScrollToEnd();
+                        PumpRender();
+                    }
+                    break;
+                    }
 
                 case VariablesViewModel routing when scenario.StartsWith("ready-routing", StringComparison.Ordinal):
                     if (scenario.StartsWith("ready-routing-audio", StringComparison.Ordinal))

@@ -135,32 +135,6 @@ namespace PhoneDesk.Tests
         }
 
         [Fact]
-        public void OpenValidateCallQueueDialogCommand_VariablesConfigured_PrefillsCallQueueUpn()
-        {
-            var harness = new ViewModelTestHarness();
-            var variables = new PhoneManagerVariables { Customer = "Contoso", CustomerGroupName = "Group1" };
-            harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
-            var vm = CreateViewModel(harness);
-
-            vm.OpenValidateCallQueueDialogCommand.Execute(null);
-
-            Assert.True(vm.ShowValidateCallQueueDialog);
-            Assert.Equal(variables.RacqUPN, vm.CallQueueUpn);
-        }
-
-        [Fact]
-        public void OpenValidateCallQueueDialogCommand_VariablesNotConfigured_UsesDefault()
-        {
-            var harness = new ViewModelTestHarness();
-            var vm = CreateViewModel(harness);
-
-            vm.OpenValidateCallQueueDialogCommand.Execute(null);
-
-            Assert.True(vm.ShowValidateCallQueueDialog);
-            Assert.Equal("racq-", vm.CallQueueUpn);
-        }
-
-        [Fact]
         public void OpenCreateAutoAttendantDialogCommand_VariablesConfigured_PrefillsName()
         {
             var harness = new ViewModelTestHarness();
@@ -369,6 +343,120 @@ namespace PhoneDesk.Tests
             harness.ErrorHandlingService.Verify(
                 e => e.HandlePowerShellError(It.IsAny<string>(), It.IsAny<string>(), "Create auto attendant"),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAutoAttendantAsync_RunsTheFullConfigurationScript()
+        {
+            // The page used to run the short script that needs call flows the removed step buttons built
+            // in the session. It now runs the script of Guided Setup step 7 and the MCP tool.
+            var harness = new ViewModelTestHarness();
+            var variables = new PhoneManagerVariables { Customer = "Contoso", CustomerGroupName = "Group1" };
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
+            harness.PowerShellCommandService.Setup(c => c.GetCreateAutoAttendantCommand(variables)).Returns("FULL-AA-SCRIPT");
+            harness.SetExecutionResult("SUCCESS: created");
+            var vm = CreateViewModel(harness);
+            vm.AutoAttendantName = "edited-in-the-dialog";
+
+            await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
+
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync("FULL-AA-SCRIPT", It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+            harness.PowerShellCommandService.Verify(
+                c => c.GetCreateSimpleAutoAttendantCommand(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+                Times.Never);
+            // The script names the auto attendant from the configuration, so the page reports that name.
+            Assert.Equal(variables.AaDisplayName, vm.AutoAttendantName);
+        }
+
+        [Fact]
+        public async Task CreateAutoAttendantAsync_IncompleteChoice_RefusesWithoutExecuting()
+        {
+            // The same refusal as the MCP server: a transfer without a target would end the call.
+            var harness = new ViewModelTestHarness();
+            var variables = new PhoneManagerVariables
+            {
+                Customer = "Contoso",
+                CustomerGroupName = "Group1",
+                AaAfterHoursAction = PhoneDesk.Operations.ConfigurationChecks.TransferToTarget,
+                AaAfterHoursActionTarget = string.Empty,
+            };
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
+            var vm = CreateViewModel(harness);
+            vm.AutoAttendantName = variables.AaDisplayName;
+
+            await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
+
+            Assert.StartsWith("Error: The configuration is not ready.", vm.StatusMessage);
+            Assert.Contains("afterHoursAction", vm.StatusMessage);
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        // ---- Resource account steps of the auto attendant ----
+
+        [Fact]
+        public async Task UpdateUsageLocationAsync_UsesTheAutoAttendantScript()
+        {
+            var harness = new ViewModelTestHarness();
+            var variables = new PhoneManagerVariables { Customer = "Contoso", CustomerGroupName = "Group1", UsageLocation = "CH" };
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
+            harness.PowerShellCommandService
+                .Setup(c => c.GetUpdateAutoAttendantResourceAccountUsageLocationCommand("raaa-x@contoso.com", "CH"))
+                .Returns("AA-USAGE-LOCATION");
+            harness.SetExecutionResult("SUCCESS: done");
+            var vm = CreateViewModel(harness);
+            vm.ResourceAccountUpn = "raaa-x@contoso.com";
+
+            await vm.UpdateUsageLocationCommand.ExecuteAsync(null);
+
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync("AA-USAGE-LOCATION", It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+            Assert.Equal("Usage location updated for 'raaa-x@contoso.com' to 'CH'.", vm.StatusMessage);
+        }
+
+        [Fact]
+        public async Task AssignLicenseAsync_UsesTheAutoAttendantAccountAndScript()
+        {
+            var harness = new ViewModelTestHarness();
+            var variables = new PhoneManagerVariables { Customer = "Contoso", CustomerGroupName = "Group1", SkuId = "sku-1" };
+            harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
+            harness.PowerShellCommandService
+                .Setup(c => c.GetAssignAutoAttendantLicenseCommand(variables.RaaaUPN, "sku-1"))
+                .Returns("AA-LICENSE");
+            harness.SetExecutionResult("SUCCESS: done");
+            var vm = CreateViewModel(harness);
+
+            await vm.AssignLicenseCommand.ExecuteAsync(null);
+
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync("AA-LICENSE", It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+            Assert.Contains("License assigned", vm.StatusMessage);
+        }
+
+        [Fact]
+        public async Task AssociateResourceAccountWithAutoAttendantAsync_RunsTheAssociateScript()
+        {
+            var harness = new ViewModelTestHarness();
+            harness.PowerShellCommandService
+                .Setup(c => c.GetAssociateResourceAccountWithAutoAttendantCommand("raaa-x@contoso.com", "aa-Contoso"))
+                .Returns("AA-ASSOCIATE");
+            harness.SetExecutionResult("SUCCESS: done");
+            var vm = CreateViewModel(harness);
+            vm.ResourceAccountUpn = "raaa-x@contoso.com";
+            vm.AutoAttendantName = "aa-Contoso";
+
+            await vm.AssociateResourceAccountWithAutoAttendantCommand.ExecuteAsync(null);
+
+            harness.PowerShellContextService.Verify(
+                p => p.ExecuteCommandWithDetailsAsync("AA-ASSOCIATE", It.IsAny<Dictionary<string, string>?>(), It.IsAny<IProgress<PowerShellProgress>?>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+            Assert.Equal("Resource account 'raaa-x@contoso.com' was assigned to auto attendant 'aa-Contoso'.", vm.StatusMessage);
+            Assert.False(vm.ShowAssociateDialog);
         }
 
         // ---- RemoveAutoAttendantAsync ----

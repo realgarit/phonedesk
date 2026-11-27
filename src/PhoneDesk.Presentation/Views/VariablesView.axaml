@@ -356,17 +356,36 @@
                                                                  Text="{Binding Hours1End, Converter={StaticResource TimeSpanConverter}}"
                                                                  IsEnabled="{Binding IsEnabled}"
                                                                  Margin="4,0,12,0" MinWidth="80"/>
-                                                        <TextBlock Grid.Column="4" Text="{loc:Translate Key=VariablesHours2Label}" 
-                                                                 VerticalAlignment="Center" Margin="0,0,8,0"
-                                                                 FontSize="12" Opacity="0.7"/>
-                                                        <TextBox Grid.Column="5" 
+                                                        <!-- The second range counts only when it is switched on: the scripts
+                                                             and the MCP server read HasSecondRange, never the times alone. -->
+                                                        <CheckBox Grid.Column="4"
+                                                                  IsChecked="{Binding HasSecondRange}"
+                                                                  IsEnabled="{Binding IsEnabled}"
+                                                                  Content="{loc:Translate Key=VariablesSecondRangeToggle}"
+                                                                  ToolTip.Tip="{loc:Translate Key=VariablesSecondRangeToggleTooltip}"
+                                                                  AutomationProperties.Name="{loc:Translate Key=VariablesSecondRangeToggleTooltip}"
+                                                                  VerticalAlignment="Center" Margin="0,0,8,0"
+                                                                  FontSize="12"/>
+                                                        <TextBox Grid.Column="5"
                                                                  Text="{Binding Hours2Start, Converter={StaticResource TimeSpanConverter}}"
-                                                                 IsEnabled="{Binding IsEnabled}"
-                                                                 Margin="0,0,4,0" MinWidth="80"/>
-                                                        <TextBox Grid.Column="6" 
+                                                                 Margin="0,0,4,0" MinWidth="80">
+                                                            <TextBox.IsEnabled>
+                                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                    <Binding Path="IsEnabled"/>
+                                                                    <Binding Path="HasSecondRange"/>
+                                                                </MultiBinding>
+                                                            </TextBox.IsEnabled>
+                                                        </TextBox>
+                                                        <TextBox Grid.Column="6"
                                                                  Text="{Binding Hours2End, Converter={StaticResource TimeSpanConverter}}"
-                                                                 IsEnabled="{Binding IsEnabled}"
-                                                                 Margin="4,0,0,0" MinWidth="80"/>
+                                                                 Margin="4,0,0,0" MinWidth="80">
+                                                            <TextBox.IsEnabled>
+                                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                                    <Binding Path="IsEnabled"/>
+                                                                    <Binding Path="HasSecondRange"/>
+                                                                </MultiBinding>
+                                                            </TextBox.IsEnabled>
+                                                        </TextBox>
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>

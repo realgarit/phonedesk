@@ -52,7 +52,7 @@ public sealed class RuntimeLocalizationTests
         var harness = new ViewModelTestHarness();
         harness.SetExecutionResult("SUCCESS: created");
         harness.SharedStateService.SetupGet(s => s.AutoRefreshAfterOperations).Returns(false);
-        harness.SharedStateService.SetupGet(s => s.Variables).Returns(new PhoneManagerVariables
+        var variables = new PhoneManagerVariables
         {
             Customer = "contoso",
             CustomerGroupName = "tenant",
@@ -60,7 +60,8 @@ public sealed class RuntimeLocalizationTests
             LanguageId = "en-US",
             TimeZoneId = "W. Europe Standard Time",
             CsAppAaId = "app-aa-123"
-        });
+        };
+        harness.SharedStateService.SetupGet(s => s.Variables).Returns(variables);
 
         var vm = new AutoAttendantsViewModel(
             harness.PowerShellContextService.Object,
@@ -77,12 +78,13 @@ public sealed class RuntimeLocalizationTests
         vm.AutoAttendantName = "aa-Contoso";
 
         await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
-        Assert.Equal("Auto attendant 'aa-Contoso' created successfully.", vm.StatusMessage);
+        // The name comes from the configuration, the same one the script uses.
+        Assert.Equal($"Auto attendant '{variables.AaDisplayName}' created successfully.", vm.StatusMessage);
 
         harness.TranslationService.CurrentLanguage = AppLanguage.German;
 
         await vm.CreateAutoAttendantCommand.ExecuteAsync(null);
-        Assert.Equal("Automatische Telefonzentrale 'aa-Contoso' wurde erfolgreich erstellt.", vm.StatusMessage);
+        Assert.Equal($"Automatische Telefonzentrale '{variables.AaDisplayName}' wurde erfolgreich erstellt.", vm.StatusMessage);
     }
 
     [Fact]

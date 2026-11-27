@@ -37,24 +37,6 @@ namespace PhoneDesk.ViewModels
         private bool _showAssociateDialog;
 
         [ObservableProperty]
-        private bool _showValidateCallQueueDialog;
-
-        [ObservableProperty]
-        private bool _showCreateCallTargetDialog;
-
-        [ObservableProperty]
-        private bool _showCreateDefaultCallFlowDialog;
-
-        [ObservableProperty]
-        private bool _showCreateAfterHoursCallFlowDialog;
-
-        [ObservableProperty]
-        private bool _showCreateAfterHoursScheduleDialog;
-
-        [ObservableProperty]
-        private bool _showCreateCallHandlingAssociationDialog;
-
-        [ObservableProperty]
         private string _resourceAccountUpn = string.Empty;
 
         [ObservableProperty]
@@ -62,12 +44,6 @@ namespace PhoneDesk.ViewModels
 
         [ObservableProperty]
         private string _autoAttendantName = string.Empty;
-
-        [ObservableProperty]
-        private string _callQueueUpn = string.Empty;
-
-        [ObservableProperty]
-        private string _m365GroupId = string.Empty;
 
         public ObservableCollection<ResourceAccount> ResourceAccountsView => new ObservableCollection<ResourceAccount>(
             ResourceAccounts.Where(FilterResourceAccount)
@@ -261,87 +237,6 @@ namespace PhoneDesk.ViewModels
         }
 
         [RelayCommand]
-        private void OpenValidateCallQueueDialog()
-        {
-            var variables = _sharedStateService?.Variables;
-            if (variables != null && !string.IsNullOrEmpty(variables.Customer) && !string.IsNullOrEmpty(variables.CustomerGroupName))
-            {
-                CallQueueUpn = variables.RacqUPN;
-            }
-            else
-            {
-                CallQueueUpn = "racq-";
-            }
-            ShowValidateCallQueueDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseValidateCallQueueDialog()
-        {
-            ShowValidateCallQueueDialog = false;
-        }
-
-        [RelayCommand]
-        private void OpenCreateCallTargetDialog()
-        {
-            ShowCreateCallTargetDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseCreateCallTargetDialog()
-        {
-            ShowCreateCallTargetDialog = false;
-        }
-
-        [RelayCommand]
-        private void OpenCreateDefaultCallFlowDialog()
-        {
-            ShowCreateDefaultCallFlowDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseCreateDefaultCallFlowDialog()
-        {
-            ShowCreateDefaultCallFlowDialog = false;
-        }
-
-        [RelayCommand]
-        private void OpenCreateAfterHoursCallFlowDialog()
-        {
-            ShowCreateAfterHoursCallFlowDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseCreateAfterHoursCallFlowDialog()
-        {
-            ShowCreateAfterHoursCallFlowDialog = false;
-        }
-
-        [RelayCommand]
-        private void OpenCreateAfterHoursScheduleDialog()
-        {
-            ShowCreateAfterHoursScheduleDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseCreateAfterHoursScheduleDialog()
-        {
-            ShowCreateAfterHoursScheduleDialog = false;
-        }
-
-        [RelayCommand]
-        private void OpenCreateCallHandlingAssociationDialog()
-        {
-            ShowCreateCallHandlingAssociationDialog = true;
-        }
-
-        [RelayCommand]
-        private void CloseCreateCallHandlingAssociationDialog()
-        {
-            ShowCreateCallHandlingAssociationDialog = false;
-        }
-
-        [RelayCommand]
         private async Task CreateResourceAccountAsync()
         {
             if (string.IsNullOrWhiteSpace(ResourceAccountUpn) || string.IsNullOrWhiteSpace(ResourceAccountDisplayName))
@@ -501,13 +396,26 @@ namespace PhoneDesk.ViewModels
                     return;
                 }
 
+                // The same readiness test as Guided Setup and the MCP server: a configuration with a
+                // problem never reaches the script.
+                var problems = ConfigurationProblems(variables);
+                if (problems.Count > 0)
+                {
+                    StatusMessage = GetText(
+                        UiTextKey.AutoAttendantsConfigurationNotReadyError,
+                        "Error: The configuration is not ready. Correct it on the Configuration page first: {details}",
+                        new Dictionary<string, object?> { ["details"] = string.Join(" ", problems) });
+                    return;
+                }
+
+                AutoAttendantName = variables.AaDisplayName;
                 LogLocalized(
                     UiTextKey.AutoAttendantsCreateAutoAttendantLog,
                     "Creating auto attendant '{name}'.",
                     LogLevel.Info,
                     new Dictionary<string, object?> { ["name"] = AutoAttendantName });
 
-                var command = _powerShellCommandService.GetCreateSimpleAutoAttendantCommand(AutoAttendantName, variables.LanguageId, variables.TimeZoneId);
+                var command = _powerShellCommandService.GetCreateAutoAttendantCommand(variables);
                 var result = await PreviewAndExecuteAsync(
                     command,
                     GetText(
@@ -579,6 +487,190 @@ namespace PhoneDesk.ViewModels
                 AutoAttendantName = "aa-";
             }
             ShowAssociateDialog = true;
+        }
+
+        /// <summary>
+        /// The problems that stop the auto attendant script: the validation Guided Setup runs and the
+        /// incomplete choices the MCP server also refuses (an action without its target). The other
+        /// MCP check, values outside the option lists, cannot happen here: the page offers only those.
+        /// </summary>
+        private List<string> ConfigurationProblems(IPhoneManagerVariables variables)
+        {
+            var problems = new List<string>();
+            var validation = _validationService.ValidateVariables(variables);
+            if (!validation.IsValid)
+            {
+                problems.Add(GetValidationErrorMessage(validation));
+            }
+
+            problems.AddRange(PhoneDesk.Operations.ConfigurationChecks.FindIncompleteChoices(variables));
+            return problems;
+        }
+
+        [RelayCommand]
+        private async Task UpdateUsageLocationAsync()
+        {
+            if (string.IsNullOrWhiteSpace(ResourceAccountUpn))
+            {
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesUpdateUsageLocationUpnRequiredError,
+                    "Error: Resource account UPN cannot be empty.");
+                return;
+            }
+
+            var variables = _sharedStateService?.Variables;
+            if (variables == null)
+            {
+                StatusMessage = GetText(UiTextKey.RuntimeVariablesNotFoundError, "Error: Configuration not found.");
+                return;
+            }
+
+            var upn = ResourceAccountUpn.Trim();
+            try
+            {
+                IsBusy = true;
+                ShowUpdateUsageLocationDialog = false;
+                var command = _powerShellCommandService.GetUpdateAutoAttendantResourceAccountUsageLocationCommand(upn, variables.UsageLocation);
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.CallQueuesUpdateUsageLocationContext, "Update usage location"));
+                if (result == null)
+                {
+                    StatusMessage = GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user");
+                    return;
+                }
+
+                StatusMessage = result.Succeeded
+                    ? GetText(
+                        UiTextKey.CallQueuesUpdateUsageLocationSuccess,
+                        "Usage location updated for '{upn}' to '{usageLocation}'.",
+                        new Dictionary<string, object?> { ["upn"] = upn, ["usageLocation"] = variables.UsageLocation })
+                    : GetText(
+                        UiTextKey.CallQueuesUpdateUsageLocationError,
+                        "Error updating the usage location: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(UpdateUsageLocationAsync), ex);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task AssignLicenseAsync()
+        {
+            var variables = _sharedStateService?.Variables;
+            if (variables == null)
+            {
+                StatusMessage = GetText(UiTextKey.RuntimeVariablesNotFoundError, "Error: Configuration not found.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(variables.RaaaUPN))
+            {
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesResourceAccountUpnMissingError,
+                    "Error: Resource account UPN is not set. Set the configuration first.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(variables.SkuId))
+            {
+                StatusMessage = GetText(
+                    UiTextKey.CallQueuesSkuIdMissingError,
+                    "Error: SKU ID is not set. Set the SKU ID in Configuration first.");
+                return;
+            }
+
+            try
+            {
+                SetWaiting(
+                    UiTextKey.RuntimeApplyingLicensePleaseWait,
+                    "Please wait while the Teams Phone Resource License is being applied.");
+                IsBusy = true;
+                var command = _powerShellCommandService.GetAssignAutoAttendantLicenseCommand(variables.RaaaUPN, variables.SkuId);
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.AutoAttendantsAssignLicenseContext, "Assign license to the auto attendant resource account"));
+                if (result == null)
+                {
+                    StatusMessage = GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user");
+                    return;
+                }
+
+                StatusMessage = result.Succeeded
+                    ? GetText(
+                        UiTextKey.CallQueuesAssignLicenseSuccess,
+                        "License assigned to resource account '{upn}' successfully.",
+                        new Dictionary<string, object?> { ["upn"] = variables.RaaaUPN })
+                    : GetText(
+                        UiTextKey.CallQueuesAssignLicenseError,
+                        "Error assigning the license: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(AssignLicenseAsync), ex);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task AssociateResourceAccountWithAutoAttendantAsync()
+        {
+            if (string.IsNullOrWhiteSpace(ResourceAccountUpn) || string.IsNullOrWhiteSpace(AutoAttendantName))
+            {
+                StatusMessage = GetText(
+                    UiTextKey.AutoAttendantsAssociateDetailsRequiredError,
+                    "Error: Resource account UPN and auto attendant name cannot be empty.");
+                return;
+            }
+
+            var upn = ResourceAccountUpn.Trim();
+            var name = AutoAttendantName.Trim();
+            try
+            {
+                SetWaiting(UiTextKey.RuntimeWorkingPleaseWait, "Please wait while the previous operation is processed by Microsoft.");
+                IsBusy = true;
+                ShowAssociateDialog = false;
+                var command = _powerShellCommandService.GetAssociateResourceAccountWithAutoAttendantCommand(upn, name);
+                var result = await PreviewAndExecuteAsync(
+                    command,
+                    GetText(UiTextKey.AutoAttendantsAssociateContext, "Assign resource account to auto attendant"));
+                if (result == null)
+                {
+                    StatusMessage = GetText(UiTextKey.RuntimeOperationCancelledByUser, "Operation cancelled by user");
+                    return;
+                }
+
+                StatusMessage = result.Succeeded
+                    ? GetText(
+                        UiTextKey.AutoAttendantsAssociateSuccess,
+                        "Resource account '{upn}' was assigned to auto attendant '{name}'.",
+                        new Dictionary<string, object?> { ["upn"] = upn, ["name"] = name })
+                    : GetText(
+                        UiTextKey.AutoAttendantsAssociateError,
+                        "Error assigning the resource account to the auto attendant: {details}",
+                        new Dictionary<string, object?> { ["details"] = result.Value });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = FormatError(ex.Message);
+                LogException(nameof(AssociateResourceAccountWithAutoAttendantAsync), ex);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
         /// <summary>Opens the selected auto attendant on the Edit Settings page.</summary>

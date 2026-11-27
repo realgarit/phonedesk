@@ -28,6 +28,10 @@
     <PackageReference Include="System.IO.Packaging" Version="11.0.0" />
     <PackageReference Include="System.Management.Automation" Version="7.6.10" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.92.0" />
+    <!-- Draws the call-flow pictures of the report. The same version Avalonia ships with the
+         desktop app, so the MCP server published into the app folder shares identical files. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
     <!-- Transitive dependency override to resolve a known vulnerability pulled via PowerShell.SDK -->
     <PackageReference Include="System.Security.Cryptography.Xml" Version="11.0.0" />
   </ItemGroup>

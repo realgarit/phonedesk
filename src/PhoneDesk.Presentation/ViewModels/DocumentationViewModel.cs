@@ -23,6 +23,7 @@ namespace PhoneDesk.ViewModels
         private readonly IDocumentationScriptBuilder _docBuilder;
         private readonly ITenantAsCodeService? _tenantAsCodeService;
         private readonly IPortabilityFileService? _portabilityFileService;
+        private readonly ICallFlowPictureRenderer? _pictures;
         private readonly ITenantDocumentationSnapshotParser? _snapshotParser;
         private readonly ITenantTopologyAssembler? _topologyAssembler;
         private readonly ITenantHealthCheckCache? _healthCheckCache;
@@ -78,7 +79,8 @@ namespace PhoneDesk.ViewModels
             IPortabilityFileService? portabilityFileService = null,
             ITenantDocumentationSnapshotParser? snapshotParser = null,
             ITenantTopologyAssembler? topologyAssembler = null,
-            ITenantHealthCheckCache? healthCheckCache = null)
+            ITenantHealthCheckCache? healthCheckCache = null,
+            ICallFlowPictureRenderer? pictures = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
@@ -88,6 +90,7 @@ namespace PhoneDesk.ViewModels
             _snapshotParser = snapshotParser;
             _topologyAssembler = topologyAssembler;
             _healthCheckCache = healthCheckCache;
+            _pictures = pictures;
             TopologyDriftEntries.CollectionChanged += (_, _) =>
                 OnPropertyChanged(nameof(HasTopologyDriftEntries));
             if (_translationService is not null)
@@ -201,7 +204,7 @@ namespace PhoneDesk.ViewModels
                     ? PhoneDesk.Operations.RichReport.German
                     : PhoneDesk.Operations.RichReport.English;
                 var written = PhoneDesk.Operations.RichReport.WriteFiles(
-                    folder, snapshot, language, PhoneDesk.Services.CallFlowPictureRenderer.RenderPng);
+                    folder, snapshot, language, _pictures is null ? null : _pictures.RenderPng);
                 StatusMessage = GetText(
                     UiTextKey.DocumentationRichReportSavedStatus,
                     "Report saved: {count} files in {path}.",

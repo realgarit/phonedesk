@@ -126,6 +126,7 @@ class Program
         services.AddTransient<HolidayManagerViewModel>();
         services.AddTransient<PhoneNumbersViewModel>();
         services.AddTransient<SetupRunsViewModel>();
+        services.AddSingleton<ICallFlowPictureRenderer, PhoneDesk.Services.Reports.SkiaCallFlowPictureRenderer>();
         services.AddTransient<EditSettingsViewModel>();
         services.AddTransient<ProfilesViewModel>();
         services.AddSingleton<PhoneDesk.Operations.ITenantProfileStore>(_ => new FileTenantProfileStore());

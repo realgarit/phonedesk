@@ -212,7 +212,12 @@ public sealed class RichReportTests
         var result = McpTestHost.Parse(tools.ExportTenantReport(file, "de"));
 
         var files = result.GetProperty("files").EnumerateArray().Select(item => item.GetString()!).ToList();
-        Assert.Equal(new[] { "report.html", "report.xlsx", "call-flow-01-main-aa.svg" }, files.Select(Path.GetFileName));
+        Assert.Equal(new[] { "report.html", "report.xlsx", "call-flow-01-main-aa.svg", "call-flow-01-main-aa.png" }, files.Select(Path.GetFileName));
+        // The picture is a real PNG of the diagram's size, drawn without a window.
+        var png = File.ReadAllBytes(files[3]);
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, png.Take(4));
+        var diagram = RichReport.BuildDiagrams(Snapshot()).Single();
+        Assert.Equal((int)Math.Ceiling(diagram.Width * 2), System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4)));
         Assert.All(files, path => Assert.True(new FileInfo(path).Length > 0));
         Assert.StartsWith(Path.Combine(host.DataDirectory, "reports"), result.GetProperty("folder").GetString());
         Assert.Contains("Automatische Telefonzentralen", File.ReadAllText(files[0]));

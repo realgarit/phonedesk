@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.41.1](https://github.com/realgarit/phonedesk/compare/v3.41.0...v3.41.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* working Auto Attendants page and per-day second time range ([4da7218](https://github.com/realgarit/phonedesk/commit/4da721898e9b4a75a5c051884c009261f90e9e4e))
+* working Auto Attendants page and per-day second time range ([b00b2ba](https://github.com/realgarit/phonedesk/commit/b00b2baa0d1b34b84ca0d4e2dded62cf5d7cc14e))
+
 ## [3.41.0](https://github.com/realgarit/phonedesk/compare/v3.40.0...v3.41.0) (2026-11-27)
 
 

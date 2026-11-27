@@ -42,6 +42,11 @@ namespace PhoneDesk.Services
         public string GetRemoveM365GroupCommand(string groupId, string groupName) => _commonBuilder.GetRemoveM365GroupCommand(groupId, groupName);
         public string GetRetrieveM365GroupsCommand() => _commonBuilder.GetRetrieveM365GroupsCommand();
         public string GetM365GroupIdCommand(string groupName) => _commonBuilder.GetM365GroupIdCommand(groupName);
+        public string GetRunIdentityCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Operations.RunObject> objects)
+            => _commonBuilder.GetRunIdentityCommand(objects);
+
+        public string GetEffectiveObjectName(string name) => _commonBuilder.GetEffectiveObjectName(name);
+
         public string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries)
             => _commonBuilder.GetTenantPreflightCommand(entries);
 

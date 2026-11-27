@@ -40,7 +40,7 @@ public sealed class McpToolTests
             }
 
             // A delete tool must be marked destructive, and no other changing tool may be.
-            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal) || tool.Name is "release_phone_number" or "retire_holiday_schedules")
+            if (tool.Name!.StartsWith("delete_", StringComparison.Ordinal) || tool.Name is "release_phone_number" or "retire_holiday_schedules" or "rollback_setup_run")
             {
                 Assert.False(tool.ReadOnly);
                 Assert.True(tool.Destructive);

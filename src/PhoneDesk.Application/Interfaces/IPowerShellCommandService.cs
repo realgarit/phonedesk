@@ -25,6 +25,12 @@ public interface IPowerShellCommandService
     /// The read-only script that compares the entries of a dry-run plan with the tenant. It looks
     /// for the names as the provisioning scripts write them.
     /// </summary>
+    /// <summary>The read-only script that returns the identity of the objects of a run, by the names the scripts wrote.</summary>
+    string GetRunIdentityCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Operations.RunObject> objects);
+
+    /// <summary>The name of an object as the provisioning scripts write it into the tenant and into their output.</summary>
+    string GetEffectiveObjectName(string name);
+
     string GetTenantPreflightCommand(System.Collections.Generic.IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> entries);
     string GetAssignLicenseCommand(string userId, string skuId);
 

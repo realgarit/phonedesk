@@ -72,10 +72,12 @@ namespace PhoneDesk.ViewModels
             IDryRunPlanBuilder? planBuilder = null,
             IDryRunPlanExporter? planExporter = null,
             IAuditLog? auditLog = null,
-            ITranslationService? translationService = null)
+            ITranslationService? translationService = null,
+            PhoneDesk.Operations.RunJournalService? journal = null)
             : base(powerShellContextService, powerShellCommandService, loggingService,
                   sessionManager, navigationService, errorHandlingService, validationService, sharedStateService, dialogService, auditLog, translationService)
         {
+            _journal = journal;
             _bulkBuilder = bulkBuilder;
             _planBuilder = planBuilder;
             _planExporter = planExporter;
@@ -83,6 +85,46 @@ namespace PhoneDesk.ViewModels
                 UiTextKey.BulkOperationsPageLoadedLog,
                 "Bulk operations page loaded",
                 LogLevel.Info);
+        }
+
+        private readonly PhoneDesk.Operations.RunJournalService? _journal;
+
+        /// <summary>True when the last bulk run of this page created something a rollback could remove.</summary>
+        [ObservableProperty]
+        private bool _canRollBackLastRun;
+
+        [RelayCommand]
+        private void OpenSetupRuns() => NavigateTo(ConstantsService.Pages.SetupRuns);
+
+        /// <summary>
+        /// Writes what a bulk run created to a run record, and reads the IDs of the new objects
+        /// while this session still knows which objects they are.
+        /// </summary>
+        private async Task RecordRunAsync(PhoneDesk.Operations.RunRecord? run, IReadOnlyList<IPhoneManagerVariables> entries, string? output, bool succeeded, string? error)
+        {
+            if (_journal is null || run is null)
+            {
+                return;
+            }
+
+            try
+            {
+                _journal.BulkFinished(run, entries, output, succeeded, error);
+                await _journal.StoreIdsAsync(run, async script =>
+                {
+                    var read = await ExecutePowerShellCommandAsync(script, null, "ReadRunObjects", allowThrottleRetry: true);
+                    return string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput;
+                });
+                CanRollBackLastRun = run.CanRollBack;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                LogLocalized(
+                    UiTextKey.WizardRunJournalFailedLog,
+                    "The run record could not be written: {error}",
+                    LogLevel.Warning,
+                    new Dictionary<string, object?> { ["error"] = ex.Message });
+            }
         }
 
         [RelayCommand]
@@ -465,8 +507,25 @@ namespace PhoneDesk.ViewModels
                     LogLevel.Info,
                     new Dictionary<string, object?> { ["count"] = entries.Count });
 
+                // The record is written before the script runs, so a crash in the middle leaves a trace.
+                PhoneDesk.Operations.RunRecord? run = null;
+                try
+                {
+                    run = _journal?.Begin(
+                        PhoneDesk.Operations.RunKind.Bulk, "desktop", _sessionManager.TenantId, _sessionManager.TenantName,
+                        string.Join(", ", entries.Select(entry => entry.Customer + " - " + entry.CustomerGroupName).Take(3)) +
+                        (entries.Count > 3 ? ", ..." : string.Empty));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    run = null;
+                }
+
                 // Execute the entire script as one batch
                 var result = await ExecutePowerShellCommandAsync(bulkScript, "BulkOperations");
+                await RecordRunAsync(
+                    run, entries, string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput,
+                    result.IsSuccess && !result.HasErrorMarker, result.ErrorMessage);
 
                 if (!string.IsNullOrEmpty(result.Value))
                 {

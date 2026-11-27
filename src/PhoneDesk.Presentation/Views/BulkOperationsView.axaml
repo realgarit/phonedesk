@@ -99,6 +99,12 @@
                                 <TextBlock Text="{loc:Translate Key=PlanTenantCheckAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <Button Command="{Binding OpenSetupRunsCommand}" IsVisible="{Binding CanRollBackLastRun}" IsEnabled="{Binding !IsBusy}" Classes="IconText">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="ArrowUndo"/>
+                                <TextBlock Text="{loc:Translate Key=WizardRollbackRunAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <Button Command="{Binding ExecuteAllCommand}"
                                 Classes="accent IconText"
                                 IsEnabled="{Binding !IsBusy}">

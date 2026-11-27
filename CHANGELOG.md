@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.41.2](https://github.com/realgarit/phonedesk/compare/v3.41.1...v3.41.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **mcp:** session_status reports the release version ([03ca087](https://github.com/realgarit/phonedesk/commit/03ca087838f169bf5fff35a9d0f8d91e7ac45162))
+* **mcp:** session_status reports the release version ([d3b8daa](https://github.com/realgarit/phonedesk/commit/d3b8daa3dc6fa3e62cb8f3d2296d80bd27209f93))
+
 ## [3.41.1](https://github.com/realgarit/phonedesk/compare/v3.41.0...v3.41.1) (2026-11-27)
 
 

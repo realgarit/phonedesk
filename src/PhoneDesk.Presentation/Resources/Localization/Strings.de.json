@@ -1332,5 +1332,22 @@
   "GetStartedSetupGuidanceIdentity": "Die Anmeldungen haben funktioniert, sind aber nicht die erwarteten. Melden Sie sich ab und danach mit dem richtigen Konto erneut an.",
   "GetStartedIdentityTenantsDiffer": "Microsoft Teams ist mit {teams} verbunden, aber Microsoft Graph ist als {account} bei einer anderen Organisation angemeldet.",
   "GetStartedIdentityUnexpectedTenant": "Sie haben {expected} erwartet, aber die Anmeldung hat {actual} erreicht.",
-  "GetStartedIdentityUnexpectedAccount": "Sie haben das Konto {expected} erwartet, aber Microsoft Graph ist als {actual} angemeldet."
+  "GetStartedIdentityUnexpectedAccount": "Sie haben das Konto {expected} erwartet, aber Microsoft Graph ist als {actual} angemeldet.",
+  "HolidayManagerCompareAction": "Kundenliste vergleichen",
+  "HolidayManagerReadFirstStatus": "Lesen Sie zuerst den Mandanten.",
+  "HolidayManagerCompareListLabel": "Feiertagsliste des Kunden (ein Eintrag pro Zeile)",
+  "HolidayManagerCompareListHint": "Ein Tag oder ein Bereich, danach der Wortlaut des Kunden: 25.12.2027 Weihnachten; 24.12.2027 12:00-24:00 Heiligabend; 27.12. bis 02.01. Betriebsferien. Ein Buchstabe am Anfang bezeichnet die Art des Tages: G gesetzlicher Feiertag, B Betriebsferien, R zusätzlicher Ruhetag, H halber Tag.",
+  "HolidayManagerCompareYearLabel": "Jahr für Einträge ohne Jahr",
+  "HolidayManagerCompareYearInvalid": "Geben Sie das Jahr der Liste ein, zum Beispiel 2027.",
+  "HolidayManagerCompareUnreadable": "Zeile {number} wurde nicht gelesen: {text}",
+  "HolidayManagerCompareSeveralYears": "Die Liste umfasst mehrere Jahre: {value}",
+  "HolidayManagerCompareYearAssumed": "Das Jahr {year} wurde angenommen für: {text}",
+  "HolidayManagerCompareRow": "{line} | {attendant}: {status}{detail}",
+  "HolidayManagerCompareOnlyInTenant": "Nur im Mandanten: {attendant}: {range} ({schedule})",
+  "HolidayManagerCompareChangesTitle": "Änderungen, seit diese Seite den Mandanten zum ersten Mal gelesen hat (tabulatorgetrennt, für die Kundenakte):",
+  "HolidayManagerCompareMatch": "im Mandanten vorhanden",
+  "HolidayManagerCompareCovered": "durch einen längeren Plan abgedeckt",
+  "HolidayManagerCompareSameStart": "gleicher Beginn, anderes Ende",
+  "HolidayManagerComparePartialOverlap": "überschneidet sich teilweise",
+  "HolidayManagerCompareMissing": "fehlt"
 }

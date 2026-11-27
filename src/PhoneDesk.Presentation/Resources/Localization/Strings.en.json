@@ -1332,5 +1332,22 @@
   "GetStartedSetupGuidanceIdentity": "The sign-ins worked, but they are not the expected ones. Sign out, then sign in again with the right account.",
   "GetStartedIdentityTenantsDiffer": "Microsoft Teams is connected to {teams}, but Microsoft Graph is signed in to another organization as {account}.",
   "GetStartedIdentityUnexpectedTenant": "You expected {expected}, but the sign-in reached {actual}.",
-  "GetStartedIdentityUnexpectedAccount": "You expected the account {expected}, but Microsoft Graph is signed in as {actual}."
+  "GetStartedIdentityUnexpectedAccount": "You expected the account {expected}, but Microsoft Graph is signed in as {actual}.",
+  "HolidayManagerCompareAction": "Compare a customer list",
+  "HolidayManagerReadFirstStatus": "Read the tenant first.",
+  "HolidayManagerCompareListLabel": "Holiday list of the customer (one entry per line)",
+  "HolidayManagerCompareListHint": "A day or a range, then the customer's wording: 25.12.2027 Weihnachten; 24.12.2027 12:00-24:00 Heiligabend; 27.12. bis 02.01. Betriebsferien. A leading letter marks the kind of day: G statutory holiday, B business closure, R additional rest day, H half day.",
+  "HolidayManagerCompareYearLabel": "Year for entries without a year",
+  "HolidayManagerCompareYearInvalid": "Enter the year of the list, for example 2027.",
+  "HolidayManagerCompareUnreadable": "Line {number} was not read: {text}",
+  "HolidayManagerCompareSeveralYears": "The list spans several years: {value}",
+  "HolidayManagerCompareYearAssumed": "The year {year} was assumed for: {text}",
+  "HolidayManagerCompareRow": "{line} | {attendant}: {status}{detail}",
+  "HolidayManagerCompareOnlyInTenant": "Only in the tenant: {attendant}: {range} ({schedule})",
+  "HolidayManagerCompareChangesTitle": "Changes since this page first read the tenant (tab-separated, for the customer record):",
+  "HolidayManagerCompareMatch": "in the tenant",
+  "HolidayManagerCompareCovered": "covered by a longer schedule",
+  "HolidayManagerCompareSameStart": "same start, another end",
+  "HolidayManagerComparePartialOverlap": "overlaps partly",
+  "HolidayManagerCompareMissing": "missing"
 }

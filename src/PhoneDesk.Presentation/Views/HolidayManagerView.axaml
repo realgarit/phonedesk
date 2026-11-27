@@ -29,6 +29,12 @@
                                 <TextBlock Text="{loc:Translate Key=HolidayManagerLoadAction}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <Button Command="{Binding OpenCompareListCommand}" Classes="IconText" Margin="0,0,12,8">
+                            <StackPanel Orientation="Horizontal">
+                                <fi:SymbolIcon Symbol="DocumentSearch"/>
+                                <TextBlock Text="{loc:Translate Key=HolidayManagerCompareAction}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <Button Command="{Binding CancelOperationCommand}" Classes="IconText" Margin="0,0,12,8"
                                 IsVisible="{Binding IsCancellable}">
                             <StackPanel Orientation="Horizontal">
@@ -161,6 +167,14 @@
                                     <TextBlock Text="{loc:Translate Key=HolidayManagerDatesHint}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
                                 </StackPanel>
 
+                                <StackPanel Spacing="4" IsVisible="{Binding IsCompareList}">
+                                    <TextBlock Text="{loc:Translate Key=HolidayManagerCompareListLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBox Text="{Binding OperationText}" AcceptsReturn="True" MinHeight="110" MaxHeight="170" TextWrapping="NoWrap"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidayManagerCompareListHint}" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{loc:Translate Key=HolidayManagerCompareYearLabel}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                    <TextBox Text="{Binding OperationSecondText}" Width="120" HorizontalAlignment="Left"/>
+                                </StackPanel>
+
                                 <StackPanel Spacing="4" IsVisible="{Binding IsReplaceGreeting}">
                                     <TextBlock Text="{loc:Translate Key=HolidayManagerGreetingTextLabel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                     <TextBox Text="{Binding OperationText}" AcceptsReturn="True" MinHeight="80" MaxHeight="140" TextWrapping="Wrap"/>
@@ -222,7 +236,7 @@
                                     <TextBlock Text="{loc:Translate Key=HolidayManagerCheckAction}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding ApplyOperationCommand}" Classes="accent IconText" IsEnabled="{Binding CanApplyOperation}">
+                            <Button Command="{Binding ApplyOperationCommand}" Classes="accent IconText" IsEnabled="{Binding CanApplyOperation}" IsVisible="{Binding ShowApply}">
                                 <StackPanel Orientation="Horizontal">
                                     <fi:SymbolIcon Symbol="Checkmark"/>
                                     <TextBlock Text="{loc:Translate Key=HolidayManagerApplyAction}" VerticalAlignment="Center"/>

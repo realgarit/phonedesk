@@ -90,19 +90,25 @@ public static class TenantPreflight
     /// The read script for the entries of a plan. All values travel as one Base64 text, so a name
     /// can hold any character without becoming part of the script.
     /// </summary>
-    public static string GetReadCommand(IReadOnlyList<IPhoneManagerVariables> entries)
+    /// <param name="entries">The entries of the plan, in row order.</param>
+    /// <param name="effectiveName">
+    /// How the provisioning scripts write a name or sign-in name. The tenant is searched for that
+    /// text: a name with an apostrophe, for example, is created with two.
+    /// </param>
+    public static string GetReadCommand(IReadOnlyList<IPhoneManagerVariables> entries, Func<string, string>? effectiveName = null)
     {
         ArgumentNullException.ThrowIfNull(entries);
+        string Name(string? value) => string.IsNullOrEmpty(value) ? string.Empty : effectiveName is null ? value : effectiveName(value);
         var request = new
         {
             entries = entries.Select((entry, index) => new
             {
                 row = index + 1,
-                group = entry.M365Group ?? string.Empty,
-                callQueue = entry.CqDisplayName ?? string.Empty,
-                autoAttendant = entry.AaDisplayName ?? string.Empty,
-                callQueueAccount = entry.RacqUPN ?? string.Empty,
-                autoAttendantAccount = entry.RaaaUPN ?? string.Empty,
+                group = Name(entry.M365Group),
+                callQueue = Name(entry.CqDisplayName),
+                autoAttendant = Name(entry.AaDisplayName),
+                callQueueAccount = Name(entry.RacqUPN),
+                autoAttendantAccount = Name(entry.RaaaUPN),
                 skuId = entry.SkuId ?? string.Empty,
                 number = (entry.RaaAnr ?? string.Empty).Trim()
             }).ToList()

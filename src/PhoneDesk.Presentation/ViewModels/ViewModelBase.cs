@@ -446,7 +446,7 @@ namespace PhoneDesk.ViewModels
             PhoneDesk.Planning.DryRunPlan plan, IReadOnlyList<PhoneDesk.Models.IPhoneManagerVariables> sources)
         {
             var result = await ExecutePowerShellCommandAsync(
-                PhoneDesk.Operations.TenantPreflight.GetReadCommand(sources), null, "PreviewTenantCheck", allowThrottleRetry: true);
+                _powerShellCommandService.GetTenantPreflightCommand(sources), null, "PreviewTenantCheck", allowThrottleRetry: true);
             try
             {
                 var state = PhoneDesk.Operations.TenantPreflight.Parse(string.IsNullOrEmpty(result.RawOutput) ? result.Value : result.RawOutput);

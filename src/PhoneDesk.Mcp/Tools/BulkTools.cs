@@ -15,6 +15,7 @@ internal sealed class BulkTools
     private readonly CreatedObjectGuard _guard;
     private readonly IDryRunPlanExporter _planExporter;
     private readonly TenantGateway _tenant;
+    private readonly IPowerShellCommandService _commands;
 
     public BulkTools(
         BulkSetupScriptBuilder bulk,
@@ -22,8 +23,10 @@ internal sealed class BulkTools
         ChangeGate changes,
         CreatedObjectGuard guard,
         IDryRunPlanExporter planExporter,
-        TenantGateway tenant)
+        TenantGateway tenant,
+        IPowerShellCommandService commands)
     {
+        _commands = commands;
         _planExporter = planExporter;
         _tenant = tenant;
         _bulk = bulk;
@@ -57,7 +60,7 @@ internal sealed class BulkTools
             var plan = _planBuilder.BuildBulkPlan(entries);
             if (checkTenant)
             {
-                var read = await _tenant.ReadAsync(TenantPreflight.GetReadCommand(entries), "PreviewTenantCheck", cancellationToken);
+                var read = await _tenant.ReadAsync(_commands.GetTenantPreflightCommand(entries), "PreviewTenantCheck", cancellationToken);
                 plan = TenantPreflight.Apply(plan, entries, TenantPreflight.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput));
             }
 

@@ -18,6 +18,7 @@ internal sealed class GuidedSetupTools
     private readonly IDryRunPlanExporter _planExporter;
     private readonly TenantConnectionService _connection;
     private readonly TenantGateway _tenant;
+    private readonly IPowerShellCommandService _commands;
 
     public GuidedSetupTools(
         ConfigurationStore store,
@@ -28,9 +29,11 @@ internal sealed class GuidedSetupTools
         IDryRunPlanBuilder planBuilder,
         IDryRunPlanExporter planExporter,
         TenantConnectionService connection,
-        TenantGateway tenant)
+        TenantGateway tenant,
+        IPowerShellCommandService commands)
     {
         _tenant = tenant;
+        _commands = commands;
         _store = store;
         _progress = progress;
         _scripts = scripts;
@@ -84,7 +87,7 @@ internal sealed class GuidedSetupTools
             if (checkTenant)
             {
                 var sources = new[] { _store.Variables };
-                var read = await _tenant.ReadAsync(TenantPreflight.GetReadCommand(sources), "PreviewTenantCheck", cancellationToken);
+                var read = await _tenant.ReadAsync(_commands.GetTenantPreflightCommand(sources), "PreviewTenantCheck", cancellationToken);
                 plan = TenantPreflight.Apply(plan, sources, TenantPreflight.Parse(string.IsNullOrEmpty(read.RawOutput) ? read.Value : read.RawOutput));
             }
 

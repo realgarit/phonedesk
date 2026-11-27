@@ -22,7 +22,7 @@ public sealed class TenantPreflightTests
         using var host = new McpTestHost().Configured();
         var variables = host.Get<ConfigurationStore>().Variables;
         var sources = new IPhoneManagerVariables[] { variables };
-        var script = TenantPreflight.GetReadCommand(sources);
+        var script = host.Get<IPowerShellCommandService>().GetTenantPreflightCommand(sources);
 
         // The values travel encoded: no name is part of the script text.
         Parser.ParseInput(script, out _, out var errors);
@@ -48,6 +48,30 @@ public sealed class TenantPreflightTests
         Assert.Equal(PreflightStatus.Fail, checks["Phone number available"].Status);
         Assert.Contains("anna@contoso.com", checks["Phone number available"].Detail);
         Assert.False(plan.Entries[0].IsValid);
+    }
+
+    [Fact]
+    public void Script_LooksForTheNamesAsTheProvisioningScriptsWriteThem()
+    {
+        using var host = new McpTestHost().Configured();
+        var variables = host.Get<ConfigurationStore>().Variables;
+        var requested = new List<string>();
+        string Recorded(string value)
+        {
+            requested.Add(value);
+            return value.Replace("'", "''", StringComparison.Ordinal);
+        }
+
+        var plain = TenantPreflight.GetReadCommand(new IPhoneManagerVariables[] { variables });
+        var written = TenantPreflight.GetReadCommand(new IPhoneManagerVariables[] { variables }, Recorded);
+
+        // The three names and the two sign-in names go through the rule of the scripts.
+        Assert.Equal(
+            new[] { variables.M365Group, variables.CqDisplayName, variables.AaDisplayName, variables.RacqUPN, variables.RaaaUPN }.Order(),
+            requested.Order());
+        // Without a character the rule changes, the script is the same.
+        Assert.Equal(plain, written);
+        Assert.Equal(plain, host.Get<IPowerShellCommandService>().GetTenantPreflightCommand(new IPhoneManagerVariables[] { variables }));
     }
 
     [Fact]
@@ -99,7 +123,7 @@ public sealed class TenantPreflightTests
     {
         using var host = new McpTestHost().Connected().Configured();
         var variables = host.Get<ConfigurationStore>().Variables;
-        var script = TenantPreflight.GetReadCommand(new IPhoneManagerVariables[] { variables });
+        var script = host.Get<IPowerShellCommandService>().GetTenantPreflightCommand(new IPhoneManagerVariables[] { variables });
         host.PowerShell.Respond(script, McpHolidayCallHandlingTests.RunPowerShell(FakeTenant(variables, freeLicenses: 0), script));
         var tools = host.Tool<GuidedSetupTools>();
 
